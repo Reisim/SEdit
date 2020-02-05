@@ -1,0 +1,4 @@
+# S-Edit Setting File
+
+Traffic Direction ; 0
+
