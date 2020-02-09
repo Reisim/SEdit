@@ -665,6 +665,9 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     out << "\n";
 
+    out << "Left-Hand Or Right-Hand ; " << (LeftOrRight == LEFT_HAND_TRAFFIC ? "LEFT" : "RIGHT")  << "\n";
+    out << "\n";
+
     out << "#-----------------------------------------------------\n";
     out << "# WayPoint ; id , x , y , z , direct[rad]\n";
     out << "#-----------------------------------------------------\n";

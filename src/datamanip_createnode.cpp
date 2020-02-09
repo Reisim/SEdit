@@ -24,6 +24,11 @@ int DataManipulator::CreateNode_4x1x1()
         //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
     }
 
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
     int cID = -1;
     {
         QList<int> inlanes;
@@ -44,14 +49,17 @@ int DataManipulator::CreateNode_4x1x1()
         QVector4D startPoint;
         QVector4D endPoint;
 
+
+
         for(int i=0;i<4;++i){
 
             float angle = i * 90.0 * 0.017452;
             float c = cos( angle );
             float s = sin( angle );
 
-            startPoint.setX( x + 6.0 * c + 1.5 * s );
-            startPoint.setY( y + 6.0 * s - 1.5 * c );
+
+            startPoint.setX( x + 6.0 * c + 1.5 * s * LRrev  );
+            startPoint.setY( y + 6.0 * s - 1.5 * c * LRrev);
             startPoint.setZ( 0.0 );
             startPoint.setW(  angle - 180.0 * 0.017452 );
 
@@ -68,8 +76,8 @@ int DataManipulator::CreateNode_4x1x1()
             c = cos( angle2 );
             s = sin( angle2 );
 
-            endPoint.setX( x + 6.0 * c - 1.5 * s );
-            endPoint.setY( y + 6.0 * s + 1.5 * c );
+            endPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+            endPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
             endPoint.setZ( 0.0 );
             endPoint.setW( angle2 );
 
@@ -80,8 +88,8 @@ int DataManipulator::CreateNode_4x1x1()
             c = cos( angle3 );
             s = sin( angle3 );
 
-            endPoint.setX( x + 6.0 * c - 1.5 * s );
-            endPoint.setY( y + 6.0 * s + 1.5 * c );
+            endPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+            endPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
             endPoint.setZ( 0.0 );
             endPoint.setW( angle3 );
 
@@ -125,8 +133,8 @@ int DataManipulator::CreateNode_4x1x1()
                 float c = cos( angle );
                 float s = sin( angle );
 
-                startPoint.setX( x + 6.0 * c - 1.5 * s );
-                startPoint.setY( y + 6.0 * s + 1.5 * c );
+                startPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+                startPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
                 startPoint.setZ( 0.0 );
                 startPoint.setW( angle );
 
@@ -138,8 +146,8 @@ int DataManipulator::CreateNode_4x1x1()
 
                 int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
 
-                endPoint.setX( x + 6.0 * c + 1.5 * s );
-                endPoint.setY( y + 6.0 * s - 1.5 * c );
+                endPoint.setX( x + 6.0 * c + 1.5 * s * LRrev );
+                endPoint.setY( y + 6.0 * s - 1.5 * c * LRrev );
                 endPoint.setZ( 0.0 );
                 endPoint.setW( angle - 180.0 * 0.017452 );
 
@@ -178,6 +186,11 @@ int DataManipulator::CreateNode_3x1x1()
         //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
     }
 
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
     int cID = -1;
     {
         QList<int> inlanes;
@@ -204,8 +217,8 @@ int DataManipulator::CreateNode_3x1x1()
             float c = cos( angle );
             float s = sin( angle );
 
-            startPoint.setX( x + 6.0 * c + 1.5 * s );
-            startPoint.setY( y + 6.0 * s - 1.5 * c );
+            startPoint.setX( x + 6.0 * c + 1.5 * s * LRrev );
+            startPoint.setY( y + 6.0 * s - 1.5 * c * LRrev );
             startPoint.setZ( 0.0 );
             startPoint.setW(  angle - 180.0 * 0.017452 );
 
@@ -225,8 +238,8 @@ int DataManipulator::CreateNode_3x1x1()
                 c = cos( angle2 );
                 s = sin( angle2 );
 
-                endPoint.setX( x + 6.0 * c - 1.5 * s );
-                endPoint.setY( y + 6.0 * s + 1.5 * c );
+                endPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+                endPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
                 endPoint.setZ( 0.0 );
                 endPoint.setW( angle2 );
 
@@ -239,8 +252,8 @@ int DataManipulator::CreateNode_3x1x1()
                 c = cos( angle3 );
                 s = sin( angle3 );
 
-                endPoint.setX( x + 6.0 * c - 1.5 * s );
-                endPoint.setY( y + 6.0 * s + 1.5 * c );
+                endPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+                endPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
                 endPoint.setZ( 0.0 );
                 endPoint.setW( angle3 );
 
@@ -283,8 +296,8 @@ int DataManipulator::CreateNode_3x1x1()
                 float c = cos( angle );
                 float s = sin( angle );
 
-                startPoint.setX( x + 6.0 * c - 1.5 * s );
-                startPoint.setY( y + 6.0 * s + 1.5 * c );
+                startPoint.setX( x + 6.0 * c - 1.5 * s * LRrev );
+                startPoint.setY( y + 6.0 * s + 1.5 * c * LRrev );
                 startPoint.setZ( 0.0 );
                 startPoint.setW( angle );
 
@@ -296,8 +309,8 @@ int DataManipulator::CreateNode_3x1x1()
 
                 int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
 
-                endPoint.setX( x + 6.0 * c + 1.5 * s );
-                endPoint.setY( y + 6.0 * s - 1.5 * c );
+                endPoint.setX( x + 6.0 * c + 1.5 * s * LRrev );
+                endPoint.setY( y + 6.0 * s - 1.5 * c * LRrev );
                 endPoint.setZ( 0.0 );
                 endPoint.setW( angle - 180.0 * 0.017452 );
 

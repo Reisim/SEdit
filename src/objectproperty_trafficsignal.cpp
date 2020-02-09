@@ -61,11 +61,12 @@ void RoadObjectProperty::ChangeTrafficSignalInfo(int id)
                 .arg( road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i]->duration );
     }
     infoStr += QString("\n");
-    infoStr += QString("[Start Offset] %1\n").arg( road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset );
     infoStr += QString("\n");
 
     tsInfo->setText( infoStr );
     tsInfo->setAlignment( Qt::AlignTop );
+
+    tsStartOffset->setValue( road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset );
 
     if( road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.size() == 0 ){
         // Set Default
@@ -248,6 +249,8 @@ void RoadObjectProperty::TSPatternApplyClicked()
 
         road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.append( sp );
     }
+
+    road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset = tsStartOffset->value();
 
     ChangeTrafficSignalInfo( road->nodes[ndIdx]->trafficSignals[tsIdx]->id );
 }

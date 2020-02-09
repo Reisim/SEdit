@@ -91,6 +91,7 @@ private:
     QPushButton *addRowDisplayPattern;
     QPushButton *delRowDisplayPattern;
     QPushButton *applyDisplayPattern;
+    QSpinBox *tsStartOffset;
 
     QWidget *stopLinePage;
     QLabel *slInfo;

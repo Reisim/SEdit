@@ -86,6 +86,12 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     tsInfo = new QLabel();
     tsInfo->setFixedSize( infoAreaSizeTS );
 
+    tsStartOffset = new QSpinBox();
+    tsStartOffset->setMinimum(0);
+    tsStartOffset->setFixedWidth(120);
+    tsStartOffset->setSuffix("[s]");
+
+
     tsDisplayPattern = new QTableWidget;
     tsDisplayPattern->setColumnCount(7);
 
@@ -128,10 +134,12 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     tsGrid->addWidget( new QLabel("ID:"), 0, 0 );
     tsGrid->addWidget( tsIDSB, 0, 1 );
     tsGrid->addWidget( tsInfo, 1, 1 );
-    tsGrid->addWidget( new QLabel("Display Pettern:"), 2, 0, 1, 2 , Qt::AlignLeft );
-    tsGrid->addLayout( tsDPButtonLayout, 3, 1 );
-    tsGrid->addWidget( tsDisplayPattern, 4, 1 );
-    tsGrid->setColumnStretch(3,1);
+    tsGrid->addWidget( new QLabel("Start Offset:"), 2, 0 );
+    tsGrid->addWidget( tsStartOffset, 2, 1 );
+    tsGrid->addWidget( new QLabel("Display Pettern:"), 3, 0, 1, 2 , Qt::AlignLeft );
+    tsGrid->addLayout( tsDPButtonLayout, 4, 1 );
+    tsGrid->addWidget( tsDisplayPattern, 5, 1 );
+    tsGrid->setColumnStretch(4,1);
 
     trafficSignalPage->setLayout( tsGrid );
 
