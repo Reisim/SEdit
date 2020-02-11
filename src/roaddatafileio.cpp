@@ -616,12 +616,14 @@ bool RoadInfo::LoadRoadData(QString filename)
     for(int i=0;i<nodes.size();++i){
         nodes[i]->nLeg = nodes[i]->legInfo.size();
         nodes[i]->hasTS = nodes[i]->trafficSignals.size() > 0 ? true : false;
-
-        for(int j=0;j<nodes[i]->stopLines.size();++j){
-            CheckStopLineCrossLanes( nodes[i]->stopLines[j]->id );
-        }
     }
 
+
+    // Calculate Stop Point Data
+    CheckAllStopLineCrossLane();
+
+
+    // Calculate Lane Cross Points
     CheckLaneCrossPoints();
 
 

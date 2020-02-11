@@ -91,6 +91,7 @@ public:
     int GetNearestStopLine(QVector2D pos,float &dist);
     void CheckStopLineCrossLanes(int id);
     void MoveStopLine(int id,float moveX,float moveY);
+    void CheckAllStopLineCrossLane();
 
 
     // Route

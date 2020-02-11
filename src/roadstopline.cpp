@@ -166,6 +166,16 @@ int RoadInfo::GetNearestStopLine(QVector2D pos, float &dist)
 }
 
 
+void RoadInfo::CheckAllStopLineCrossLane()
+{
+    for(int i=0;i<nodes.size();++i){
+        for(int j=0;j<nodes[i]->stopLines.size();++j){
+            CheckStopLineCrossLanes( nodes[i]->stopLines[j]->id );
+        }
+    }
+}
+
+
 void RoadInfo::CheckStopLineCrossLanes(int id)
 {
     int rNode = indexOfSL(id,-1);

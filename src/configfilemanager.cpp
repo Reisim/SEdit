@@ -29,25 +29,34 @@ ConfigFileManager::ConfigFileManager(QWidget *parent) : QWidget(parent)
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 1, 0 );
 
-    title = new QLabel("Re:sim Log Output");
+    title = new QLabel("DS Mode");
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 2, 0 );
 
-    title = new QLabel("Re:sim Log File Output Folder");
+    title = new QLabel("Calculation Time Step");
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 3, 0 );
 
-    title = new QLabel("Re:sim Log File Name");
+
+    title = new QLabel("Re:sim Log Output");
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 4, 0 );
 
-    title = new QLabel("Add Timestamp");
+    title = new QLabel("Re:sim Log File Output Folder");
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 5, 0 );
 
-    title = new QLabel("Re:sim Log Output Interval");
+    title = new QLabel("Re:sim Log File Name");
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 6, 0 );
+
+    title = new QLabel("Add Timestamp");
+    title->setFixedSize( title->sizeHint() );
+    infoLayout->addWidget( title, 7, 0 );
+
+    title = new QLabel("Re:sim Log Output Interval");
+    title->setFixedSize( title->sizeHint() );
+    infoLayout->addWidget( title, 8, 0 );
 
 
     configFilename = new QLabel();
@@ -68,8 +77,18 @@ ConfigFileManager::ConfigFileManager(QWidget *parent) : QWidget(parent)
     infoLayout->addWidget( selectedScenariofile, 1, 1, 1, 1, Qt::AlignLeft );
     infoLayout->addWidget( selScenarioBtn, 1, 2 );
 
+    isDSMode = new QCheckBox();
+    infoLayout->addWidget( isDSMode, 2, 1, 1, 1, Qt::AlignLeft );
+
+    calTimeStep = new QDoubleSpinBox();
+    calTimeStep->setMinimum( 0.001 );
+    calTimeStep->setMaximum( 0.1 );
+    calTimeStep->setValue( 0.02 );
+    calTimeStep->setSuffix("[s]");
+    infoLayout->addWidget( calTimeStep, 3, 1, 1, 1, Qt::AlignLeft );
+
     resimLogOutput = new QCheckBox();
-    infoLayout->addWidget( resimLogOutput, 2, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( resimLogOutput, 4, 1, 1, 1, Qt::AlignLeft );
 
 
     logOutputFolder = new QLabel();
@@ -80,21 +99,21 @@ ConfigFileManager::ConfigFileManager(QWidget *parent) : QWidget(parent)
     selLogFolderBtn->setFixedSize( selLogFolderBtn->sizeHint() );
     connect( selLogFolderBtn, SIGNAL(clicked()), this, SLOT(SelectLogFolderClicked()) );
 
-    infoLayout->addWidget( logOutputFolder, 3, 1, 1, 1, Qt::AlignLeft );
-    infoLayout->addWidget( selLogFolderBtn, 3, 2 );
+    infoLayout->addWidget( logOutputFolder, 5, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( selLogFolderBtn, 5, 2 );
 
 
     resimLogFileName = new QLineEdit();
     resimLogFileName->setFixedWidth(300);
-    infoLayout->addWidget( resimLogFileName, 4, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( resimLogFileName, 6, 1, 1, 1, Qt::AlignLeft );
 
     resimLogTimeStamp = new QCheckBox();
-    infoLayout->addWidget( resimLogTimeStamp, 5, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( resimLogTimeStamp, 7, 1, 1, 1, Qt::AlignLeft );
 
     logOutputInterval = new QSpinBox();
     logOutputInterval->setMinimum(0);
     logOutputInterval->setFixedWidth(90);
-    infoLayout->addWidget( logOutputInterval, 6, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( logOutputInterval, 8, 1, 1, 1, Qt::AlignLeft );
 
 
     clearBtn = new QPushButton("Clear");
@@ -138,6 +157,9 @@ void ConfigFileManager::ClearData()
     configFilename->clear();
     selectedScenariofile->clear();
     logOutputFolder->clear();
+
+    isDSMode->setChecked( false );
+    calTimeStep->setValue( 0.02 );
 
     resimLogOutput->setChecked( false );
     resimLogFileName->clear();
@@ -188,9 +210,21 @@ void ConfigFileManager::LoadData()
                         resimLogOutput->setChecked( false );
                     }
                 }
+                else if( tag == QString("DS Mode") ){
+                    if( QString( divLine[1] ).trimmed() == QString("yes") ){
+                        isDSMode->setChecked( true );
+                    }
+                    else{
+                        isDSMode->setChecked( false );
+                    }
+                }
                 else if( tag == QString("Scenario File") ){
 
                     selectedScenariofile->setText( QString(divLine[1]).trimmed() );
+                }
+                else if( tag == QString("Calculation Time Step") ){
+
+                    calTimeStep->setValue( QString(divLine[1]).trimmed().toDouble() );
                 }
                 else if( tag == QString("Log Output Folder") ){
 
@@ -249,9 +283,16 @@ void ConfigFileManager::SaveData()
             out << "=============================================\n";
             out << "\n";
             out << "# 'DS Mode' should be ahead of 'Scenario File'\n";
-            out << "DS Mode ; no\n";
+            if( isDSMode->checkState() == Qt::Checked ){
+                out << "DS Mode ; yes\n";
+            }
+            else{
+                out << "DS Mode ; no\n";
+            }
+
             out << "\n";
             out << "Scenario File ; " << selectedScenariofile->text() << "\n";
+            out << "Calculation Time Step ; " << calTimeStep->value() << "\n";
             out << "\n";
             if( resimLogOutput->checkState() == Qt::Checked ){
                 out << "Output Log File ; yes\n";

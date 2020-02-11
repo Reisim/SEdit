@@ -56,6 +56,8 @@ private:
     QLabel *selectedScenariofile;
     QLabel *logOutputFolder;
 
+    QCheckBox *isDSMode;
+    QDoubleSpinBox *calTimeStep;
     QCheckBox *resimLogOutput;
     QLineEdit *resimLogFileName;
     QCheckBox *resimLogTimeStamp;

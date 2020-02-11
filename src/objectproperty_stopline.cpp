@@ -47,6 +47,8 @@ void RoadObjectProperty::ChangeStopLineInfo(int id)
     for(int i=0;i<road->nodes[ndIdx]->stopLines[slIdx]->crossLanes.size();++i){
         infoStr += QString("  Lane: %1\n").arg( road->nodes[ndIdx]->stopLines[slIdx]->crossLanes[i] );
     }
+
+
     infoStr += QString("\n");
 
     slInfo->setText( infoStr );

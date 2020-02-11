@@ -99,6 +99,9 @@ void ResimFilesOutput::OutputFiles()
     qDebug() << "    filename = " << filename;
 
 
+    // Calculate Stop Point Data
+    road->CheckAllStopLineCrossLane();
+
     // Check Cross Points
     road->CheckLaneCrossPoints();
 
