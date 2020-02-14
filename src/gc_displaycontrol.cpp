@@ -29,6 +29,18 @@ void GraphicCanvas::MoveTo(float x,float y)
     update();
 }
 
+void GraphicCanvas::SetMapVisibility(bool b)
+{
+    showMapImageFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetBackMap(bool b)
+{
+    backMapImageFlag = b;
+    update();
+}
+
 void GraphicCanvas::SetNodeVisibility(bool b)
 {
     showNodesFlag = b;
@@ -44,6 +56,12 @@ void GraphicCanvas::SetNodeLabelVisibility(bool b)
 void GraphicCanvas::SetNodeLaneListlVisibility(bool b)
 {
     LaneListFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetRelatedLaneslVisibility(bool b)
+{
+    RelatedLanesFlag = b;
     update();
 }
 

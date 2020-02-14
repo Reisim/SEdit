@@ -15,44 +15,32 @@
 #include <QDebug>
 
 
-void RoadInfo::CreateWPData()
+
+void RoadInfo::ClearWPs()
 {
     for(int i=0;i<wps.size();++i){
         wps[i]->relatedLanes.clear();
         delete wps[i];
     }
     wps.clear();
+}
+
+
+void RoadInfo::CreateWPData()
+{
+    ClearWPs();
 
     for(int i=0;i<lanes.size();++i){
         lanes[i]->startWPID = -1;
         lanes[i]->endWPID = -1;
     }
 
+    qDebug() << "Create WP Data";
+
     for(int i=0;i<lanes.size();++i){
 
-        bool createStartWP = true;
         if( lanes[i]->startWPID < 0 ){
-            for(int j=0;j<lanes[i]->previousLanes.size();++j){
-                int lidx = lanes[i]->previousLanes[j];
-                if(lidx >= 0){
-                    if( lanes[lidx]->endWPID >= 0 ){
-                        lanes[i]->startWPID = lanes[lidx]->endWPID;
-                        createStartWP = false;
 
-                        int ewpIdx = indexOfWP( lanes[lidx]->endWPID );
-                        if( ewpIdx >= 0 ){
-                            wps[ewpIdx]->relatedLanes.append( lanes[i]->id );
-                        }
-
-                        break;
-                    }
-                }
-            }
-        }
-        else{
-            createStartWP = false;
-        }
-        if( createStartWP == true ){
             struct WayPoint* w = new struct WayPoint;
 
             w->id = wps.size();
@@ -60,44 +48,40 @@ void RoadInfo::CreateWPData()
             w->pos.setY( lanes[i]->shape.pos.first()->y() );
             w->pos.setZ( lanes[i]->shape.pos.first()->z() );
             w->angle = lanes[i]->shape.angles.first();  // [rad]
+
             w->relatedLanes.append( lanes[i]->id );
-            for(int j=0;j<lanes[i]->previousLanes.size();++j){
-                w->relatedLanes.append( lanes[i]->previousLanes[j] );
-            }
-            wps.append( w );
 
             lanes[i]->startWPID = w->id;
+
             for(int j=0;j<lanes[i]->previousLanes.size();++j){
-                int lidx = lanes[i]->previousLanes[j];
-                if(lidx >= 0){
-                    lanes[lidx]->endWPID = w->id;
+                if( w->relatedLanes.indexOf( lanes[i]->previousLanes[j] ) < 0 ){
+                    w->relatedLanes.append( lanes[i]->previousLanes[j] );
                 }
-            }
-        }
-
-        bool createEndWP = true;
-        if( lanes[i]->endWPID < 0 ){
-            for(int j=0;j<lanes[i]->nextLanes.size();++j){
-                int lidx = lanes[i]->nextLanes[j];
+                int lidx = indexOfLane( lanes[i]->previousLanes[j] );
                 if(lidx >= 0){
-                    if( lanes[lidx]->startWPID >= 0 ){
-                        lanes[i]->endWPID = lanes[lidx]->startWPID;
-                        createEndWP = false;
 
-                        int swpIdx = indexOfWP( lanes[lidx]->startWPID );
-                        if( swpIdx >= 0 ){
-                            wps[swpIdx]->relatedLanes.append( lanes[i]->id );
+                    lanes[lidx]->endWPID = w->id;
+
+                    for(int k=0;k<lanes[lidx]->nextLanes.size();++k){
+                        if( lanes[lidx]->nextLanes[k] == lanes[i]->id ){
+                            continue;
                         }
-
-                        break;
+                        if( w->relatedLanes.indexOf( lanes[lidx]->nextLanes[k] ) < 0 ){
+                            w->relatedLanes.append( lanes[lidx]->nextLanes[k] );
+                        }
+                        int nlidx = indexOfLane( lanes[lidx]->nextLanes[k] );
+                        if(nlidx >= 0){
+                            lanes[nlidx]->startWPID = w->id;
+                        }
                     }
                 }
             }
+
+            wps.append( w );
         }
-        else{
-            createEndWP = false;
-        }
-        if( createEndWP == true ){
+
+        if( lanes[i]->endWPID < 0 ){
+
             struct WayPoint* w = new struct WayPoint;
 
             w->id = wps.size();
@@ -105,19 +89,35 @@ void RoadInfo::CreateWPData()
             w->pos.setY( lanes[i]->shape.pos.last()->y() );
             w->pos.setZ( lanes[i]->shape.pos.last()->z() );
             w->angle = lanes[i]->shape.angles.last();  // [rad]
+
             w->relatedLanes.append( lanes[i]->id );
-            for(int j=0;j<lanes[i]->nextLanes.size();++j){
-                w->relatedLanes.append( lanes[i]->nextLanes[j] );
-            }
-            wps.append( w );
 
             lanes[i]->endWPID = w->id;
+
             for(int j=0;j<lanes[i]->nextLanes.size();++j){
-                int lidx = lanes[i]->nextLanes[j];
+                if( w->relatedLanes.indexOf( lanes[i]->nextLanes[j] ) < 0 ){
+                    w->relatedLanes.append( lanes[i]->nextLanes[j] );
+                }
+                int lidx = indexOfLane( lanes[i]->nextLanes[j] );
                 if(lidx >= 0){
                     lanes[lidx]->startWPID = w->id;
+
+                    for(int k=0;k<lanes[lidx]->previousLanes.size();++k){
+                        if( lanes[lidx]->previousLanes[k] == lanes[i]->id ){
+                            continue;
+                        }
+                        if( w->relatedLanes.indexOf( lanes[lidx]->previousLanes[k] ) < 0 ){
+                            w->relatedLanes.append( lanes[lidx]->previousLanes[k] );
+                        }
+                        int plidx = indexOfLane( lanes[lidx]->previousLanes[k] );
+                        if(plidx >= 0){
+                            lanes[plidx]->endWPID = w->id;
+                        }
+                    }
                 }
             }
+
+            wps.append( w );
         }
     }
 
@@ -167,23 +167,63 @@ void RoadInfo::CreateWPData()
 
     }
 
-    for(int i=0;i<nodes.size();++i){
-        qDebug() << "Node " << nodes[i]->id << " :";
-        for(int j=0;j<nodes[i]->legInfo.size();++j){
-            qDebug() << "  Leg " << nodes[i]->legInfo[j]->legID << " :";
+//    for(int i=0;i<nodes.size();++i){
+//        qDebug() << "Node " << nodes[i]->id << " :";
+//        for(int j=0;j<nodes[i]->legInfo.size();++j){
+//            qDebug() << "  Leg " << nodes[i]->legInfo[j]->legID << " :";
 
-            nodes[i]->legInfo[j]->nLaneIn  = nodes[i]->legInfo[j]->inWPs.size();
-            nodes[i]->legInfo[j]->nLaneOut = nodes[i]->legInfo[j]->outWPs.size();
+//            nodes[i]->legInfo[j]->nLaneIn  = nodes[i]->legInfo[j]->inWPs.size();
+//            nodes[i]->legInfo[j]->nLaneOut = nodes[i]->legInfo[j]->outWPs.size();
 
-            qDebug() << "    nLaneIn: " << nodes[i]->legInfo[j]->nLaneIn;
-            for(int k=0;k<nodes[i]->legInfo[j]->inWPs.size();++k){
-                qDebug() << "         wp " << nodes[i]->legInfo[j]->inWPs[k];
-            }
-            qDebug() << "    nLaneOut: " << nodes[i]->legInfo[j]->nLaneOut;
-            for(int k=0;k<nodes[i]->legInfo[j]->outWPs.size();++k){
-                qDebug() << "         wp " << nodes[i]->legInfo[j]->outWPs[k];
+//            qDebug() << "    nLaneIn: " << nodes[i]->legInfo[j]->nLaneIn;
+//            for(int k=0;k<nodes[i]->legInfo[j]->inWPs.size();++k){
+//                qDebug() << "         wp " << nodes[i]->legInfo[j]->inWPs[k];
+//            }
+//            qDebug() << "    nLaneOut: " << nodes[i]->legInfo[j]->nLaneOut;
+//            for(int k=0;k<nodes[i]->legInfo[j]->outWPs.size();++k){
+//                qDebug() << "         wp " << nodes[i]->legInfo[j]->outWPs[k];
+//            }
+//        }
+//    }
+}
+
+
+int RoadInfo::CreateWP(int assignID, QVector3D pos, float dir, QList<int> relatedLanes)
+{
+    // Id check
+    int cId = -1;
+    if( assignID < 0 ){
+        cId = 0;
+        for(int i=0;i<wps.size();++i){
+            if( cId <= wps[i]->id ){
+                cId = wps[i]->id + 1;
             }
         }
     }
+    else{
+        if( indexOfWP(assignID) < 0 ){
+            cId = assignID;
+        }
+        else{
+            qDebug() << "[CreateLane] assigned ID already exists.";
+            return -1;
+        }
+    }
+
+    struct WayPoint* w = new struct WayPoint;
+
+    w->id = cId;
+    w->pos = pos;
+    w->angle = dir;  // [rad]
+
+    for(int j=0;j<relatedLanes.size();++j){
+        w->relatedLanes.append( relatedLanes[j] );
+    }
+    wps.append( w );
+
+    return cId;
 }
+
+
+
 

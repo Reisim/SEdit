@@ -24,6 +24,7 @@
 
 #include "roadinfo.h"
 #include "graphiccanvas.h"
+#include "basemapimagemanager.h"
 
 
 class DataManipulator : public QObject
@@ -34,6 +35,8 @@ public:
 
     RoadInfo *road;
     GraphicCanvas *canvas;
+    BaseMapImageManager *mapImageMng;
+
 
     int insertMode;
     int insertNode1;
@@ -64,6 +67,7 @@ public slots:
     void CreateWPData();
     void SetODFlagOfTerminalNode();
     void SetAllLaneLists();
+    void SetSelectedNodeLaneLists();
     void SetTurnDirectionInfo();
 
     void InsertNode_4x1_noTS();
@@ -72,6 +76,8 @@ public slots:
     void InsertNode_3Lx2_noTS();
     void InsertNode_3Rx1_noTS();
     void InsertNode_3Rx2_noTS();
+
+    void ImportERIS3Data(QString filename);
 
 };
 

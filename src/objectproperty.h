@@ -26,7 +26,7 @@
 #include <QSpinBox>
 #include <QTableWidget>
 #include <QCheckBox>
-
+#include <QScrollArea>
 #include <QDebug>
 
 #include "roadinfo.h"
@@ -80,6 +80,7 @@ private:
     QLabel *nodeInfo;
     QCheckBox *cbONode;
     QCheckBox *cbDNode;
+    QScrollArea *nodeInfoScrollArea;
 
     QWidget *lanePage;
     QSpinBox *laneSpeed;

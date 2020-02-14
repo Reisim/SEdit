@@ -92,6 +92,8 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
 
     isOrthogonal = false;
 
+    showMapImageFlag       = true;
+    backMapImageFlag       = false;
     showNodesFlag          = true;
     showLanesFlag          = true;
     showTrafficSignalsFlag = true;
@@ -110,6 +112,7 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
 
     LaneListFlag = false;
     laneListIndex = 0;
+    RelatedLanesFlag       = false;
 
     nodePickModeFlag = false;
 
@@ -444,6 +447,50 @@ void GraphicCanvas::initializeGL()
         }
     }
 
+    //
+    // Rectangle
+    rectPoly.isValid = false;
+    ret = rectPoly.array.create();
+    if( !ret ){
+        qDebug() << "   rectPoly.array.create failed.";
+    }
+    rectPoly.array.bind();
+    rectPoly.buffer = new QOpenGLBuffer();
+    ret =  rectPoly.buffer->create();
+    if( !ret ){
+        qDebug() << "   rectPoly.buffer.create failed.";
+    }
+    else{
+        ret = rectPoly.buffer->bind();
+        if( !ret ){
+            qDebug() << "   rectPoly.buffer.bind failed.";
+        }
+        else{
+
+            rectPoly.vertex << -1.0 << 1.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            rectPoly.vertex << -1.0 << -1.0 << 0.0 << 1.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            rectPoly.vertex <<  1.0 << -1.0 << 0.0 << 1.0 << 1.0 << 1.0 << 1.0 << 1.0;
+            rectPoly.vertex <<  1.0 <<  1.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0 << 1.0;
+
+            rectPoly.buffer->setUsagePattern( QOpenGLBuffer::StaticDraw );
+            rectPoly.buffer->allocate( rectPoly.vertex.constData(), rectPoly.vertex.size() * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 0 );
+            program->setAttributeBuffer( 0, GL_FLOAT, 0, 3, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 1 );
+            program->setAttributeBuffer( 1, GL_FLOAT, 3 * sizeof(GLfloat) , 2, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 2 );
+            program->setAttributeBuffer( 2, GL_FLOAT, 5 * sizeof(GLfloat) , 3, 8 * sizeof(GLfloat) );
+
+            rectPoly.buffer->release();
+            rectPoly.array.release();
+
+            rectPoly.isValid = true;
+        }
+    }
+
 }
 
 
@@ -466,81 +513,386 @@ void GraphicCanvas::paintGL()
 
     program->setUniformValue( u_CameraToView, projection );
 
+    model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
+
+
     //
-    // Axis
-    if( axisPoly.isValid == true ){
+    // Base Map
+    if( mapImageMng != NULL && rectPoly.isValid == true && showMapImageFlag == true ){
 
-        axisPoly.array.bind();
-
-        model2World.setTranslation(QVector3D( 0.0, 0.0, 0.0  ));
-        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-
-        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-        program->setUniformValue( u_useTex, 0 );
-        program->setUniformValue( u_isText, 0 );
-        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
-
-        glLineWidth(3.0);
-        glDrawArrays(GL_LINES, 0, 6 );
         glLineWidth(1.0);
 
-        axisPoly.array.release();
-    }
+        for(int i=0;i<mapImageMng->baseMapImages.size();++i){
 
-    if( textPoly.isTextValid == true ){
-
-        textPoly.textArray.bind();
-
-        program->setUniformValue( u_useTex, 100 );
-        program->setUniformValue( u_isText, 100 );
-        program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
-
-        for(int i=0;i<3;++i){
-
-            char str[25];
-            if( i == 0 ){
-                model2World.setTranslation(QVector3D( 1.0, 0.0, 0.0 ));
-                sprintf(str,"x");
-            }
-            else if( i == 1 ){
-                model2World.setTranslation(QVector3D( 0.0, 1.0, 0.0 ));
-                sprintf(str,"y");
-            }
-            else if( i == 2 ){
-                model2World.setTranslation(QVector3D( 0.0, 0.0, 1.0 ));
-                sprintf(str,"z");
+            if( mapImageMng->baseMapImages[i]->isValid == false ){
+                continue;
             }
 
-            QQuaternion letterQuat = cameraQuat.conjugated();
-            model2World.setRotation( letterQuat );
+            rectPoly.array.bind();
+
+            float mapZ = -1.0;
+            if( backMapImageFlag == true ){
+                mapZ = -25.0;
+            }
+            model2World.setTranslation( QVector3D( mapImageMng->baseMapImages[i]->x,
+                                                   mapImageMng->baseMapImages[i]->y,
+                                                   mapZ) );
+
+            float angle = mapImageMng->baseMapImages[i]->rotate * 0.017452;
+            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0, 0.0, sin(angle*0.5) ) );
+
+            float s = mapImageMng->baseMapImages[i]->scale;
+            model2World.setScale( QVector3D(s * mapImageMng->baseMapImages[i]->halfWidth, s * mapImageMng->baseMapImages[i]->halfHeight, 1.0) );
 
             program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
 
+            program->setUniformValue( u_useTex, 1 );
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
             glActiveTexture( GL_TEXTURE0 );
 
-            float x = 0.0;
-            float y = 0.0;
-            float scale = FONT_SCALE;
+            glBindTexture(GL_TEXTURE_2D, mapImageMng->baseMapImages[i]->textureID);
 
-            for(unsigned int c=0;c<strlen(str);++c ){
+            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
 
-                Character* ch = Characters[ str[c] ];
+            rectPoly.array.release();
+        }
+    }
 
-                GLfloat xpos = x + ch->Bearing.width() * scale;
-                GLfloat ypos = y;
-                program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+    model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
 
-                glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+    // WP
+    if( circlePoly.isValid == true && road != NULL && showLanesFlag == true ){
 
-                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+        for(int i=0;i<road->nodes.size();++i){
 
-                x += ( ch->Advance >> 6 ) * scale;
+            for(int j=0;j<road->nodes[i]->legInfo.size();++j){
+
+                for(int k=0;k<road->nodes[i]->legInfo[j]->inWPs.size();++k){
+
+                    int wpIdx = road->indexOfWP( road->nodes[i]->legInfo[j]->inWPs[k] );
+                    if( wpIdx >= 0 ){
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( QVector3D( road->wps[wpIdx]->pos.x(),
+                                                               road->wps[wpIdx]->pos.y(),
+                                                               road->wps[wpIdx]->pos.z()) );
+
+                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                        model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.8, 0.3, 0.1, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+
+                }
+
+                for(int k=0;k<road->nodes[i]->legInfo[j]->outWPs.size();++k){
+
+                    int wpIdx = road->indexOfWP( road->nodes[i]->legInfo[j]->outWPs[k] );
+                    if( wpIdx >= 0 ){
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( QVector3D( road->wps[wpIdx]->pos.x(),
+                                                               road->wps[wpIdx]->pos.y(),
+                                                               road->wps[wpIdx]->pos.z()) );
+
+                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                        model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.1, 0.3, 0.8, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+
+                }
+
             }
         }
-
-        textPoly.textArray.release();
     }
+
+    model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
+
+
+    //
+    // Lane
+    if( linePoly.isValid == true && road != NULL && showLanesFlag == true ){
+
+        for(int i=0;i<road->lanes.size();++i){
+
+            bool isSelected = false;
+            for(int j=0;j<selectedObj.selObjKind.size();++j){
+                if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE ){
+                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
+                        isSelected = true;
+                        break;
+                    }
+                }
+                if( LaneListFlag == true  && j == 0 &&
+                        selectedObj.selObjKind[j] == _SEL_OBJ::SEL_NODE && nodePickModeFlag == false ){
+
+                    int ndIdx = road->indexOfNode( selectedObj.selObjID[j] );
+                    if( ndIdx >= 0 ){
+                        if( road->nodes[ndIdx]->laneList.size() > 0 ){
+
+                            int llIdx = 0;
+                            int numList = 0;
+                            for(int k=0;k<road->nodes[ndIdx]->laneList.size();++k){
+                                numList += road->nodes[ndIdx]->laneList[k]->lanes.size();
+                                if( laneListIndex < numList ){
+                                    llIdx = k;
+                                    numList -= road->nodes[ndIdx]->laneList[k]->lanes.size();
+                                    break;
+                                }
+                            }
+
+                            if( road->nodes[ndIdx]->laneList[llIdx]->lanes.size() > laneListIndex - numList ){
+                                if( road->nodes[ndIdx]->laneList[llIdx]->lanes[laneListIndex - numList].contains(road->lanes[i]->id) == true ){
+                                    isSelected = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            bool isEdgeStartSelected = false;
+            bool isEdgeEndSelected = false;
+            for(int j=0;j<selectedObj.selObjKind.size();++j){
+                if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
+                        isEdgeStartSelected = true;
+                    }
+                }
+                else if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE_EDGE_END ){
+                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
+                        isEdgeEndSelected = true;
+                    }
+                }
+            }
+
+            bool isRelatedLane = false;
+            if( RelatedLanesFlag == true ){
+                if( selectedObj.selObjKind.size() > 0){
+                    if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE ){
+                        int nIdx = road->indexOfNode( selectedObj.selObjID[0] );
+                        if( nIdx >= 0 ){
+                            if( road->nodes[nIdx]->relatedLanes.indexOf( road->lanes[i]->id ) >= 0 ){
+                                isRelatedLane = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            linePoly.array.bind();
+
+
+            program->setUniformValue( u_isText, 0 );
+
+
+            if( isSelected == true ){
+                program->setUniformValue( u_useTex, 2 );
+                glLineWidth( laneDrawWidth * 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.5, 0.5, 1.0 ) );
+            }
+            else{
+
+                if( isRelatedLane == true ){
+                    program->setUniformValue( u_useTex, 2 );
+                    glLineWidth( laneDrawWidth );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 0.92, 0.66, 1.0 ) );
+                }
+                else{
+                    program->setUniformValue( u_useTex, 0 );
+                    glLineWidth( laneDrawWidth );
+                    program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
+                }
+
+            }
+
+            for(int j=0;j<road->lanes[i]->shape.pos.size() - 1;++j){
+
+                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[j]->x(),
+                                                       road->lanes[i]->shape.pos[j]->y(),
+                                                       road->lanes[i]->shape.pos[j]->z()) );
+
+                model2World.setScale( QVector3D(road->lanes[i]->shape.segmentLength[j],1.0,1.0) );
+
+                float pitch = asin( (road->lanes[i]->shape.pos[j]->z() - road->lanes[i]->shape.pos[j+1]->z()) / road->lanes[i]->shape.segmentLength[j]) ;
+
+                float angle = road->lanes[i]->shape.angles[j];
+                model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) * QQuaternion( cos(pitch*0.5), 0.0 , sin(pitch*0.5) , 0.0 ) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glDrawArrays(GL_LINES, 0, 2 );
+            }
+
+            linePoly.array.release();
+            glLineWidth(1.0);
+
+
+            if( isEdgeEndSelected == true || isEdgeStartSelected == true ){
+
+                circlePoly.array.bind();
+
+                if( isEdgeEndSelected == true ){
+                    model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.last()->x(),
+                                                           road->lanes[i]->shape.pos.last()->y(),
+                                                           0.1) );
+                }
+                else if( isEdgeStartSelected == true ){
+                    model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.first()->x(),
+                                                           road->lanes[i]->shape.pos.first()->y(),
+                                                           0.1) );
+                }
+
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(0.4,0.4,0.4) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_useTex, 0 );
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                circlePoly.array.release();
+            }
+
+
+
+            // StopPoint
+            {
+                for(int j=0;j<road->lanes[i]->stopPoints.size();++j){
+
+                    float xsp = road->lanes[i]->stopPoints[j]->pos.x();
+                    float ysp = road->lanes[i]->stopPoints[j]->pos.y();
+
+                    if( circlePoly.isValid == true ){
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( QVector3D( xsp, ysp, 0.1) );
+                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                        model2World.setScale( QVector3D(0.15,0.15,0.15) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.2, 1.0, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+                }
+            }
+
+
+            // CrossPoint
+            {
+                for(int j=0;j<road->lanes[i]->crossPoints.size();++j){
+
+                    float xsp = road->lanes[i]->crossPoints[j]->pos.x();
+                    float ysp = road->lanes[i]->crossPoints[j]->pos.y();
+
+                    if( circlePoly.isValid == true ){
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( QVector3D( xsp, ysp, 0.1) );
+                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                        model2World.setScale( QVector3D(0.15,0.15,0.15) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.25, 0.0, 1.0, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+                }
+            }
+
+            if( textPoly.isTextValid == true ){
+
+                textPoly.textArray.bind();
+
+                program->setUniformValue( u_useTex, 100 );
+                program->setUniformValue( u_isText, 100 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                char str[25];
+                sprintf(str,"LANE#%d",road->lanes[i]->id);
+
+                int mid = road->lanes[i]->shape.pos.size() / 2;
+                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[mid]->x(),
+                                                       road->lanes[i]->shape.pos[mid]->y(),
+                                                       road->lanes[i]->shape.pos[mid]->z()) );
+
+                QQuaternion letterQuat = cameraQuat.conjugated();
+                model2World.setRotation( letterQuat );
+                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glActiveTexture( GL_TEXTURE0 );
+
+                float x = 0.0;
+                float y = 0.0;
+                float scale = FONT_SCALE;
+
+                if( showLaneLabelsFlag == true && showLabelsFlag == true ){
+                    for(unsigned int c=0;c<strlen(str);++c ){
+
+                        Character* ch = Characters[ str[c] ];
+
+                        GLfloat xpos = x + ch->Bearing.width() * scale;
+                        GLfloat ypos = y;
+                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                        x += ( ch->Advance >> 6 ) * scale;
+                    }
+                }
+
+                textPoly.textArray.release();
+            }
+        }
+    }
+
+    model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
 
 
     //
@@ -1064,308 +1416,82 @@ void GraphicCanvas::paintGL()
         }
     }
 
-
-    // WP
-    if( circlePoly.isValid == true && road != NULL && showLanesFlag == true ){
-
-        for(int i=0;i<road->nodes.size();++i){
-
-            for(int j=0;j<road->nodes[i]->legInfo.size();++j){
-
-                for(int k=0;k<road->nodes[i]->legInfo[j]->inWPs.size();++k){
-
-                    int wpIdx = road->indexOfWP( road->nodes[i]->legInfo[j]->inWPs[k] );
-                    if( wpIdx >= 0 ){
-
-                        circlePoly.array.bind();
-
-                        model2World.setTranslation( QVector3D( road->wps[wpIdx]->pos.x(),
-                                                               road->wps[wpIdx]->pos.y(),
-                                                               road->wps[wpIdx]->pos.z()) );
-
-                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                        model2World.setScale( QVector3D(0.30,0.30,0.30) );
-
-                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                        program->setUniformValue( u_isText, 0 );
-                        program->setUniformValue( u_useTex, 2 );
-                        program->setUniformValue( u_vColor, QVector4D( 0.8, 0.3, 0.1, 1.0 ) );
-
-                        glLineWidth(1.0);
-                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
-
-                        circlePoly.array.release();
-                    }
-
-                }
-
-                for(int k=0;k<road->nodes[i]->legInfo[j]->outWPs.size();++k){
-
-                    int wpIdx = road->indexOfWP( road->nodes[i]->legInfo[j]->outWPs[k] );
-                    if( wpIdx >= 0 ){
-
-                        circlePoly.array.bind();
-
-                        model2World.setTranslation( QVector3D( road->wps[wpIdx]->pos.x(),
-                                                               road->wps[wpIdx]->pos.y(),
-                                                               road->wps[wpIdx]->pos.z()) );
-
-                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                        model2World.setScale( QVector3D(0.30,0.30,0.30) );
-
-                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                        program->setUniformValue( u_isText, 0 );
-                        program->setUniformValue( u_useTex, 2 );
-                        program->setUniformValue( u_vColor, QVector4D( 0.1, 0.3, 0.8, 1.0 ) );
-
-                        glLineWidth(1.0);
-                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
-
-                        circlePoly.array.release();
-                    }
-
-                }
-
-            }
-        }
-    }
-
+    model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
 
     //
-    // Lane
-    if( linePoly.isValid == true && road != NULL && showLanesFlag == true ){
+    // Axis
+    if( axisPoly.isValid == true ){
 
-        for(int i=0;i<road->lanes.size();++i){
+        axisPoly.array.bind();
 
-            bool isSelected = false;
-            for(int j=0;j<selectedObj.selObjKind.size();++j){
-                if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE ){
-                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
-                        isSelected = true;
-                        break;
-                    }
-                }
-                if( LaneListFlag == true  && j == 0 &&
-                        selectedObj.selObjKind[j] == _SEL_OBJ::SEL_NODE && nodePickModeFlag == false ){
+        model2World.setTranslation(QVector3D( 0.0, 0.0, 0.0  ));
+        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
 
-                    int ndIdx = road->indexOfNode( selectedObj.selObjID[j] );
-                    if( ndIdx >= 0 ){
-                        if( road->nodes[ndIdx]->laneList.size() > 0 ){
+        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
 
-                            int llIdx = 0;
-                            int numList = 0;
-                            for(int k=0;k<road->nodes[ndIdx]->laneList.size();++k){
-                                numList += road->nodes[ndIdx]->laneList[k]->lanes.size();
-                                if( laneListIndex < numList ){
-                                    llIdx = k;
-                                    numList -= road->nodes[ndIdx]->laneList[k]->lanes.size();
-                                    break;
-                                }
-                            }
+        program->setUniformValue( u_useTex, 0 );
+        program->setUniformValue( u_isText, 0 );
+        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
 
-                            if( road->nodes[ndIdx]->laneList[llIdx]->lanes.size() > laneListIndex - numList ){
-                                if( road->nodes[ndIdx]->laneList[llIdx]->lanes[laneListIndex - numList].contains(road->lanes[i]->id) == true ){
-                                    isSelected = true;
-                                }
-                            }
-                        }
-                    }
-                }
+        glLineWidth(3.0);
+        glDrawArrays(GL_LINES, 0, 6 );
+        glLineWidth(1.0);
+
+        axisPoly.array.release();
+    }
+
+    if( textPoly.isTextValid == true ){
+
+        textPoly.textArray.bind();
+
+        program->setUniformValue( u_useTex, 100 );
+        program->setUniformValue( u_isText, 100 );
+        program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+        for(int i=0;i<3;++i){
+
+            char str[25];
+            if( i == 0 ){
+                model2World.setTranslation(QVector3D( 1.0, 0.0, 0.0 ));
+                sprintf(str,"x");
+            }
+            else if( i == 1 ){
+                model2World.setTranslation(QVector3D( 0.0, 1.0, 0.0 ));
+                sprintf(str,"y");
+            }
+            else if( i == 2 ){
+                model2World.setTranslation(QVector3D( 0.0, 0.0, 1.0 ));
+                sprintf(str,"z");
             }
 
-            bool isEdgeStartSelected = false;
-            bool isEdgeEndSelected = false;
-            for(int j=0;j<selectedObj.selObjKind.size();++j){
-                if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE_EDGE_START ){
-                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
-                        isEdgeStartSelected = true;
-                    }
-                }
-                else if( selectedObj.selObjKind[j] == _SEL_OBJ::SEL_LANE_EDGE_END ){
-                    if( selectedObj.selObjID[j] == road->lanes[i]->id ){
-                        isEdgeEndSelected = true;
-                    }
-                }
-            }
+            QQuaternion letterQuat = cameraQuat.conjugated();
+            model2World.setRotation( letterQuat );
 
-            linePoly.array.bind();
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
 
+            glActiveTexture( GL_TEXTURE0 );
 
-            program->setUniformValue( u_isText, 0 );
+            float x = 0.0;
+            float y = 0.0;
+            float scale = FONT_SCALE;
 
+            for(unsigned int c=0;c<strlen(str);++c ){
 
-            if( isSelected == true ){
-                program->setUniformValue( u_useTex, 2 );
-                glLineWidth( laneDrawWidth * 2 );
-                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.5, 0.5, 1.0 ) );
-            }
-            else{
-                program->setUniformValue( u_useTex, 0 );
-                glLineWidth( laneDrawWidth );
-                program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
-            }
+                Character* ch = Characters[ str[c] ];
 
-            for(int j=0;j<road->lanes[i]->shape.pos.size() - 1;++j){
+                GLfloat xpos = x + ch->Bearing.width() * scale;
+                GLfloat ypos = y;
+                program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
 
-                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[j]->x(),
-                                                       road->lanes[i]->shape.pos[j]->y(),
-                                                       road->lanes[i]->shape.pos[j]->z()) );
+                glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                model2World.setScale( QVector3D(road->lanes[i]->shape.segmentLength[j],1.0,1.0) );
+                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
 
-                float angle = road->lanes[i]->shape.angles[j];
-                model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
-
-                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                glDrawArrays(GL_LINES, 0, 2 );
-            }
-
-            linePoly.array.release();
-            glLineWidth(1.0);
-
-
-            if( isEdgeEndSelected == true || isEdgeStartSelected == true ){
-
-                circlePoly.array.bind();
-
-                if( isEdgeEndSelected == true ){
-                    model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.last()->x(),
-                                                           road->lanes[i]->shape.pos.last()->y(),
-                                                           0.1) );
-                }
-                else if( isEdgeStartSelected == true ){
-                    model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.first()->x(),
-                                                           road->lanes[i]->shape.pos.first()->y(),
-                                                           0.1) );
-                }
-
-                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                model2World.setScale( QVector3D(0.4,0.4,0.4) );
-
-                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                program->setUniformValue( u_useTex, 0 );
-                program->setUniformValue( u_isText, 0 );
-                program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
-
-                glLineWidth(1.0);
-                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
-
-                circlePoly.array.release();
-            }
-
-
-
-            // StopPoint
-            {
-                for(int j=0;j<road->lanes[i]->stopPoints.size();++j){
-
-                    float xsp = road->lanes[i]->stopPoints[j]->pos.x();
-                    float ysp = road->lanes[i]->stopPoints[j]->pos.y();
-
-                    if( circlePoly.isValid == true ){
-
-                        circlePoly.array.bind();
-
-                        model2World.setTranslation( QVector3D( xsp, ysp, 0.1) );
-                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                        model2World.setScale( QVector3D(0.15,0.15,0.15) );
-
-                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                        program->setUniformValue( u_useTex, 2 );
-                        program->setUniformValue( u_isText, 0 );
-                        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.2, 1.0, 1.0 ) );
-
-                        glLineWidth(1.0);
-                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
-
-                        circlePoly.array.release();
-                    }
-                }
-            }
-
-
-            // CrossPoint
-            {
-                for(int j=0;j<road->lanes[i]->crossPoints.size();++j){
-
-                    float xsp = road->lanes[i]->crossPoints[j]->pos.x();
-                    float ysp = road->lanes[i]->crossPoints[j]->pos.y();
-
-                    if( circlePoly.isValid == true ){
-
-                        circlePoly.array.bind();
-
-                        model2World.setTranslation( QVector3D( xsp, ysp, 0.1) );
-                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                        model2World.setScale( QVector3D(0.15,0.15,0.15) );
-
-                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                        program->setUniformValue( u_useTex, 2 );
-                        program->setUniformValue( u_isText, 0 );
-                        program->setUniformValue( u_vColor, QVector4D( 0.25, 0.0, 1.0, 1.0 ) );
-
-                        glLineWidth(1.0);
-                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
-
-                        circlePoly.array.release();
-                    }
-                }
-            }
-
-            if( textPoly.isTextValid == true ){
-
-                textPoly.textArray.bind();
-
-                program->setUniformValue( u_useTex, 100 );
-                program->setUniformValue( u_isText, 100 );
-                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
-
-                char str[25];
-                sprintf(str,"LANE#%d",road->lanes[i]->id);
-
-                int mid = road->lanes[i]->shape.pos.size() / 2;
-                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[mid]->x(),
-                                                       road->lanes[i]->shape.pos[mid]->y(),
-                                                       road->lanes[i]->shape.pos[mid]->z()) );
-
-                QQuaternion letterQuat = cameraQuat.conjugated();
-                model2World.setRotation( letterQuat );
-                model2World.setScale( QVector3D(1.0,1.0,1.0) );
-
-                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                glActiveTexture( GL_TEXTURE0 );
-
-                float x = 0.0;
-                float y = 0.0;
-                float scale = FONT_SCALE;
-
-                if( showLaneLabelsFlag == true && showLabelsFlag == true ){
-                    for(unsigned int c=0;c<strlen(str);++c ){
-
-                        Character* ch = Characters[ str[c] ];
-
-                        GLfloat xpos = x + ch->Bearing.width() * scale;
-                        GLfloat ypos = y;
-                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
-
-                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
-
-                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
-
-                        x += ( ch->Advance >> 6 ) * scale;
-                    }
-                }
-
-                textPoly.textArray.release();
+                x += ( ch->Advance >> 6 ) * scale;
             }
         }
+
+        textPoly.textArray.release();
     }
 }
 
@@ -1437,3 +1563,139 @@ void GraphicCanvas::ResetNodePickMode()
     update();
 }
 
+
+void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
+{
+    // Load Image
+    QImage map;
+
+    bmi->isValid = false;
+
+    QString PathToFile = bmi->path;
+    if( PathToFile.endsWith("/") == false ){
+        PathToFile += QString("/");
+    }
+
+    QString testname = PathToFile + bmi->filename;
+
+    qDebug() << "Loading " << testname;
+
+    if( map.load(testname) == false ){
+
+        qDebug() << "Failed.";
+        bool found = false;
+
+        QStringList divTestName = testname.split("/");
+        QString imageFileName = QString( divTestName.last() );
+
+        for(int i=0;i<imageFilePathFolders.size();++i){
+
+            QString PathToFile = QString(imageFilePathFolders[i]);
+            if( PathToFile.endsWith("/") == false ){
+                PathToFile += QString("/");
+            }
+
+            QString tmpImageFilePath = PathToFile + imageFileName;
+
+            qDebug() << "Loading " << tmpImageFilePath;
+            if( map.load(tmpImageFilePath) == false ){
+                continue;
+            }
+            else{
+                bmi->path = PathToFile;
+                found = true;
+                break;
+            }
+
+        }
+
+        if( found == false ){
+
+            QString newImageFilePath = QFileDialog::getExistingDirectory(this,"SEdit","Select Folder where Image Files stored");
+            if( newImageFilePath.isNull() || newImageFilePath.isEmpty() ){
+                // Cancel
+                return;
+            }
+            if( newImageFilePath.endsWith("/") == false ){
+                newImageFilePath += QString("/");
+            }
+
+            QString tmpImageFilePath = newImageFilePath + imageFileName;
+
+            qDebug() << "Loading " << tmpImageFilePath;
+            if( map.load(tmpImageFilePath) == false ){
+                qDebug() << "Failed.";
+                return;
+            }
+            else{
+                bmi->path = newImageFilePath;
+                imageFilePathFolders.append( newImageFilePath );
+            }
+        }
+    }
+
+
+    glGenTextures(1, &(bmi->textureID));
+    glBindTexture(GL_TEXTURE_2D, bmi->textureID);
+
+    int wi = map.width();
+    int hi = map.height();
+
+    bmi->halfWidth = wi * 0.5;
+    bmi->halfHeight = hi * 0.5;
+
+    int wi2 = 2;
+    while( wi2 <= wi )
+        wi2 *= 2;
+
+    if( wi2 > 1024 )
+        wi2 = 1024;
+
+    int hi2 = 2;
+    while( hi2 <= hi )
+            hi2 *= 2;
+
+    if( hi2 > 1024 )
+        hi2 = 1024;
+
+    GLubyte *bits;
+    int tsz = wi2 * hi2 * 4;
+    bits = new GLubyte [tsz];
+
+    tsz = 0;
+    for(int i=0;i<wi2;++i){
+        int x = (int)((i / (float)wi2) * (float)wi);
+        for(int j=0;j<hi2;++j){
+            int y = (int)((j / (float)hi2) * (float)hi);
+            QRgb pix = map.pixel(x,y);
+            bits[tsz++] = (GLubyte)qRed(pix);
+            bits[tsz++] = (GLubyte)qGreen(pix);
+            bits[tsz++] = (GLubyte)qBlue(pix);
+            bits[tsz++] = 0xff;
+        }
+    }
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D( GL_TEXTURE_2D , 0 , GL_RGBA , wi2 , hi2,  0 , GL_RGBA , GL_UNSIGNED_BYTE , bits );
+
+    delete [] bits;
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    bmi->isValid = true;
+
+    qDebug() << "Image loaded successfully.";
+}
+
+
+void GraphicCanvas::DeleteMapImage(struct baseMapImage *bmi )
+{
+    glDeleteTextures(1, &(bmi->textureID));
+    delete bmi;
+}

@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -175,6 +177,19 @@ bool RoadInfo::SaveRoadData(QString filename)
 
         out << "\n";
     }
+    out << "\n";
+
+
+    for(int i=0;i<mapImageMng->baseMapImages.size();++i){
+        out << "BASE MAP : "
+            << mapImageMng->baseMapImages[i]->path << " , "
+            << mapImageMng->baseMapImages[i]->filename << " , "
+            << mapImageMng->baseMapImages[i]->x << " , "
+            << mapImageMng->baseMapImages[i]->y << " , "
+            << mapImageMng->baseMapImages[i]->scale << " , "
+            << mapImageMng->baseMapImages[i]->rotate << "\n";
+    }
+     out << "\n";
 
 
     file.close();
@@ -193,15 +208,62 @@ bool RoadInfo::LoadRoadData(QString filename)
 
     roadDataFileName = filename;
 
+
+    int line_count=0;
+    {
+        QTextStream in(&file);
+        while( !in.atEnd())
+        {
+            in.readLine();
+            line_count++;
+        }
+    }
+    file.close();
+
+
+
+    if( file.open( QIODevice::ReadOnly | QIODevice::Text) == false ){
+        qDebug() << "[LoadRoadData] cannot open file: "<< filename << " to read data.";
+        return false;
+    }
+
     QTextStream in(&file);
+
+
+    struct ImageFileLoadData
+    {
+        QString pathToFile;
+        float x;
+        float y;
+        float s;
+        float r;
+    };
+
+    QList<struct ImageFileLoadData *> imLoadData;
+
 
     //
     //  Read Road Data
     //
     bool validFile = false;
+    int lineRead = 0;
+
+    QProgressDialog *pd = new QProgressDialog("Loading Data ...", "Cancel", 0, line_count, 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
+
     while( in.atEnd() == false ){
 
         QString Line = in.readLine();
+
+        lineRead++;
+        pd->setValue(lineRead);
+        QApplication::processEvents();
+
 
         if( Line.startsWith("#") == true || Line.isEmpty() == true ){
 
@@ -224,6 +286,12 @@ bool RoadInfo::LoadRoadData(QString filename)
 
         QString tagStr = QString( divLine[0] ).trimmed();
         QString dataStr = QString( divLine[1] ).trimmed();
+        if( divLine.size() > 2 ){
+            for(int i=2;i<divLine.size();++i){
+                dataStr += QString(":") + QString( divLine[2] ).trimmed();
+            }
+        }
+
 
         if( tagStr.contains("LeftOrRight") == true ){
 
@@ -239,7 +307,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             nodes.append( nd );
 
-            qDebug() << "[Node] ID = " << nd->id;
+//            qDebug() << "[Node] ID = " << nd->id;
         }
         else if( tagStr.contains("ND Center") == true ){
 
@@ -262,7 +330,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             nodes.last()->legInfo.append( leg );
 
-            qDebug() << "[Leg] ID = " << leg->legID;
+//            qDebug() << "[Leg] ID = " << leg->legID;
         }
         else if( tagStr.contains("Angle[deg]") == true ){
 
@@ -299,7 +367,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             nodes.last()->trafficSignals.append( ts );
 
-            qDebug() << "[TrafficSignal] ID = " << ts->id;
+//            qDebug() << "[TrafficSignal] ID = " << ts->id;
         }
         else if( tagStr.contains("TS Type") == true ){
 
@@ -349,7 +417,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             nodes.last()->stopLines.append( sl );
 
-            qDebug() << "[StopLine] ID = " << sl->id;
+//            qDebug() << "[StopLine] ID = " << sl->id;
         }
         else if( tagStr.contains("SL Type") == true ){
 
@@ -392,7 +460,7 @@ bool RoadInfo::LoadRoadData(QString filename)
                 nodes.last()->relatedLanes.append( QString(divDataStr[i]).trimmed().toInt() );
             }
 
-            qDebug() << "Related Lanes : size = " << nodes.last()->relatedLanes.size();
+//            qDebug() << "Related Lanes : size = " << nodes.last()->relatedLanes.size();
         }
         else if( tagStr.contains("Destination Node") == true ){
 
@@ -448,7 +516,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             lanes.append( ln );
 
-            qDebug() << "[Lane] ID = " << ln->id;
+//            qDebug() << "[Lane] ID = " << ln->id;
         }
         else if( tagStr.contains("Speed Info") == true ){
 
@@ -545,7 +613,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             CalculateShape( &(lanes.last()->shape) );
 
-            qDebug() << "LN Shape calculated";
+//            qDebug() << "LN Shape calculated";
         }
         else if( tagStr.contains("[CrossPoint] Cross Lane ID") == true ){
 
@@ -554,7 +622,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             lanes.last()->crossPoints.append( cp );
 
-            qDebug() << "[CrossPoint] Cross Lane ID = " << cp->crossLaneID;
+//            qDebug() << "[CrossPoint] Cross Lane ID = " << cp->crossLaneID;
         }
         else if( tagStr.contains("CP Position") == true ){
 
@@ -582,7 +650,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             lanes.last()->stopPoints.append( sp );
 
-            qDebug() << "[StopPoint] ID = " << sp->stoplineID;
+//            qDebug() << "[StopPoint] ID = " << sp->stoplineID;
         }
         else if( tagStr.contains("SP Type") == true ){
 
@@ -608,36 +676,163 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             lanes.last()->stopPoints.last()->distanceFromLaneStartPoint = dataStr.toFloat();
         }
+        else if( tagStr.contains("BASE MAP") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+
+            QString imagefilename = QString( divDataStr[0] ).trimmed();
+            if( imagefilename.endsWith("/") == false ){
+                imagefilename += QString("/");
+            }
+            imagefilename += QString( divDataStr[1] ).trimmed();
+
+            float x = QString( divDataStr[2] ).trimmed().toFloat();
+            float y = QString( divDataStr[3] ).trimmed().toFloat();
+            float scale = QString( divDataStr[4] ).trimmed().toFloat();
+            float rot = QString( divDataStr[5] ).trimmed().toFloat();
+
+            struct ImageFileLoadData *im = new struct ImageFileLoadData;
+
+            im->pathToFile = imagefilename;
+            im->x = x;
+            im->y = y;
+            im->s = scale;
+            im->r = rot;
+
+            imLoadData.append( im );
+        }
     }
+
+    pd->setValue(line_count);
+    QApplication::processEvents();
+
 
     file.close();
 
-
     for(int i=0;i<nodes.size();++i){
-        nodes[i]->nLeg = nodes[i]->legInfo.size();
+        nodes[i]->nLeg  = nodes[i]->legInfo.size();
         nodes[i]->hasTS = nodes[i]->trafficSignals.size() > 0 ? true : false;
     }
 
 
+    QProgressDialog *pdpp = new QProgressDialog("Processing Data ...", "Cancel", 0, 6, 0);
+    pdpp->setWindowModality(Qt::WindowModal);
+    pdpp->show();
+
+    pdpp->setValue(0);
+    QApplication::processEvents();
+
     // Calculate Stop Point Data
     CheckAllStopLineCrossLane();
 
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
+    pdpp->setValue(1);
+    QApplication::processEvents();
 
     // Calculate Lane Cross Points
     CheckLaneCrossPoints();
 
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
+    pdpp->setValue(2);
+    QApplication::processEvents();
 
     // Create WP Data
     CreateWPData();
 
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
+    pdpp->setValue(3);
+    QApplication::processEvents();
+
     // Check Route Data
     CheckRouteInOutDirection();
+
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
+    pdpp->setValue(4);
+    QApplication::processEvents();
 
     // Set Lane List
     SetAllLaneLists();
 
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
+    pdpp->setValue(5);
+    QApplication::processEvents();
+
+    QApplication::processEvents();
+    if( pdpp->wasCanceled() ){
+        qDebug() << "Canceled.";
+        return false;
+    }
+
     // Set Turn Direction Info
     SetTurnDirectionInfo();
+
+    pdpp->setValue(6);
+    QApplication::processEvents();
+
+
+
+    if( imLoadData.size() > 0 ){
+
+        QProgressDialog *pdimg = new QProgressDialog("Loading Image ...", "Cancel", 0, imLoadData.size(), 0);
+        pdimg->setWindowModality(Qt::WindowModal);
+        pdimg->show();
+
+        pdimg->setValue(0);
+        QApplication::processEvents();
+
+        for(int i=0;i<imLoadData.size();++i){
+
+            mapImageMng->AddMapImageFromFile( imLoadData[i]->pathToFile,
+                                              imLoadData[i]->x,
+                                              imLoadData[i]->y,
+                                              imLoadData[i]->s,
+                                              imLoadData[i]->r );
+
+            pdimg->setValue(i+1);
+            QApplication::processEvents();
+
+            if( pdimg->wasCanceled() ){
+                qDebug() << "Canceled.";
+                break;
+            }
+
+            if( i + 1 == imLoadData.size() ){
+                qDebug() << "All Images loaded.";
+            }
+        }
+
+
+
+        for(int i=0;i<imLoadData.size();++i){
+            delete imLoadData[i];
+        }
+        imLoadData.clear();
+    }
 
 
     qDebug() << "------ Edn of Load SEdit Data";

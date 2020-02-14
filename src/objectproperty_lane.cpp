@@ -35,8 +35,9 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
 
     infoStr += QString("\n");
     infoStr += QString("[Edge Info]\n");
-    infoStr += QString("  Start: Related Node=%1, Leg=%2, Boundray=%3\n").arg( road->lanes[lIdx]->sWPInNode ).arg( road->lanes[lIdx]->sWPNodeDir ).arg( road->lanes[lIdx]->sWPBoundary );
     infoStr += QString("  End:   Related Node=%1, Leg=%2, Boundray=%3\n").arg( road->lanes[lIdx]->eWPInNode ).arg( road->lanes[lIdx]->eWPNodeDir ).arg( road->lanes[lIdx]->eWPBoundary );
+    infoStr += QString("  Start: Related Node=%1, Leg=%2, Boundray=%3\n").arg( road->lanes[lIdx]->sWPInNode ).arg( road->lanes[lIdx]->sWPNodeDir ).arg( road->lanes[lIdx]->sWPBoundary );
+    infoStr += QString("  endWP = %2, StartWP = %1\n").arg( road->lanes[lIdx]->startWPID ).arg( road->lanes[lIdx]->endWPID );
     infoStr += QString("\n");
     infoStr += QString("[Node Info]\n");
     infoStr += QString("  Connected Node : Node %1\n").arg( road->lanes[lIdx]->connectedNode );

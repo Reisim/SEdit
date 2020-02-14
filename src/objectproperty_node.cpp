@@ -57,7 +57,9 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
         infoStr += QString("[Leg %1]\n").arg( road->nodes[ndIdx]->legInfo[i]->legID );
         infoStr += QString("  Connected from   : Node %1 ,Leg %2\n").arg( road->nodes[ndIdx]->legInfo[i]->connectedNode ).arg( road->nodes[ndIdx]->legInfo[i]->connectedNodeOutDirect );
-        infoStr += QString("  Connecting to    : Node %1 ,Leg %2\n").arg( road->nodes[ndIdx]->legInfo[i]->connectedNode ).arg( road->nodes[ndIdx]->legInfo[i]->connectedNodeOutDirect );
+        infoStr += QString("  Connecting to    : Node %1 ,Leg %2\n").arg( road->nodes[ndIdx]->legInfo[i]->connectingNode ).arg( road->nodes[ndIdx]->legInfo[i]->connectingNodeInDirect );
+        infoStr += QString("  Number WPin  : %1\n").arg( road->nodes[ndIdx]->legInfo[i]->inWPs.size() );
+        infoStr += QString("  Number WPout : %1\n").arg( road->nodes[ndIdx]->legInfo[i]->outWPs.size() );
         infoStr += QString("  Oncoming LegID   : %1\n").arg( road->nodes[ndIdx]->legInfo[i]->oncomingLegID);
         infoStr += QString("  Left-Turn LegID  : ");
         for(int j=0;j<road->nodes[ndIdx]->legInfo[i]->leftTurnLegID.size();++j){
@@ -72,9 +74,41 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
     }
     infoStr += QString("\n");
 
+    infoStr += QString("Lane List:\n");
+    for(int i=0;i<road->nodes[ndIdx]->nLeg;++i){
+        for(int j=0;j<road->nodes[ndIdx]->nLeg;++j){
+
+            infoStr += QString("  Out Leg: %1  In Leg: %2\n").arg( road->nodes[ndIdx]->legInfo[i]->legID)
+                    .arg( road->nodes[ndIdx]->legInfo[j]->legID );
+
+            for(int k=0;k<road->nodes[ndIdx]->laneList.size();++k){
+                if( road->nodes[ndIdx]->legInfo[i]->legID == road->nodes[ndIdx]->laneList[k]->relatedNodeOutDirection &&
+                        road->nodes[ndIdx]->legInfo[j]->legID == road->nodes[ndIdx]->laneList[k]->relatedNodeInDirection  ){
+
+                    for(int l=0;l<road->nodes[ndIdx]->laneList[k]->lanes.size();++l){
+
+                        infoStr += QString("    ");
+                        for(int m=0;m<road->nodes[ndIdx]->laneList[k]->lanes[l].size();m++){
+                            infoStr += QString(" %1").arg(road->nodes[ndIdx]->laneList[k]->lanes[l][m] );
+                            if( m < road->nodes[ndIdx]->laneList[k]->lanes[l].size() - 1 ){
+                                infoStr += QString(" <-");
+                            }
+                            else{
+                                infoStr += QString("\n");
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
 
     nodeInfo->setText( infoStr );
     nodeInfo->setAlignment( Qt::AlignTop );
+    nodeInfo->setFixedSize( nodeInfo->sizeHint() );
+
 
     qDebug() << "isOriginNode = " << road->nodes[ndIdx]->isOriginNode
              << " isDestinationNode = " << road->nodes[ndIdx]->isDestinationNode;

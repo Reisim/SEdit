@@ -78,6 +78,7 @@ public slots:
     bool SaveFile();
     bool SaveAsFile();
     void OpenRecentFile();
+    void ImportOtherData();
 
     void SetTrafficDirection(int dir);
 

@@ -45,11 +45,13 @@ public:
     QCheckBox *OrthogonalView;
     QCheckBox *showNodes;
     QCheckBox *showNodeLaneList;
+    QCheckBox *showRelatedLanes;
     QCheckBox *showLanes;
     QSpinBox *laneWidth;
     QCheckBox *showTrafficSignals;
     QCheckBox *showStopLines;
     QCheckBox *showMapImage;
+    QCheckBox *backMapImage;
 
     QCheckBox *showNodeLabels;
     QCheckBox *showLaneLabels;

@@ -50,6 +50,15 @@ MainWindow::MainWindow(QWidget *parent)
     mapImageMng = new BaseMapImageManager();
     mapImageMng->hide();
 
+    dtManip->mapImageMng = mapImageMng;
+    road->mapImageMng    = mapImageMng;
+    canvas->mapImageMng  = mapImageMng;
+
+    connect( mapImageMng, SIGNAL(MapImageAdded(struct baseMapImage *)), canvas, SLOT(LoadMapImage(struct baseMapImage *)) );
+    connect( mapImageMng, SIGNAL(MapImageDeleted(struct baseMapImage *)), canvas, SLOT(DeleteMapImage(struct baseMapImage *)) );
+    connect( mapImageMng, SIGNAL(UpdateGraphic()), canvas, SLOT(update()) );
+
+
     //-------------------------
     resimOut = new ResimFilesOutput();
     resimOut->road = road;
@@ -62,8 +71,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl, SIGNAL(ViewMoveTo(float,float)), canvas, SLOT(MoveTo(float,float)) );
     connect( dispCtrl->resetRotate, SIGNAL(clicked()), canvas, SLOT(ResetRotate()) );
 
+    connect( dispCtrl->showMapImage, SIGNAL(toggled(bool)), canvas, SLOT(SetMapVisibility(bool)) );
+    connect( dispCtrl->backMapImage, SIGNAL(toggled(bool)), canvas, SLOT(SetBackMap(bool)) );
     connect( dispCtrl->showNodes, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeVisibility(bool)) );
     connect( dispCtrl->showNodeLaneList, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeLaneListlVisibility(bool)) );
+    connect( dispCtrl->showRelatedLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetRelatedLaneslVisibility(bool)) );
     connect( dispCtrl->prevLaneList, SIGNAL(clicked()), canvas, SLOT(ShowPrevLaneList()) );
     connect( dispCtrl->nextLaneList, SIGNAL(clicked()), canvas, SLOT(ShowNextLaneList()) );
     connect( dispCtrl->showNodeLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeLabelVisibility(bool)) );
@@ -161,6 +173,14 @@ MainWindow::MainWindow(QWidget *parent)
     recentFileOpen= fileMenu->addMenu("Recent Files");
     GetRecentDataFile();
 
+    fileMenu->addSeparator();
+
+    QAction* importAct = new QAction( tr("&Import"), this );
+    importAct->setStatusTip( tr("Import Other Data File") );
+    connect( importAct, SIGNAL(triggered()), this, SLOT(ImportOtherData()));
+    fileMenu->addAction( importAct );
+
+    fileMenu->addSeparator();
 
     QAction* closeAct = new QAction( tr("&Exit"), this );
     closeAct->setIcon(QIcon(":/images/exit.png"));
@@ -247,6 +267,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect( setAllLaneLists, SIGNAL(triggered()),dtManip,SLOT(SetAllLaneLists()));
     utilityPopup->addAction( setAllLaneLists );
 
+    QAction *setSelectedNodeLaneLists = new QAction();
+    setSelectedNodeLaneLists->setText("Set Lane-Lists for Selected Node");
+    connect( setSelectedNodeLaneLists, SIGNAL(triggered()),dtManip,SLOT(SetSelectedNodeLaneLists()));
+    utilityPopup->addAction( setSelectedNodeLaneLists );
+
     QAction *setTurnDirection = new QAction();
     setTurnDirection->setText("Set Turn-Direction Info");
     connect( setTurnDirection, SIGNAL(triggered()),dtManip,SLOT(SetTurnDirectionInfo()));
@@ -282,6 +307,10 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
         if( configMgr ){
             configMgr->close();
+        }
+
+        if( mapImageMng ){
+            mapImageMng->close();
         }
 
         event->accept();
@@ -423,6 +452,29 @@ bool MainWindow::SaveAsFile()
     SaveFile();
 
     return true;
+}
+
+
+void MainWindow::ImportOtherData()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Choose Import Data File"),
+                                                    ".",
+                                                    tr("Data file(*.eris3)"));
+
+    if( fileName.isNull() == false ){
+        qDebug() << "filename = " << fileName;
+    }
+    else{
+        qDebug() << "Import action canceled.";
+        return;
+    }
+
+
+    if( fileName.endsWith(".eris3") == true ){
+
+        dtManip->ImportERIS3Data( fileName );
+    }
 }
 
 

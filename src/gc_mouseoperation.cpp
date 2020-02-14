@@ -401,8 +401,8 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                 float a = diff.length();
                 if( a > 0.0 ){
 
-                    cameraYaw += diff.x();
-                    cameraPitch += diff.y();
+                    cameraYaw += diff.x() * 0.75;
+                    cameraPitch += diff.y() * 0.75;
 
                     cameraQuat = QQuaternion(cos(cameraPitch*0.5), sin(cameraPitch*0.5) , 0.0 , 0.0 ) * QQuaternion(cos(cameraYaw*0.5), 0.0 , 0.0 , sin(cameraYaw*0.5));
                 }
@@ -681,7 +681,7 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
         else {
             QVector2D diff = QVector2D(e->localPos()) - mousePressPosition;
 
-            float s = 0.02 * Z_eye / (-50.0);
+            float s = 0.04 * Z_eye / (-50.0);
             if( e->modifiers() & Qt::ControlModifier ){
                 s *= 4.0;
             }
@@ -705,15 +705,15 @@ void GraphicCanvas::wheelEvent(QWheelEvent *e)
 {
     float s = 1.0;
     if( e->modifiers() & Qt::ControlModifier ){
-        s *= 5.0;
+        s *= 2.2;
     }
     if( e->delta() > 0.0 ){
-        if( Z_eye < -1.2 ){
-            Z_eye /= (1.2 * s);
+        if( Z_eye < -0.2 ){
+            Z_eye /= (1.05 * s);
         }
     }
     else if( e->delta() < 0.0 ){
-        Z_eye *= 1.2 * s;
+        Z_eye *= 1.05 * s;
     }
 
     if( isOrthogonal == true ){

@@ -18,6 +18,7 @@
 #include <QVector2D>
 #include <QVector3D>
 #include <QVector4D>
+#include <QOpenGLTexture>
 
 
 #define   DEFAULT_LANE_SHAPE_POINTS   (10)
@@ -100,6 +101,7 @@ struct LaneInfo
     QList<int> nextLanes;
     QList<int> previousLanes;
 
+    float laneWidth;
     float speedInfo;
 
     int connectedNode;
@@ -247,5 +249,19 @@ struct NodeInfo
     QList<ODData*> odData;
 };
 
+
+struct baseMapImage
+{
+    QString path;
+    QString filename;
+    float scale;
+    float x;
+    float y;
+    float rotate;
+    float halfWidth;
+    float halfHeight;
+    GLuint textureID;
+    bool isValid;
+};
 
 #endif // ROADINFOELEMENT_H

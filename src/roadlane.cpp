@@ -38,9 +38,9 @@ int RoadInfo::CreateLane(int assignId,
         }
     }
 
-    qDebug() << "[CreateLane] cId = " << cId;
-    qDebug() << "sWPInNode = " << sWPInNode << " sWPNodeDir = " << sWPNodeDir << " departureNode = " << departureNode << " isBound = " << sWPBoundary;
-    qDebug() << "eWPInNode = " << eWPInNode << " eWPNodeDir = " << eWPNodeDir << " connectedNode = " << connectedNode << " isBound = " << eWPBoundary;
+//    qDebug() << "[CreateLane] cId = " << cId;
+//    qDebug() << "sWPInNode = " << sWPInNode << " sWPNodeDir = " << sWPNodeDir << " departureNode = " << departureNode << " isBound = " << sWPBoundary;
+//    qDebug() << "eWPInNode = " << eWPInNode << " eWPNodeDir = " << eWPNodeDir << " connectedNode = " << connectedNode << " isBound = " << eWPBoundary;
 
 
     struct LaneInfo *lane = new struct LaneInfo;
@@ -98,13 +98,13 @@ int RoadInfo::CreateLane(int assignId,
 
     lane->speedInfo = 60.0;
 
-    qDebug() << "[CreateLane] Call CalculateShape";
+//    qDebug() << "[CreateLane] Call CalculateShape";
 
     CalculateShape( &(lane->shape) );
 
     lanes.append( lane );
 
-    qDebug() << "[CreateLane] add data with id = " << cId;
+//    qDebug() << "[CreateLane] add data with id = " << cId;
 
     return cId;
 }

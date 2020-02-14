@@ -23,6 +23,7 @@
 
 #include "roadinfoelement.h"
 #include "settingdialog.h"
+#include "basemapimagemanager.h"
 
 
 class RoadInfo
@@ -51,7 +52,7 @@ public:
     QString GetNodeProperty(int id);
 
     void SetAllLaneLists();
-    void SetLaneLists(int id);
+    void SetLaneLists(int id,bool showConsoleOutput=false);
     void SetODFlagOfTerminalNode();
     void SetTurnDirectionInfo();
 
@@ -76,7 +77,11 @@ public:
     struct CrossPointInfo* CheckLaneCrossPoint(int id,QPointF p1,QPointF p2, bool debugFlag=false);
     QString GetLaneProperty(int id);
 
+
+    // WP
     void CreateWPData();
+    int CreateWP(int assignID, QVector3D pos, float dir,QList<int> relatedLanes);
+    void ClearWPs();
 
 
     // Traffic Signal
@@ -127,6 +132,7 @@ public:
     QString roadDataFileName;
 
     SettingDialog *setDlg;
+    BaseMapImageManager *mapImageMng;
 
     QList<struct TreeSearchElem*> treeSeachHelper;
     void ForwardTreeSearch(int nodeId,int nextLane,int currentLane);

@@ -32,8 +32,10 @@
 #include "gltransform3d.h"
 #include <math.h>
 
+#include "basemapimagemanager.h"
 #include "roadinfo.h"
 #include "objectproperty.h"
+
 #include <QDebug>
 
 
@@ -75,6 +77,15 @@ struct CirclePoly
 
 
 struct LinePoly
+{
+    bool isValid;
+    QOpenGLVertexArrayObject array;
+    QOpenGLBuffer *buffer;
+    QVector<GLfloat> vertex;
+};
+
+
+struct RectPoly
 {
     bool isValid;
     QOpenGLVertexArrayObject array;
@@ -133,6 +144,7 @@ public:
 
     RoadInfo *road;
     RoadObjectProperty *roadProperty;
+    BaseMapImageManager *mapImageMng;
 
 
     // Object Selection
@@ -150,9 +162,12 @@ signals:
     void SetNodeListForRoute(QList<int>);
 
 public slots:
+    void SetMapVisibility(bool);
+    void SetBackMap(bool);
     void SetNodeVisibility(bool);
     void SetNodeLabelVisibility(bool);
     void SetNodeLaneListlVisibility(bool);
+    void SetRelatedLaneslVisibility(bool);
     void ShowPrevLaneList();
     void ShowNextLaneList();
     void ResetLaneListIndex();
@@ -173,6 +188,8 @@ public slots:
     void SetStopLineSelection(bool);
     void SetNodePickMode(int,int);
     void ResetNodePickMode();
+    void LoadMapImage(struct baseMapImage *);
+    void DeleteMapImage(struct baseMapImage *);
 
 
 private:
@@ -233,12 +250,14 @@ private:
     struct TextPoly textPoly;
     struct CirclePoly circlePoly;
     struct LinePoly linePoly;
-
+    struct RectPoly rectPoly;
 
 
     // Flags
     bool isOrthogonal;
 
+    bool showMapImageFlag;
+    bool backMapImageFlag;
     bool showNodesFlag;
     bool showLanesFlag;
     bool showTrafficSignalsFlag;
@@ -256,10 +275,14 @@ private:
     bool selectStopLineFlag;
 
     bool LaneListFlag;
+    bool RelatedLanesFlag;
     bool objectMoveFlag;
     bool nodePickModeFlag;
 
     int laneListIndex;
+
+    // Folders
+    QStringList imageFilePathFolders;
 };
 
 

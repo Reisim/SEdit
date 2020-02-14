@@ -13,6 +13,14 @@
 
 #include "basemapimagemanager.h"
 
+#include <QDialog>
+#include <QLabel>
+#include <QDoubleSpinBox>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
+
 BaseMapImageManager::BaseMapImageManager(QWidget *parent)
 {
     mapImageList = new QTableWidget();
@@ -88,8 +96,11 @@ BaseMapImageManager::~BaseMapImageManager()
 
 void BaseMapImageManager::ClearAll()
 {
-    for(int i=0;i<baseMapImages.size();++i){
-        delete baseMapImages[i];
+    for(int i=baseMapImages.size()-1;i>=0;i--){
+        emit MapImageDeleted( baseMapImages[i] );
+        baseMapImages.removeAt( i );
+        mapImageList->removeRow( i );
+        emit UpdateGraphic();
     }
     baseMapImages.clear();
 }
@@ -122,10 +133,48 @@ void BaseMapImageManager::AddMapImage()
     map->y = 0.0;
     map->scale = 1.0;
     map->rotate = 0.0;
+    map->scale = 0;
 
     baseMapImages.append( map );
 
+    emit MapImageAdded(map);
+
     AddMapImageToList(map);
+
+    emit UpdateGraphic();
+}
+
+
+void BaseMapImageManager::AddMapImageFromFile(QString filename, float x, float y, float scale, float rot)
+{
+    QStringList strDiv = filename.split("/");
+    QString path = QString();
+    QString name = QString();
+    for(int i=0;i<strDiv.size();++i){
+        if( i == strDiv.size() - 1 ){
+            name = QString(strDiv[i]).trimmed();
+        }
+        else{
+            path += QString(strDiv[i]) + QString("/");
+        }
+    }
+
+    struct baseMapImage *map = new struct baseMapImage;
+
+    map->path = path;
+    map->filename = name;
+    map->x = x;
+    map->y = y;
+    map->scale = scale;
+    map->rotate = rot;
+
+    baseMapImages.append( map );
+
+    emit MapImageAdded(map);
+
+    AddMapImageToList(map);
+
+    emit UpdateGraphic();
 }
 
 
@@ -164,13 +213,87 @@ void BaseMapImageManager::AddMapImageToList(struct baseMapImage* map)
 
 void BaseMapImageManager::DeleteMapImage()
 {
-
+    int selRow = mapImageList->currentRow();
+    if( selRow >= 0 && selRow < baseMapImages.size() ){
+        emit MapImageDeleted( baseMapImages[selRow] );
+        baseMapImages.removeAt( selRow );
+        mapImageList->removeRow( selRow );
+        emit UpdateGraphic();
+    }
 }
 
 
 void BaseMapImageManager::EditMapImageProperty()
 {
+    int selRow = mapImageList->currentRow();
+    if( selRow < 0 || selRow >= baseMapImages.size() ){
+        return;
+    }
 
+    QDialog *dialog = new QDialog();
+
+    QGridLayout *gLay = new QGridLayout();
+    gLay->addWidget( new QLabel("X[m]") , 0, 0 );
+    gLay->addWidget( new QLabel("Y[m]") , 1, 0 );
+    gLay->addWidget( new QLabel("Scale[-]") , 2, 0 );
+    gLay->addWidget( new QLabel("Ratate[deg]") , 3, 0 );
+
+    QDoubleSpinBox *xPos = new QDoubleSpinBox();
+    xPos->setFixedWidth(150);
+    xPos->setValue( baseMapImages[selRow]->x );
+
+    QDoubleSpinBox *yPos = new QDoubleSpinBox();
+    yPos->setFixedWidth(150);
+    yPos->setValue( baseMapImages[selRow]->y );
+
+    QDoubleSpinBox *scale = new QDoubleSpinBox();
+    scale->setFixedWidth(150);
+    scale->setValue( baseMapImages[selRow]->scale );
+
+    QDoubleSpinBox *rot = new QDoubleSpinBox();
+    rot->setFixedWidth(150);
+    rot->setValue( baseMapImages[selRow]->rotate );
+
+    gLay->addWidget( xPos  , 0, 1 );
+    gLay->addWidget( yPos  , 1, 1 );
+    gLay->addWidget( scale , 2, 1 );
+    gLay->addWidget( rot   , 3, 1 );
+
+    QPushButton *okBtn = new QPushButton("Accept");
+    QPushButton *cancelBtn = new QPushButton("Cancel");
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(accept()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(reject()));
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+
+    QHBoxLayout *btnLay = new QHBoxLayout();
+    btnLay->addStretch(1);
+    btnLay->addWidget( okBtn );
+    btnLay->addSpacing(50);
+    btnLay->addWidget( cancelBtn );
+    btnLay->addStretch(1);
+
+    QVBoxLayout *mLay = new QVBoxLayout();
+    mLay->addLayout( gLay );
+    mLay->addLayout( btnLay );
+
+    dialog->setLayout( mLay );
+    dialog->exec();
+
+    if( dialog->result() == QDialog::Accepted ){
+
+        baseMapImages[selRow]->x = xPos->value();
+        baseMapImages[selRow]->y = yPos->value();
+        baseMapImages[selRow]->scale = scale->value();
+        baseMapImages[selRow]->rotate = rot->value();
+
+        mapImageList->item( selRow, 2 )->setText( QString("%1").arg(baseMapImages[selRow]->x,0,'g',4) );
+        mapImageList->item( selRow, 3 )->setText( QString("%1").arg(baseMapImages[selRow]->y,0,'g',4) );
+        mapImageList->item( selRow, 4 )->setText( QString("%1").arg(baseMapImages[selRow]->scale,0,'g',4) );
+        mapImageList->item( selRow, 5 )->setText( QString("%1").arg(baseMapImages[selRow]->rotate,0,'g',4) );
+
+        emit UpdateGraphic();
+    }
 }
 
 

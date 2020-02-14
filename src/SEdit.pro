@@ -45,6 +45,7 @@ SOURCES += \
         configfilemanager.cpp \
         datamanip_base.cpp \
         datamanip_createnode.cpp \
+        datamanip_import.cpp \
         datamanip_insertnode.cpp \
         displaycontrol.cpp \
         gc_displaycontrol.cpp \

@@ -24,17 +24,10 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QFileDialog>
+#include <QOpenGLTexture>
 
 
-struct baseMapImage
-{
-    QString path;
-    QString filename;
-    float scale;
-    float x;
-    float y;
-    float rotate;
-};
+#include "roadinfoelement.h"
 
 
 class BaseMapImageManager : public QWidget
@@ -45,11 +38,12 @@ public:
     ~BaseMapImageManager();
 
     QList<struct baseMapImage*> baseMapImages;
+    void AddMapImageFromFile(QString filename,float x,float y,float scale,float rot);
 
 signals:
-    void MapImageAdded();
-    void MapImageDeleted();
-
+    void MapImageAdded(struct baseMapImage *);
+    void MapImageDeleted(struct baseMapImage *);
+    void UpdateGraphic();
 
 public slots:
     void AddMapImage();

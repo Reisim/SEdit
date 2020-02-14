@@ -17,7 +17,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
 {
     road = NULL;
 
-    QSize infoAreaSizeNode = QSize(300,700);
+    QSize infoAreaSizeNode = QSize(500,800);
     QSize infoAreaSizeLane = QSize(300,800);
     QSize infoAreaSizeTS = QSize(500,350);
     QSize infoAreaSizeSL = QSize(300,300);
@@ -29,10 +29,16 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     nodeIDSB = new QSpinBox();
     nodeIDSB->setMinimum(0);
     nodeIDSB->setFixedWidth(80);
+    nodeIDSB->setMaximum(10000);
 
     nodeInfo = new QLabel("\nNot exist.\n");
-    nodeInfo->setFixedSize( infoAreaSizeNode );
     nodeInfo->setAlignment( Qt::AlignTop );
+
+    nodeInfoScrollArea = new QScrollArea();
+    nodeInfoScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    nodeInfoScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    nodeInfoScrollArea->setWidget( nodeInfo );
+    nodeInfoScrollArea->setMinimumSize( infoAreaSizeNode );
 
     cbONode = new QCheckBox("Origin Node");
     cbDNode = new QCheckBox("Destination Node");
@@ -45,7 +51,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     nodeGrid->addWidget( nodeIDSB, 0, 1 );
     nodeGrid->addWidget( cbONode, 1, 1 );
     nodeGrid->addWidget( cbDNode, 2, 1 );
-    nodeGrid->addWidget( nodeInfo, 3, 1 );
+    nodeGrid->addWidget( nodeInfoScrollArea, 3, 1 );
     nodeGrid->setRowStretch(4,1);
     nodeGrid->setColumnStretch(2,1);
 
@@ -57,6 +63,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneIDSB = new QSpinBox();
     laneIDSB->setMinimum(0);
     laneIDSB->setFixedWidth(80);
+    laneIDSB->setMaximum(10000);
 
     laneSpeed = new QSpinBox();
     laneSpeed->setMinimum(5);

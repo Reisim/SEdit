@@ -70,7 +70,7 @@ int RoadInfo::CreateNode(int assignId, float x, float y, QList<int> inLanes, QLi
 
     nodes.append( node );
 
-    qDebug() << "[CreateNode] add data with id = " << cId;
+//    qDebug() << "[CreateNode] add data with id = " << cId;
 
     return cId;
 }

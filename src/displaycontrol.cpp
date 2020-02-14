@@ -55,6 +55,9 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showNodeLaneList = new QCheckBox("Lane Lists");
     showNodeLaneList->setChecked(false);
 
+    showRelatedLanes = new QCheckBox("Related Lanes");
+    showRelatedLanes->setChecked(false);
+
     prevLaneList = new QPushButton();
     prevLaneList->setIcon( QIcon(":/images/back.png") );
     prevLaneList->setFixedSize( prevLaneList->sizeHint() );
@@ -93,10 +96,14 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showMapImage = new QCheckBox("Map Image");
     showMapImage->setChecked(true);
 
+    backMapImage = new QCheckBox("Move Back");
+    backMapImage->setChecked(false);
+
     grid->addWidget( new QLabel("Visilibity:"), row++, 0 );
     grid->addWidget( showNodes, row, 1 );
     grid->addWidget( showNodeLabels, row++, 2 );
     grid->addWidget( showNodeLaneList, row++, 2 );
+    grid->addWidget( showRelatedLanes, row++, 2 );
 
     QHBoxLayout *LaneListHBox = new QHBoxLayout();
     LaneListHBox->addWidget( prevLaneList );
@@ -114,7 +121,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showStopLineLabels, row++, 2 );
 
     grid->addWidget( showLabels, row++, 1 );
-    grid->addWidget( showMapImage, row++, 1 );
+    grid->addWidget( showMapImage, row, 1 );
+    grid->addWidget( backMapImage, row++, 2 );
 
 
     selectNode = new QCheckBox("Node");

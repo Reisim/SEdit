@@ -114,7 +114,7 @@ void RoadInfo::SetAllLaneLists()
 }
 
 
-void RoadInfo::SetLaneLists(int id)
+void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 {
     int ndIdx = indexOfNode( id );
     if( ndIdx < 0 ){
@@ -132,8 +132,9 @@ void RoadInfo::SetLaneLists(int id)
         CreateWPData();
     }
 
-
-//    qDebug() << "[RoadInfo::SetLaneLists] id = " << id;
+    if( showConsoleOutput == true ){
+        qDebug() << "[RoadInfo::SetLaneLists] id = " << id;
+    }
 
     // Clear old data
 //    qDebug() << "Clear Data.";
@@ -154,7 +155,9 @@ void RoadInfo::SetLaneLists(int id)
     // Special case for terminal node
     if( nodes[ndIdx]->legInfo.size() == 1 ){
 
-//        qDebug() << "This is terminal node.";
+        if( showConsoleOutput == true ){
+            qDebug() << "This is terminal node.";
+        }
 
         for(int i=0;i<nodes[ndIdx]->legInfo[0]->inWPs.size();++i){
 
@@ -232,28 +235,34 @@ void RoadInfo::SetLaneLists(int id)
             nodes[ndIdx]->laneList.append( LLs );
         }
 
-
-//        qDebug() << "[SetLaneLists] id = " << id;
-//        for(int i=0;i<nodes[ndIdx]->laneList.size();++i){
-//            qDebug() << "List : Out = " << nodes[ndIdx]->laneList[i]->relatedNodeOutDirection
-//                     << " In = " << nodes[ndIdx]->laneList[i]->relatedNodeInDirection;
-//            for(int j=0;j<nodes[ndIdx]->laneList[i]->lanes.size();++j){
-//                QString LaneListStr = QString();
-//                for(int k=0;k<nodes[ndIdx]->laneList[i]->lanes[j].size();++k){
-//                    LaneListStr += QString("%1").arg( nodes[ndIdx]->laneList[i]->lanes[j].at(k) );
-//                    if( k < nodes[ndIdx]->laneList[i]->lanes[j].size() - 1 ){
-//                        LaneListStr += QString(" <- ");
-//                    }
-//                }
-//                qDebug() << "  [" << j << "]: " << LaneListStr;
-//            }
-//        }
+        if( showConsoleOutput == true ){
+            qDebug() << "[SetLaneLists] id = " << id;
+            for(int i=0;i<nodes[ndIdx]->laneList.size();++i){
+                qDebug() << "List : Out = " << nodes[ndIdx]->laneList[i]->relatedNodeOutDirection
+                         << " In = " << nodes[ndIdx]->laneList[i]->relatedNodeInDirection;
+                for(int j=0;j<nodes[ndIdx]->laneList[i]->lanes.size();++j){
+                    QString LaneListStr = QString();
+                    for(int k=0;k<nodes[ndIdx]->laneList[i]->lanes[j].size();++k){
+                        LaneListStr += QString("%1").arg( nodes[ndIdx]->laneList[i]->lanes[j].at(k) );
+                        if( k < nodes[ndIdx]->laneList[i]->lanes[j].size() - 1 ){
+                            LaneListStr += QString(" <- ");
+                        }
+                    }
+                    qDebug() << "  [" << j << "]: " << LaneListStr;
+                }
+            }
+        }
         return;
     }
 
-//    qDebug() << "This is normal node: nLeg = " << nodes[ndIdx]->legInfo.size();
+    if( showConsoleOutput == true ){
+        qDebug() << "This is normal node: nLeg = " << nodes[ndIdx]->legInfo.size();
+    }
 
     for(int i=0;i<nodes[ndIdx]->legInfo.size();++i){
+
+        qDebug() << "[Leg " << nodes[ndIdx]->legInfo[i]->legID << "]";
+
 
         for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
 
@@ -273,8 +282,11 @@ void RoadInfo::SetLaneLists(int id)
                 continue;
             }
 
-//            qDebug() << "topWP = " << topWP;
-//            qDebug() << "relatedLanes = " << wps[tWPIdx]->relatedLanes;
+            if( showConsoleOutput == true ){
+
+                qDebug() << "topWP = " << topWP;
+                qDebug() << "relatedLanes = " << wps[tWPIdx]->relatedLanes;
+            }
 
             QList<int> topLanes;
             for(int k=0;k<wps[tWPIdx]->relatedLanes.size();++k){
@@ -289,18 +301,21 @@ void RoadInfo::SetLaneLists(int id)
                 }
             }
 
-//            qDebug() << "topLanes = " << topLanes;
+            if( showConsoleOutput == true ){
+                qDebug() << "topLanes = " << topLanes;
+            }
 
             for(int k=0;k<topLanes.size();++k){
 
                 ClearSearchHelper();
                 ForwardTreeSearch(id, -1, topLanes[k]);
 
-//                qDebug() << "Extracted:";
-//                for(int l=0;l<treeSeachHelper.size();++l){
-//                    qDebug() << treeSeachHelper[l]->nextLane << " , " << treeSeachHelper[l]->currentLane;
-//                }
-
+                if( showConsoleOutput == true ){
+                    qDebug() << "Extracted:";
+                    for(int l=0;l<treeSeachHelper.size();++l){
+                        qDebug() << treeSeachHelper[l]->nextLane << " , " << treeSeachHelper[l]->currentLane;
+                    }
+                }
 
                 bool foundAll = false;
                 while( 1 ){
@@ -357,22 +372,24 @@ void RoadInfo::SetLaneLists(int id)
         }
     }
 
+    if( showConsoleOutput == true ){
+        qDebug() << "[SetLaneLists] id = " << id;
+        for(int i=0;i<nodes[ndIdx]->laneList.size();++i){
+            qDebug() << "List : Out = " << nodes[ndIdx]->laneList[i]->relatedNodeOutDirection
+                     << " In = " << nodes[ndIdx]->laneList[i]->relatedNodeInDirection;
+            for(int j=0;j<nodes[ndIdx]->laneList[i]->lanes.size();++j){
+                QString LaneListStr = QString();
+                for(int k=0;k<nodes[ndIdx]->laneList[i]->lanes[j].size();++k){
+                    LaneListStr += QString("%1").arg( nodes[ndIdx]->laneList[i]->lanes[j].at(k) );
+                    if( k < nodes[ndIdx]->laneList[i]->lanes[j].size() - 1 ){
+                        LaneListStr += QString(" <- ");
+                    }
+                }
+                qDebug() << "  [" << j << "]: " << LaneListStr;
+            }
+        }
+    }
 
-//    qDebug() << "[SetLaneLists] id = " << id;
-//    for(int i=0;i<nodes[ndIdx]->laneList.size();++i){
-//        qDebug() << "List : Out = " << nodes[ndIdx]->laneList[i]->relatedNodeOutDirection
-//                 << " In = " << nodes[ndIdx]->laneList[i]->relatedNodeInDirection;
-//        for(int j=0;j<nodes[ndIdx]->laneList[i]->lanes.size();++j){
-//            QString LaneListStr = QString();
-//            for(int k=0;k<nodes[ndIdx]->laneList[i]->lanes[j].size();++k){
-//                LaneListStr += QString("%1").arg( nodes[ndIdx]->laneList[i]->lanes[j].at(k) );
-//                if( k < nodes[ndIdx]->laneList[i]->lanes[j].size() - 1 ){
-//                    LaneListStr += QString(" <- ");
-//                }
-//            }
-//            qDebug() << "  [" << j << "]: " << LaneListStr;
-//        }
-//    }
 }
 
 

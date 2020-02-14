@@ -1368,6 +1368,17 @@ void DataManipulator::SetAllLaneLists()
 }
 
 
+void DataManipulator::SetSelectedNodeLaneLists()
+{
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_NODE ){
+
+            road->SetLaneLists( canvas->selectedObj.selObjID[i] , true );
+        }
+    }
+}
+
+
 void DataManipulator::SetTurnDirectionInfo()
 {
     road->SetTurnDirectionInfo();
