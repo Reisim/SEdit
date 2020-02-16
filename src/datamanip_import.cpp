@@ -13,10 +13,13 @@
 
 
 #include "datamanipulator.h"
+
 #include <QFile>
 #include <QDataStream>
-#include <QDebug>
 #include <QProgressDialog>
+#include <QMessageBox>
+
+#include <QDebug>
 
 
 void DataManipulator::ImportERIS3Data(QString filename)
@@ -60,6 +63,8 @@ void DataManipulator::ImportERIS3Data(QString filename)
     // Map Data
     int N;
     in >> N;         // Number of Map
+
+    qDebug() << "Number of Map = " << N;
 
     int numMap = N;
 
@@ -828,6 +833,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
         in >> itmp;
         in >> ftmp;
         tmpNodeIDs.append( itmp );
+        road->nodes[i]->id = itmp;
     }
 
     in >> N;
@@ -1183,10 +1189,722 @@ void DataManipulator::ImportERIS3Data(QString filename)
     qDebug() << "Move to " << xmean << "," << ymean;
 
     canvas->MoveTo( xmean, ymean );
+}
 
 
+void DataManipulator::ImportERIS3TrafficSignalData(QString filename)
+{
+    // Check if Traffic Signals exist
+    QList<int> TSnodeIdx;
+
+    struct TSIndexData
+    {
+        int TSID;
+        int ndIdx;
+        int tsIdx;
+    };
+
+    QList<struct TSIndexData> TSIDList;
+
+    for(int i=0;i<road->nodes.size();++i){
+        if( road->nodes[i]->trafficSignals.size() > 0 ){
+            TSnodeIdx.append( i );
+            for(int j=0;j<road->nodes[i]->trafficSignals.size();++j){
+
+                struct TSIndexData t;
+                t.TSID = road->nodes[i]->trafficSignals[j]->id;
+                t.ndIdx = i;
+                t.tsIdx = j;
+
+                TSIDList.append( t );
+            }
+        }
+    }
+    if( TSnodeIdx.size() == 0 ){
+        return;
+    }
 
 
+    QFile file(filename);
+    if( !file.open(QIODevice::ReadOnly) ){
+        qDebug() << "Cannot open file for writing: " << qPrintable(file.errorString()) << endl;
+        return;
+    }
+
+    QDataStream in(&file);
+    in.setVersion(QDataStream::Qt_4_6);
+
+    QString stmp;
+
+    in >> stmp;
+
+    int nNodeTS;
+    in >> nNodeTS;
+
+    QStringList NodeIDs;
+    for(int i=0;i<nNodeTS;++i){
+        QString strTmp;
+        in >> strTmp;
+        NodeIDs << strTmp;
+    }
+
+    if( TSnodeIdx.size() != NodeIDs.size() ){
+        QMessageBox::critical(NULL,"Data Mismatch","Number of Nodes with Traffic Signal is not the same in eris3 and spd data.");
+        return;
+    }
+
+
+    int Nheader;
+    in >> Nheader;
+
+    QStringList HeaderStrs;
+    for(int i=0;i<Nheader;++i){
+        QString tmpStr;
+        in >> tmpStr;
+        HeaderStrs << tmpStr;
+    }
+
+    bool headerCheck = true;
+    for(int i=0;i<Nheader;++i){
+        if( QString(HeaderStrs[i]).remove("TS ").trimmed().toInt() != TSIDList[i].TSID ){
+            headerCheck = false;
+        }
+    }
+    if( headerCheck == false ){
+        QMessageBox::critical(NULL,"Data Mismatch","List of Traffic Signal Data is not the same in eris3 and spd data.");
+        return;
+    }
+
+
+    int N;
+    in >> N;
+
+    qDebug() << "N = " << N;
+
+    QList<int> offsetTimes;
+    for(int i=0;i<N;++i){
+        int offsetTime;
+        in >> offsetTime;
+
+        qDebug() << "offsetTime = " << offsetTime;
+
+        offsetTimes.append( offsetTime );
+    }
+
+
+    in >> N;
+
+    qDebug() << "N = " << N;
+    QList<int> numTSInNode;
+    int idx = 0;
+    for(int i=0;i<N;++i){
+        int rC;
+        int cC;
+        in >> rC >> cC;
+
+        //qDebug() << " rC = " << rC << " cC = " << cC;
+        numTSInNode.append( rC );
+
+        for(int j=0;j<rC;++j){
+
+            int ndIdx = TSIDList[idx].ndIdx;
+            int tsIdx = TSIDList[idx].tsIdx;
+
+            for(int k=0;k<road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.size();++k){
+                delete road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[k];
+            }
+            road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.clear();
+
+            for(int k=0;k<cC;++k){
+
+                QString txt;
+                in >> txt;
+                //qDebug() << "j=" << j << " k=" << k << " txt=" << txt;  // display
+
+                struct SignalPatternData* sp = new struct SignalPatternData;
+                if( txt.trimmed() == QString("B") ){
+                    sp->signal = 1;
+                }
+                else if( txt.trimmed() == QString("Y") ){
+                    sp->signal = 2;
+                }
+                else if( txt.trimmed() == QString("R") ){
+                    sp->signal = 4;
+                }
+                else if( txt.trimmed() == QString("LA/Y") ){
+                    sp->signal = 2 + 8;
+                }
+                else if( txt.trimmed() == QString("SA/Y") ){
+                    sp->signal = 2 + 16;
+                }
+                else if( txt.trimmed() == QString("RA/Y") ){
+                    sp->signal = 2 + 32;
+                }
+                else if( txt.trimmed() == QString("LS/Y") ){
+                    sp->signal = 2 + 8 + 16;
+                }
+                else if( txt.trimmed() == QString("SR/Y") ){
+                    sp->signal = 2 + 16 + 32;
+                }
+                else if( txt.trimmed() == QString("LR/Y") ){
+                    sp->signal = 2 + 8 + 32;
+                }
+                else if( txt.trimmed() == QString("AA/Y") ){
+                    sp->signal = 2 + 8 + 16 + 32;
+                }
+                else if( txt.trimmed() == QString("LA") ){
+                    sp->signal = 4 + 8;
+                }
+                else if( txt.trimmed() == QString("SA") ){
+                    sp->signal = 4 + 16;
+                }
+                else if( txt.trimmed() == QString("RA") ){
+                    sp->signal = 4 + 32;
+                }
+                else if( txt.trimmed() == QString("LS") ){
+                    sp->signal = 4 + 8 + 16;
+                }
+                else if( txt.trimmed() == QString("SR") ){
+                    sp->signal = 4 + 16 + 32;
+                }
+                else if( txt.trimmed() == QString("LR") ){
+                    sp->signal = 4 + 8 + 32;
+                }
+                else if( txt.trimmed() == QString("AA") ){
+                    sp->signal = 4 + 8 + 16 + 32;
+                }
+
+                road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.append( sp );
+
+                if( txt.compare("NULL") == 0 )
+                    continue;
+            }
+
+            idx++;
+        }
+    }
+
+
+    in >> N;
+    idx = 0;
+    for(int i=0;i<N;++i){
+        int rC;
+        int cC;
+        in >> rC >> cC;
+
+        //qDebug() << " rC = " << rC << " cC = " << cC;
+        QList<int> dur;
+
+        for(int j=0;j<rC;++j){
+            for(int k=0;k<cC;++k){
+
+                QString txt;
+                in >> txt;
+                //qDebug() << "j=" << j << " k=" << k << " txt=" << txt;  // cycle
+
+                if( j == 0 ){
+                    dur.append( txt.trimmed().toInt() );
+                }
+                if( txt.compare("NULL") == 0 )
+                    continue;
+            }
+        }
+
+        for(int j=0;j<numTSInNode[i];++j){
+
+            int ndIdx = TSIDList[idx].ndIdx;
+            int tsIdx = TSIDList[idx].tsIdx;
+
+            for(int k=0;k<dur.size();++k){
+                road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[k]->duration = dur[k];
+            }
+
+            road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset = offsetTimes[i];
+
+            idx++;
+        }
+    }
+
+    file.close();
+
+
+    canvas->update();
+}
+
+
+void DataManipulator::ImportERIS3ODData(QString filename)
+{
+    QFile file(filename);
+    if( !file.open(QIODevice::ReadOnly) ){
+        qDebug() << "Cannot open file: " << filename;
+        return;
+    }
+
+    QDataStream in(&file);
+    in.setVersion(QDataStream::Qt_4_6);
+
+    QString roadDataFile;
+    in >> roadDataFile;
+
+
+    // load eris3 file to relate WP and Node
+    struct tmpWPData
+    {
+        int id;
+        float node;
+        float xc;
+        float yc;
+    };
+
+    QList<struct tmpWPData> wpOutData;
+
+    {
+        qDebug() << "Load : " << roadDataFile;
+
+        QFile file_eris3(roadDataFile);
+        if( !file_eris3.open(QIODevice::ReadOnly) ){
+            qDebug() << "Cannot open file : " << file_eris3;
+
+            roadDataFile = QFileDialog::getOpenFileName(NULL,
+                                                        tr("Assign ERIS3 File"),
+                                                        QString(),
+                                                        tr("ERIS3 Data files(*.eris3)"));
+
+            if( roadDataFile.isEmpty() ){
+                qDebug() << "Canceled.";
+                return;
+            }
+
+            file_eris3.setFileName( roadDataFile );
+            if( !file_eris3.open(QIODevice::ReadOnly) ){
+                qDebug() << "Cannot open file : " << file_eris3;
+                return;
+            }
+        }
+
+        QDataStream in_eris3(&file_eris3);
+        in_eris3.setVersion(QDataStream::Qt_4_6);
+
+        int   itmp;
+        float ftmp;
+        bool  btmp;
+        int N;
+
+        in_eris3 >> itmp;
+        in_eris3 >> ftmp;
+
+        for(int i=0;i<9;++i){
+            in_eris3 >> ftmp;
+        }
+
+        in_eris3 >> N;
+        qDebug() << "Number Map = " << N;
+
+        QStringList mapFileList;
+        in_eris3 >> mapFileList;
+
+        for(int i=0;i<N;++i){
+            float xmap,ymap,smap;
+            in_eris3 >> xmap;
+            in_eris3 >> ymap;
+            in_eris3 >> smap;
+        }
+
+        in_eris3 >> N;
+        in_eris3 >> itmp;
+        qDebug() << "Number WP = " << N;
+
+        for(int i=0;i<N;++i){
+            in_eris3 >> btmp;
+            for(int j=0;j<6;++j){
+                in_eris3 >> ftmp;
+            }
+            in_eris3 >> btmp;
+            in_eris3 >> btmp;
+            in_eris3 >> itmp;
+            in_eris3 >> itmp;
+            in_eris3 >> itmp;
+            for(int j=0;j<itmp;++j){
+                int itmp2 = 0;
+                in_eris3 >> itmp2;
+            }
+            in_eris3 >> itmp;
+            for(int j=0;j<itmp;++j){
+                int itmp2 = 0;
+                in_eris3 >> itmp2;
+            }
+            in_eris3 >> itmp;
+            for(int j=0;j<itmp;++j){
+                int itmp2 = 0;
+                in_eris3 >> itmp2;
+            }
+            in_eris3 >> itmp;
+            for(int j=0;j<itmp;++j){
+                int itmp2 = 0;
+                in_eris3 >> itmp2;
+            }
+            in_eris3 >> btmp;
+            in_eris3 >> btmp;
+        }
+
+
+        in_eris3 >> N;
+        in_eris3 >> itmp;
+        qDebug() << "Number PATH = " << N;
+        for(int i=0;i<N;++i){
+            in_eris3 >> btmp;
+            in_eris3 >> itmp;
+            in_eris3 >> itmp;
+            in_eris3 >> ftmp;
+            in_eris3 >> ftmp;
+            in_eris3 >> ftmp;
+        }
+
+
+        in_eris3 >> N;
+        qDebug() << "Number Node = " << N;
+        in_eris3 >> itmp;
+        for(int i=0;i<N;++i){
+            in_eris3 >> btmp;
+            float xc,yc;
+            in_eris3 >> xc;
+            in_eris3 >> yc;
+            in_eris3 >> itmp;
+            for(int j=0;j<itmp;++j){
+                int itmp1,itmp2,itmp3,itmp4;
+                float ftmp1;
+                in_eris3 >> itmp1;
+                in_eris3 >> ftmp1;
+                in_eris3 >> itmp2;
+                for(int k=0;k<itmp2;++k){
+                    in_eris3 >> itmp1;
+                }
+                in_eris3 >> itmp1;
+                for(int k=0;k<itmp1;++k){
+                    in_eris3 >> itmp2;
+
+                    struct tmpWPData w;
+                    w.id = itmp2;
+                    w.xc = xc;
+                    w.yc = yc;
+                    w.node = -1;
+
+                    wpOutData.append( w );
+                }
+                in_eris3 >> itmp1;
+                in_eris3 >> itmp2;
+                in_eris3 >> itmp3;
+                in_eris3 >> itmp4;
+            }
+            in_eris3 >> btmp;
+            in_eris3 >> btmp;
+            in_eris3 >> itmp;
+            in_eris3 >> btmp;
+            int MC;
+            in_eris3 >> MC;
+            for(int j=0;j<MC;++j){
+                in_eris3 >> itmp;
+            }
+        }
+
+        file_eris3.close();
+
+        qDebug() << "Read.";
+    }
+
+    for(int i=0;i<wpOutData.size();++i){
+        for(int j=0;j<road->nodes.size();++j){
+
+            float dx = road->nodes[j]->pos.x() - wpOutData[i].xc;
+            float dy = road->nodes[j]->pos.y() - wpOutData[i].yc;
+            float D = dx * dx + dy * dy;
+            if( D < 1.0 ){
+                wpOutData[i].node = road->nodes[j]->id;
+                break;
+            }
+        }
+//        qDebug() << "WPOut: wp = " << wpOutData[i].id << " node = " << wpOutData[i].node;
+    }
+
+
+    //  Vehicle Data
+    int nON;
+    in >> nON;
+
+    QList<int> OriginNode;
+    for(int i=0;i<nON;++i){
+        int nd;
+        in >> nd;
+        OriginNode.append( nd );
+
+        int nIdx = road->indexOfNode( nd );
+        if( nIdx >= 0 ){
+            road->nodes[nIdx]->isOriginNode = true;
+        }
+    }
+
+
+    int nDN;
+    in >> nDN;
+
+    QVector<int> DestinationNode;
+    for(int i=0;i<nDN;++i){
+        int nd;
+        in >> nd;
+        DestinationNode << nd;
+
+        int nIdx = road->indexOfNode( nd );
+        if( nIdx >= 0 ){
+            road->nodes[nIdx]->isDestinationNode = true;
+        }
+    }
+
+
+    int nOT;
+    in >> nOT;
+
+    QList<int> ODTableIDs;
+    for(int i=0;i<nOT;++i){
+        int id;
+        in >> id;
+        ODTableIDs.append( id );
+    }
+
+    int nODD;
+    in >> nODD;
+
+    struct ODDataElem{
+        int onode;
+        int dnode;
+        float val;
+    };
+
+    QList<struct ODDataElem> ODDataMain;
+    for(int i=0;i<nODD;++i){
+        QString key;
+        float val;
+        in >> key;
+        in >> val;
+
+        if( val < 0.0001 ){
+            continue;
+        }
+
+        QStringList divKey = key.split("-");
+
+        struct ODDataElem e;
+        e.onode = QString(divKey[1]).remove("O").trimmed().toInt();
+        e.dnode = QString(divKey[2]).remove("D").trimmed().toInt();
+        e.val = val;
+
+        ODDataMain.append( e );
+    }
+
+    int nR;
+    int nC;
+    in >> nR;
+    in >> nC;
+
+    for(int i=0;i<nR;++i){
+        for(int j=0;j<nC;++j){
+            QString txt;
+            in >> txt;  // sequence
+        }
+    }
+
+    int nSink;
+    in >> nSink;
+    for(int i=0;i<nSink;++i){
+        int tSink;
+        in >> tSink;
+    }
+
+
+    int nSource;
+    in >> nSource;
+
+    struct tmpTrafficVolumeData
+    {
+        int node;
+        int volume;
+    };
+
+    QList<struct tmpTrafficVolumeData> TVData;
+
+    for(int i=0;i<nSource;++i){
+
+        int wpid;
+        in >> wpid;
+
+        bool mode;
+        in >> mode;
+
+
+        int nRtw;
+        int nCtw;
+        in >> nRtw;
+        in >> nCtw;
+
+        qDebug() << "source WP: " << wpid;
+
+        float meanArrival = 0.0;
+        for(int j=0;j<nRtw;++j){
+            for(int k=0;k<nCtw;++k){
+                QString txt;
+                in >> txt;
+                if(j == 0){
+                    meanArrival += txt.toFloat();
+                }
+            }
+        }
+        meanArrival /= nCtw;
+
+
+        for(int l=0;l<wpOutData.size();++l){
+            if( wpOutData[l].id == wpid ){
+
+                int tvIdx = -1;
+                int oNode = wpOutData[l].node;
+                for(int m=0;m<TVData.size();++m){
+                    if( TVData[m].node == oNode ){
+                        tvIdx = m;
+                        break;
+                    }
+                }
+                if( tvIdx < 0 ){
+                    struct tmpTrafficVolumeData v;
+                    v.node = oNode;
+                    v.volume = 0;
+                    TVData.append( v );
+                    tvIdx = TVData.size() - 1;
+                }
+
+                int vph = (int)(3600.0 / meanArrival);
+                TVData[tvIdx].volume += vph;
+            }
+        }
+    }
+
+//    for(int i=0;i<TVData.size();++i){
+//        qDebug() << "Node = " << TVData[i].node << " Volume = " << TVData[i].volume;
+//    }
+
+    int nRoute;
+    in >> nRoute;
+
+    for(int i=0;i<nRoute;++i){
+
+        bool protectFlag;
+        in >> protectFlag;
+
+        float selProb;
+        in >> selProb;
+
+        int nElem;
+        in >> nElem;
+
+        QList<int> inDirs;
+        QList<int> Nodes;
+        QList<int> outDirs;
+
+        for(int j=0;j<nElem;++j){
+
+            int reDat;
+            in >> reDat;  // inDir
+            inDirs.append( reDat );
+
+            in >> reDat;  // Node
+            Nodes.append( reDat );
+
+            in >> reDat;  // outDir
+            outDirs.append( reDat );
+        }
+
+
+        int ONode = Nodes.first();
+        int DNode = Nodes.last();
+
+//        qDebug() << "Nodes: " << Nodes;
+//        qDebug() << "ONode = " << ONode << " DNode = " << DNode;
+
+        int onIdx = road->indexOfNode( ONode );
+        if( onIdx >= 0 ){
+
+            int dn = -1;
+            for(int j=0;j<road->nodes[onIdx]->odData.size();++j){
+                if( road->nodes[onIdx]->odData[j]->destinationNode == DNode ){
+                    dn = j;
+                    break;
+                }
+            }
+            if( dn < 0 ){
+                struct ODData *odd = new struct ODData;
+                odd->destinationNode = DNode;
+                road->nodes[onIdx]->odData.append( odd );
+                dn = road->nodes[onIdx]->odData.size() - 1;
+            }
+
+            struct RouteData* route = new struct RouteData;
+
+            route->selProb = selProb;
+            for(int j=0;j<Nodes.size();++j){
+
+                struct RouteElem *e = new struct RouteElem;
+
+                e->inDir  = inDirs[j];
+                e->node   = Nodes[j];
+                e->outDir = outDirs[j];
+
+                route->nodeList.append( e );
+            }
+
+            road->nodes[onIdx]->odData[dn]->route.append( route );
+
+        }
+    }
+
+
+    for(int i=0;i<road->nodes.size();++i){
+        for(int j=0;j<road->nodes[i]->odData.size();++j){
+            int ONode = road->nodes[i]->id;
+            int DNode = road->nodes[i]->odData[j]->destinationNode;
+
+            int TVatONode = 0;
+            for(int k=0;k<TVData.size();++k){
+                if( TVData[k].node == ONode ){
+                    TVatONode = TVData[k].volume;
+                    break;
+                }
+            }
+
+            float p = 0.0;
+            for(int k=0;k<ODDataMain.size();++k){
+                if(ODDataMain[k].onode == ONode && ODDataMain[k].dnode == DNode ){
+                    p = ODDataMain[k].val;
+                    break;
+                }
+            }
+
+            for(int k=0;k<road->nodes[i]->odData[j]->route.size();++k){
+
+                float r = road->nodes[i]->odData[j]->route[k]->selProb;
+
+                int TV = (int)(r * p * TVatONode);
+
+                struct TrafficVolumeData *tvd = new struct TrafficVolumeData;
+                tvd->vehicleKind = 0;
+                tvd->trafficVolume = TV;
+
+                road->nodes[i]->odData[j]->route[k]->volume.append( tvd );
+            }
+        }
+    }
+
+
+    file.close();
 
 }
+
+
+
 

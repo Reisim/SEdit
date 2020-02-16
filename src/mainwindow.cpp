@@ -106,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp->show();
 
     canvas->roadProperty = roadObjProp;
+    dtManip->roadObjProp = roadObjProp;
 
     //-------------------------
     odRoute = new ODRouteEditor();
@@ -276,6 +277,20 @@ MainWindow::MainWindow(QWidget *parent)
     setTurnDirection->setText("Set Turn-Direction Info");
     connect( setTurnDirection, SIGNAL(triggered()),dtManip,SLOT(SetTurnDirectionInfo()));
     utilityPopup->addAction( setTurnDirection );
+
+
+    searchPopup = new QMenu();
+
+    QAction *searchNode = new QAction();
+    searchNode->setText("Search Node");
+    connect( searchNode, SIGNAL(triggered()),dtManip,SLOT(SearchNode()));
+    searchPopup->addAction( searchNode );
+
+    QAction *searchLane = new QAction();
+    searchLane->setText("Search Lane");
+    connect( searchLane, SIGNAL(triggered()),dtManip,SLOT(SearchLane()));
+    searchPopup->addAction( searchLane );
+
 }
 
 
@@ -460,7 +475,7 @@ void MainWindow::ImportOtherData()
     QString fileName = QFileDialog::getOpenFileName(this,
                                                     tr("Choose Import Data File"),
                                                     ".",
-                                                    tr("Data file(*.eris3)"));
+                                                    tr("Data file(*.eris3 *.spd *.ods)"));
 
     if( fileName.isNull() == false ){
         qDebug() << "filename = " << fileName;
@@ -474,6 +489,21 @@ void MainWindow::ImportOtherData()
     if( fileName.endsWith(".eris3") == true ){
 
         dtManip->ImportERIS3Data( fileName );
+
+        UpdateStatusBar(QString("data imported."));
+    }
+    else if( fileName.endsWith(".spd") == true ){
+
+        dtManip->ImportERIS3TrafficSignalData( fileName );
+
+        UpdateStatusBar(QString("data imported."));
+    }
+    else if( fileName.endsWith(".ods") == true ){
+
+        dtManip->ImportERIS3ODData( fileName );
+
+        UpdateStatusBar(QString("data imported."));
+
     }
 }
 
@@ -519,6 +549,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         }
         else if( key == Qt::Key_U ){
             utilityPopup->exec( QCursor::pos() );
+        }
+        else if( key == Qt::Key_S ){
+            searchPopup->exec( QCursor::pos() );
         }
         else if( key == Qt::Key_Delete ){
             dtManip->DeleteSelectedObject();

@@ -88,6 +88,7 @@ private:
     QMenu *insertNodePopup;
     QMenu *recentFileOpen;
     QMenu *utilityPopup;
+    QMenu *searchPopup;
 
     QString currentSEditFilename;
     QStringList recentOpenFiles;

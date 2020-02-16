@@ -33,7 +33,7 @@ ODRouteEditor::ODRouteEditor(QWidget *parent) : QWidget(parent)
 
     QHBoxLayout *TVTableLay = new QHBoxLayout();
     TVTableLay->addWidget( trafficVolumeTable );
-    TVTableLay->addStretch(1);
+    //TVTableLay->addStretch(1);
 
     addRouteBtn = new QPushButton("Add");
     addRouteBtn->setIcon( QIcon(":/images/Add.png") );
@@ -64,7 +64,7 @@ ODRouteEditor::ODRouteEditor(QWidget *parent) : QWidget(parent)
 
     QHBoxLayout *routeTableLay = new QHBoxLayout();
     routeTableLay->addWidget( routeTable );
-    routeTableLay->addStretch(1);
+
 
     applyDataBtn = new QPushButton("Apply Changes");
     applyDataBtn->setIcon( QIcon(":/images/accept.png") );
@@ -84,9 +84,10 @@ ODRouteEditor::ODRouteEditor(QWidget *parent) : QWidget(parent)
     mainLayout->addLayout( TVLabelLay );
     mainLayout->addLayout( TVTableLay );
     mainLayout->addLayout( applyLay );
-    mainLayout->addStretch(1);
 
     setLayout( mainLayout );
+
+    setWindowTitle("OD & Route Editor");
 }
 
 
@@ -418,4 +419,8 @@ void ODRouteEditor::GetNodeListForRoute(QList<int> nodeList)
 }
 
 
+void ODRouteEditor::resizeEvent(QResizeEvent *event)
+{
+    routeTable->setColumnWidth( 0, event->size().width() );
+}
 

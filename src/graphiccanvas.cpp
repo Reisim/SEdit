@@ -854,36 +854,38 @@ void GraphicCanvas::paintGL()
                 sprintf(str,"LANE#%d",road->lanes[i]->id);
 
                 int mid = road->lanes[i]->shape.pos.size() / 2;
-                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[mid]->x(),
-                                                       road->lanes[i]->shape.pos[mid]->y(),
-                                                       road->lanes[i]->shape.pos[mid]->z()) );
+                if( mid > 0 ){
+                    model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos[mid]->x(),
+                                                           road->lanes[i]->shape.pos[mid]->y(),
+                                                           road->lanes[i]->shape.pos[mid]->z()) );
 
-                QQuaternion letterQuat = cameraQuat.conjugated();
-                model2World.setRotation( letterQuat );
-                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
 
-                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
 
-                glActiveTexture( GL_TEXTURE0 );
+                    glActiveTexture( GL_TEXTURE0 );
 
-                float x = 0.0;
-                float y = 0.0;
-                float scale = FONT_SCALE;
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
 
-                if( showLaneLabelsFlag == true && showLabelsFlag == true ){
-                    for(unsigned int c=0;c<strlen(str);++c ){
+                    if( showLaneLabelsFlag == true && showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
 
-                        Character* ch = Characters[ str[c] ];
+                            Character* ch = Characters[ str[c] ];
 
-                        GLfloat xpos = x + ch->Bearing.width() * scale;
-                        GLfloat ypos = y;
-                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
 
-                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
 
-                        x += ( ch->Advance >> 6 ) * scale;
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
                     }
                 }
 
@@ -1578,10 +1580,11 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
 
     QString testname = PathToFile + bmi->filename;
 
-    qDebug() << "Loading " << testname;
+//    qDebug() << "Loading " << testname;
 
     if( map.load(testname) == false ){
 
+        qDebug() << "Loading " << testname;
         qDebug() << "Failed.";
         bool found = false;
 
@@ -1597,7 +1600,7 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
 
             QString tmpImageFilePath = PathToFile + imageFileName;
 
-            qDebug() << "Loading " << tmpImageFilePath;
+//            qDebug() << "Loading " << tmpImageFilePath;
             if( map.load(tmpImageFilePath) == false ){
                 continue;
             }
@@ -1622,8 +1625,9 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
 
             QString tmpImageFilePath = newImageFilePath + imageFileName;
 
-            qDebug() << "Loading " << tmpImageFilePath;
+//            qDebug() << "Loading " << tmpImageFilePath;
             if( map.load(tmpImageFilePath) == false ){
+                qDebug() << "Loading " << tmpImageFilePath;
                 qDebug() << "Failed.";
                 return;
             }
@@ -1690,7 +1694,7 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
 
     bmi->isValid = true;
 
-    qDebug() << "Image loaded successfully.";
+//    qDebug() << "Image loaded successfully.";
 }
 
 

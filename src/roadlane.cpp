@@ -382,7 +382,19 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
             shape->diff[i-1]->setX( dx );
             shape->diff[i-1]->setY( dy );
             shape->segmentLength[i-1] = L;
-            shape->angles[i-1] = atan2(dy,dx);
+            if( i == shape->pos.size() - 1 ){
+                dx = shape->derivative[i]->x();
+                dy = shape->derivative[i]->y();
+                shape->angles[i-1] = atan2(dy,dx);
+            }
+            else if( i == 1 ){
+                dx = shape->derivative[0]->x();
+                dy = shape->derivative[0]->y();
+                shape->angles[i-1] = atan2(dy,dx);
+            }
+            else{
+                shape->angles[i-1] = atan2(dy,dx);
+            }
         }
     }
     else{
@@ -396,7 +408,20 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
             dy /= L;
             shape->diff.append( new QVector2D(dx, dy) );
             shape->segmentLength.append( L );
-            shape->angles.append( atan2(dy,dx) );
+
+            if( i == shape->pos.size() - 1 ){
+                dx = shape->derivative[i]->x();
+                dy = shape->derivative[i]->y();
+                shape->angles.append( atan2(dy,dx) );
+            }
+            else if( i == 1 ){
+                dx = shape->derivative[0]->x();
+                dy = shape->derivative[0]->y();
+                shape->angles.append( atan2(dy,dx) );
+            }
+            else{
+                shape->angles.append( atan2(dy,dx) );
+            }
         }
     }
 

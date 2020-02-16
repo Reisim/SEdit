@@ -12,6 +12,8 @@
 
 
 #include "datamanipulator.h"
+#include <QInputDialog>
+
 
 DataManipulator::DataManipulator(QObject *parent) : QObject(parent)
 {
@@ -1384,3 +1386,60 @@ void DataManipulator::SetTurnDirectionInfo()
     road->SetTurnDirectionInfo();
 }
 
+
+
+void DataManipulator::SearchNode()
+{
+    int nodeId = QInputDialog::getInt(NULL,"Find Node","Node ID");
+    int nIdx = road->indexOfNode( nodeId );
+    if( nIdx > 0 ){
+
+        float x = road->nodes[nIdx]->pos.x();
+        float y = road->nodes[nIdx]->pos.y();
+
+        canvas->ResetRotate();
+        canvas->MoveTo( x, y );
+
+        canvas->selectedObj.selObjKind.clear();
+        canvas->selectedObj.selObjID.clear();
+
+        canvas->selectedObj.selObjKind.append( canvas->SEL_NODE );
+        canvas->selectedObj.selObjID.append( nodeId );
+
+        roadObjProp->ChangeTabPage(0);
+        roadObjProp->ChangeLaneInfo(nodeId);
+
+        canvas->update();
+    }
+}
+
+
+void DataManipulator::SearchLane()
+{
+    int laneId = QInputDialog::getInt(NULL,"Find Lane","Lane ID");
+    int lIdx = road->indexOfLane( laneId );
+
+    qDebug() << "Lane ID = " << laneId << "  lIdx = " << lIdx;
+
+    if( lIdx > 0 ){
+
+        float x = road->lanes[lIdx]->shape.pos.first()->x();
+        float y = road->lanes[lIdx]->shape.pos.first()->y();
+
+        qDebug() << "x = " << x << "  y = " << y;
+
+        canvas->ResetRotate();
+        canvas->MoveTo( x, y );
+
+        canvas->selectedObj.selObjKind.clear();
+        canvas->selectedObj.selObjID.clear();
+
+        canvas->selectedObj.selObjKind.append( canvas->SEL_LANE );
+        canvas->selectedObj.selObjID.append( laneId );
+
+        roadObjProp->ChangeTabPage(1);
+        roadObjProp->ChangeLaneInfo(laneId);
+
+        canvas->update();
+    }
+}

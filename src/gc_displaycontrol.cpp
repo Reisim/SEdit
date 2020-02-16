@@ -25,7 +25,7 @@ void GraphicCanvas::ResetRotate()
 void GraphicCanvas::MoveTo(float x,float y)
 {
     X_eye = x;
-    Y_eye = y;
+    Y_eye = -y;
     update();
 }
 

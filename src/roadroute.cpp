@@ -261,8 +261,9 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 
     for(int i=0;i<nodes[ndIdx]->legInfo.size();++i){
 
-        qDebug() << "[Leg " << nodes[ndIdx]->legInfo[i]->legID << "]";
-
+        if( showConsoleOutput == true ){
+            qDebug() << "[Leg " << nodes[ndIdx]->legInfo[i]->legID << "]";
+        }
 
         for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
 
@@ -283,7 +284,6 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
             }
 
             if( showConsoleOutput == true ){
-
                 qDebug() << "topWP = " << topWP;
                 qDebug() << "relatedLanes = " << wps[tWPIdx]->relatedLanes;
             }

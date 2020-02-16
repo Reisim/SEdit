@@ -26,6 +26,7 @@
 #include <QString>
 #include <QStringList>
 #include <QList>
+#include <QResizeEvent>
 
 #include "roadinfo.h"
 #include "objectproperty.h"
@@ -46,6 +47,9 @@ public:
 
     void SetHeaderTrafficVolumeTable();
     QList<int> destinationNodeList;
+
+protected:
+    void resizeEvent(QResizeEvent *event);
 
 
 signals:
