@@ -70,8 +70,18 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
         infoStr += QString("    Dist from Edge = %1\n").arg( road->lanes[lIdx]->stopPoints[i]->distanceFromLaneStartPoint );
     }
     infoStr += QString("\n");
+    infoStr += QString("[Pedest Cross Lanes]\n");
+    for(int i=0;i<road->lanes[lIdx]->pedestCrossPoints.size();++i){
+        infoStr += QString("  Pedest-Lane %1 - Section %2:\n     (%3, %4)\n" )
+                .arg( road->lanes[lIdx]->pedestCrossPoints[i]->crossLaneID )
+                .arg( road->lanes[lIdx]->pedestCrossPoints[i]->crossSectIndex)
+                .arg( road->lanes[lIdx]->pedestCrossPoints[i]->pos.x() )
+                .arg( road->lanes[lIdx]->pedestCrossPoints[i]->pos.y() );
+        infoStr += QString("    Dist from Edge = %1\n").arg( road->lanes[lIdx]->pedestCrossPoints[i]->distanceFromLaneStartPoint );
+    }
+    infoStr += QString("\n");
     infoStr += QString("[Shape]\n");
-    infoStr += QString("  Length: %1\n").arg( road->lanes[lIdx]->shape.pathLength);
+    infoStr += QString("  Length: %1 [m]\n").arg( road->lanes[lIdx]->shape.pathLength);
 
     float maxCurv = 0.0;
     for(int i=0;i<road->lanes[lIdx]->shape.curvature.size();++i){
@@ -79,16 +89,34 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
             maxCurv = road->lanes[lIdx]->shape.curvature[i];
         }
     }
-    infoStr += QString("  Max Curvature: %1\n").arg( maxCurv );
-
+    infoStr += QString("  Max Curvature: %1 [1/m]\n").arg( maxCurv );
+    if( fabs(maxCurv) > 0.0010 ){
+        infoStr += QString("  Max Radius: %1 [m]\n").arg( 1.0/fabs(maxCurv) );
+    }
 
     disconnect( laneSpeed, SIGNAL(valueChanged(int)), this, SLOT(SpeedLimitChanged(int)) );
-
     laneSpeed->setValue( road->lanes[lIdx]->speedInfo );
-
     connect( laneSpeed, SIGNAL(valueChanged(int)), this, SLOT(SpeedLimitChanged(int)) );
-
     qDebug() << "speed limit = " << road->lanes[lIdx]->speedInfo;
+
+
+    disconnect( laneActualSpeed, SIGNAL(valueChanged(int)), this, SLOT(ActualSpeedChanged(int)) );
+    laneActualSpeed->setValue( road->lanes[lIdx]->actualSpeed );
+    connect( laneActualSpeed, SIGNAL(valueChanged(int)), this, SLOT(ActualSpeedChanged(int)) );
+    qDebug() << "actual speed = " << road->lanes[lIdx]->actualSpeed;
+
+
+    disconnect( laneAutomaticDrivingEnabled, SIGNAL(toggled(bool)), this, SLOT(AutomaticDrivingEnableFlagChanged(bool)) );
+    laneAutomaticDrivingEnabled->setChecked( road->lanes[lIdx]->automaticDrivingEnabled );
+    connect( laneAutomaticDrivingEnabled, SIGNAL(toggled(bool)), this, SLOT(AutomaticDrivingEnableFlagChanged(bool)) );
+    qDebug() << "automaticDrivingEnabled = " << road->lanes[lIdx]->automaticDrivingEnabled;
+
+
+    disconnect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
+    laneDriverErrorProb->setValue( road->lanes[lIdx]->driverErrorProb );
+    connect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
+    qDebug() << "driverErrorProb = " << road->lanes[lIdx]->driverErrorProb;
+
 
     laneInfo->setText( infoStr );
     laneInfo->setAlignment( Qt::AlignTop );
@@ -106,3 +134,38 @@ void RoadObjectProperty::SpeedLimitChanged(int val)
     road->lanes[lIdx]->speedInfo = val;
 }
 
+
+void RoadObjectProperty::ActualSpeedChanged(int val)
+{
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx < 0 ){
+        return;
+    }
+
+    road->lanes[lIdx]->actualSpeed = val;
+}
+
+
+void RoadObjectProperty::AutomaticDrivingEnableFlagChanged(bool b)
+{
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx < 0 ){
+        return;
+    }
+
+    road->lanes[lIdx]->automaticDrivingEnabled = b;
+}
+
+
+void RoadObjectProperty::DriverErrorProbChanged(double v)
+{
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx < 0 ){
+        return;
+    }
+
+    road->lanes[lIdx]->driverErrorProb = v;
+}

@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -108,9 +110,27 @@ void RoadInfo::CheckRouteInOutDirection()
 
 void RoadInfo::SetAllLaneLists()
 {
+    QProgressDialog *pd = new QProgressDialog("SetAllLaneLists", "Cancel", 0, nodes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
     for(int i=0;i<nodes.size();++i){
         SetLaneLists( nodes[i]->id );
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            break;
+        }
     }
+
+    pd->close();
 }
 
 

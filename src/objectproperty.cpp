@@ -18,9 +18,10 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     road = NULL;
 
     QSize infoAreaSizeNode = QSize(500,800);
-    QSize infoAreaSizeLane = QSize(300,800);
+    QSize infoAreaSizeLane = QSize(500,800);
     QSize infoAreaSizeTS = QSize(500,350);
-    QSize infoAreaSizeSL = QSize(300,300);
+    QSize infoAreaSizeSL = QSize(500,300);
+    QSize infoAreaSizePL = QSize(500,300);
 
     tab = new QTabWidget();
 
@@ -73,6 +74,27 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneSpeed->setSuffix( QString("[km/h]") );
     connect( laneSpeed, SIGNAL(valueChanged(int)), this, SLOT(SpeedLimitChanged(int)) );
 
+    laneActualSpeed = new QSpinBox();
+    laneActualSpeed->setMinimum(5);
+    laneActualSpeed->setMaximum(300);
+    laneActualSpeed->setValue(65);
+    laneActualSpeed->setFixedWidth(120);
+    laneActualSpeed->setSuffix( QString("[km/h]") );
+    connect( laneActualSpeed, SIGNAL(valueChanged(int)), this, SLOT(ActualSpeedChanged(int)) );
+
+    laneAutomaticDrivingEnabled = new QCheckBox("Automatic Driving Enabled");
+    laneAutomaticDrivingEnabled->setChecked(false);
+    connect( laneAutomaticDrivingEnabled, SIGNAL(toggled(bool)), this, SLOT(AutomaticDrivingEnableFlagChanged(bool)) );
+
+    laneDriverErrorProb = new QDoubleSpinBox();
+    laneDriverErrorProb->setMinimum(0.0);
+    laneDriverErrorProb->setMaximum(1.0);
+    laneDriverErrorProb->setValue(0.0);
+    laneDriverErrorProb->setDecimals(4);
+    laneDriverErrorProb->setFixedWidth(120);
+    connect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
+
+
     laneInfo = new QLabel();
     laneInfo->setMinimumSize( infoAreaSizeLane );
 
@@ -81,8 +103,14 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneGrid->addWidget( laneIDSB, 0, 1 );
     laneGrid->addWidget( new QLabel("Speed Limit:"), 1, 0 );
     laneGrid->addWidget( laneSpeed, 1, 1 );
-    laneGrid->addWidget( laneInfo, 2, 1 );
-    laneGrid->setColumnStretch(3,1);
+    laneGrid->addWidget( new QLabel("Actual Speed:"), 2, 0 );
+    laneGrid->addWidget( laneActualSpeed, 2, 1 );
+    laneGrid->addWidget( new QLabel("ODD:"), 3, 0 );
+    laneGrid->addWidget( laneAutomaticDrivingEnabled, 3, 1 );
+    laneGrid->addWidget( new QLabel("Driver Error:"), 4, 0 );
+    laneGrid->addWidget( laneDriverErrorProb, 4, 1 );
+    laneGrid->addWidget( laneInfo, 5, 1 );
+    laneGrid->setColumnStretch(4,1);
 
     lanePage->setLayout( laneGrid );
 
@@ -161,23 +189,105 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     slGrid->addWidget( new QLabel("ID:"), 0, 0 );
     slGrid->addWidget( slIDSB, 0, 1 );
     slGrid->addWidget( slInfo, 1, 1 );
-    slGrid->setColumnStretch(3,1);
+    slGrid->setColumnStretch(2,1);
 
     stopLinePage->setLayout( slGrid );
+
+
+    pedestLanePage = new QWidget();
+
+    pedestLaneIDSB = new QSpinBox();
+    pedestLaneIDSB->setMinimum(0);
+    pedestLaneIDSB->setFixedWidth(80);
+    pedestLaneInfo = new QLabel();
+
+    pedestLaneSectionSB = new QSpinBox();
+    pedestLaneSectionSB->setMinimum(0);
+    pedestLaneSectionSB->setFixedWidth(80);
+
+    pedestLaneInfo->setMinimumSize( infoAreaSizePL );
+
+    QGridLayout *plGrid = new QGridLayout();
+    plGrid->addWidget( new QLabel("ID:"), 0, 0 );
+    plGrid->addWidget( pedestLaneIDSB, 0, 1 );
+
+    pedestLaneTrafficVolume = new QTableWidget();
+    pedestLaneTrafficVolume->setColumnCount(2);
+
+    tableLabels.clear();
+    tableLabels << "Pedestrian Kind";
+    tableLabels << "Volume[person/h]";
+
+    pedestLaneTrafficVolume->setHorizontalHeaderLabels( tableLabels );
+
+    plGrid->addWidget( pedestLaneTrafficVolume, 1, 1 );
+
+    plGrid->addWidget( new QLabel("Section:"), 2, 0 );
+    plGrid->addWidget( pedestLaneSectionSB, 2, 1 );
+
+    cbIsCrossWalk = new QCheckBox("Cross Walk");
+
+    pedestLaneWidth = new QDoubleSpinBox();
+    pedestLaneWidth->setMinimum(0.0);
+    pedestLaneWidth->setMaximum(10.0);
+    pedestLaneWidth->setValue(2.0);
+    pedestLaneWidth->setDecimals(4);
+    pedestLaneWidth->setFixedWidth(120);
+    pedestLaneWidth->setSuffix("[m]");
+
+    pedestRunOutProb = new QDoubleSpinBox();
+    pedestRunOutProb->setMinimum(0.0);
+    pedestRunOutProb->setMaximum(1.0);
+    pedestRunOutProb->setValue(0.0);
+    pedestRunOutProb->setDecimals(4);
+    pedestRunOutProb->setFixedWidth(120);
+
+    pedestRunOutDirect = new QComboBox();
+    QStringList runOutDirItem;
+    runOutDirItem << "Left" << "Right";
+    pedestRunOutDirect->addItems( runOutDirItem );
+    pedestRunOutDirect->setFixedWidth(120);
+
+    plGrid->addWidget( new QLabel("Width"), 3, 0 );
+    plGrid->addWidget( pedestLaneWidth, 3, 1 );
+    plGrid->addWidget( cbIsCrossWalk, 4, 1 );
+    plGrid->addWidget( new QLabel("Run-out Prob."), 5, 0 );
+    plGrid->addWidget( pedestRunOutProb, 5, 1 );
+    plGrid->addWidget( new QLabel("Run-out Direct"), 6, 0 );
+    plGrid->addWidget( pedestRunOutDirect, 6, 1 );
+    plGrid->addWidget( pedestLaneInfo, 7, 1 );
+
+    plGrid->setColumnStretch(8,1);
+
+    applyPedestLaneDataChange = new QPushButton("Apply");
+    applyPedestLaneDataChange->setIcon(QIcon(":/images/accept.png"));
+    connect( applyPedestLaneDataChange,SIGNAL(clicked()),this,SLOT(PedestLaneApplyClicked()));
+
+    QHBoxLayout* apldcLay = new QHBoxLayout();
+    apldcLay->addStretch(1);
+    apldcLay->addWidget( applyPedestLaneDataChange );
+    apldcLay->addStretch(1);
+
+    QVBoxLayout *plMainLay = new QVBoxLayout();
+    plMainLay->addLayout( plGrid );
+    plMainLay->addLayout( apldcLay );
+
+    pedestLanePage->setLayout( plMainLay );
 
 
     connect(nodeIDSB,SIGNAL(valueChanged(int)),this,SLOT(ChangeNodeInfo(int)));
     connect(laneIDSB,SIGNAL(valueChanged(int)),this,SLOT(ChangeLaneInfo(int)));
     connect(tsIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeTrafficSignalInfo(int)));
     connect(slIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeStopLineInfo(int)));
+    connect(pedestLaneIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangePedestLaneInfo(int)));
 
 
     tab->addTab( nodePage, QString("Node") );
     tab->addTab( lanePage, QString("Lane") );
     tab->addTab( trafficSignalPage, QString("Traffic Signal") );
     tab->addTab( stopLinePage, QString("Stop Line") );
+    tab->addTab( pedestLanePage, QString("Pedestrian Lane") );
 
-    //connect( tab, SIGNAL(currentChanged(int)), this, SLOT(ChangeVisibilityODRoute(int)) );
 
     QVBoxLayout *mainLayout = new QVBoxLayout();
 
@@ -191,7 +301,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
 
 void RoadObjectProperty::ChangeTabPage(int page)
 {
-    if( page < 0 || page >= 4 ){
+    if( page < 0 || page >= 5 ){
         return;
     }
 

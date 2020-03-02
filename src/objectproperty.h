@@ -30,6 +30,7 @@
 #include <QDebug>
 
 #include "roadinfo.h"
+#include "settingdialog.h"
 
 
 class RoadObjectProperty : public QWidget
@@ -43,6 +44,11 @@ public:
     QSpinBox *laneIDSB;
     QSpinBox *tsIDSB;
     QSpinBox *slIDSB;
+    QSpinBox *pedestLaneIDSB;
+    QSpinBox *pedestLaneSectionSB;
+
+
+    SettingDialog *setDlg;
 
 
 signals:
@@ -64,6 +70,9 @@ public slots:
     void CBDestinationNodeChanged(bool);
 
     void SpeedLimitChanged(int);
+    void ActualSpeedChanged(int);
+    void AutomaticDrivingEnableFlagChanged(bool);
+    void DriverErrorProbChanged(double);
 
     void SetDefaultTSPattern();
     void SetTSPattern(int ndIdx,int tsIdx);
@@ -71,6 +80,12 @@ public slots:
     void TSPatternAddRowClicked();
     void TSPatternDelRowClicked();
     void TSPatternApplyClicked();
+
+    void ChangePedestLaneInfo(int);
+    void ChangePedestLaneInfo(int,int);
+    void PedestLaneApplyClicked();
+    void SetPedestLaneTrafficVolume(int);
+
 
 private:
 
@@ -84,6 +99,9 @@ private:
 
     QWidget *lanePage;
     QSpinBox *laneSpeed;
+    QSpinBox *laneActualSpeed;
+    QCheckBox *laneAutomaticDrivingEnabled;
+    QDoubleSpinBox *laneDriverErrorProb;
     QLabel *laneInfo;
 
     QWidget *trafficSignalPage;
@@ -96,6 +114,15 @@ private:
 
     QWidget *stopLinePage;
     QLabel *slInfo;
+
+    QWidget *pedestLanePage;
+    QLabel *pedestLaneInfo;
+    QCheckBox *cbIsCrossWalk;
+    QDoubleSpinBox *pedestLaneWidth;
+    QDoubleSpinBox *pedestRunOutProb;
+    QComboBox *pedestRunOutDirect;
+    QTableWidget *pedestLaneTrafficVolume;
+    QPushButton *applyPedestLaneDataChange;
 };
 
 #endif // OBJECTPROPERTY_H

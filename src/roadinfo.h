@@ -66,14 +66,14 @@ public:
     void RotateLaneEdge(int id,float rotate,int edgeFlag);
     void SetLaneNumber(int id,int laneNumner);
     void CalculateShape(struct LaneShapeInfo*);
-    void CheckLaneConnection();
+    bool CheckLaneConnection();
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);
 
     int GetNearestLane(QVector2D pos);
     int GetDistanceLaneFromPoint(int id,QVector2D pos,float &dist,int &isEdge);
-    void CheckLaneCrossPoints();
+    bool CheckLaneCrossPoints();
     struct CrossPointInfo* CheckLaneCrossPoint(int id,QPointF p1,QPointF p2, bool debugFlag=false);
     QString GetLaneProperty(int id);
 
@@ -82,6 +82,22 @@ public:
     void CreateWPData();
     int CreateWP(int assignID, QVector3D pos, float dir,QList<int> relatedLanes);
     void ClearWPs();
+
+
+
+    // Pedest Lane
+    int CreatePedestLane(int assignId, QList<QVector3D*> posData);
+    void DeletePedestLane(int id);
+    void UpdatePedestLaneShapeParams(int id);
+    void MovePedestLane(int id, float moveX,float moveY);
+    void MovePedestLanePoint(int id,int pIdx,float moveX,float moveY);
+    void SetPedestLaneIsCrossWalk(int id,int pIdx,bool flag);
+    void SetPedestLaneRunOutData(int id,int pIdx,float prob,int dir);
+    void SetPedestLaneWidth(int id,int pIdx,float w);
+    void SetPedestLaneTrafficVolumne(int id,QList<int> volume);
+    int GetNearestPedestLane(QVector2D pos,float &dist);
+    void GetNearestPedestLanePoint(QVector2D pos, float &dist,int &nearPedestLaneID,int &nearPedestLanePointIndex);
+    void FindPedestSignalFroCrossWalk();
 
 
     // Traffic Signal
@@ -110,6 +126,7 @@ public:
     int indexOfTS(int id,int relatedNodeID);
     int indexOfSL(int id,int relatedNodeID);
     int indexOfWP(int id);
+    int indexOfPedestLane(int id);
 
 
     bool SaveRoadData(QString filename);
@@ -124,6 +141,8 @@ public:
     QList<NodeInfo*> nodes;
     QList<LaneInfo*> lanes;
     QList<WayPoint*> wps;
+    QList<PedestrianLane*> pedestLanes;
+
 
     float tbl_cos[DEFAULT_LANE_SHAPE_POINTS+1];
     float tbl_sin[DEFAULT_LANE_SHAPE_POINTS+1];

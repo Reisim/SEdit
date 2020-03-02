@@ -84,7 +84,7 @@ public slots:
 
 
 private:
-    QMenu *createNodePopup;
+    QMenu *createObjectPopup;
     QMenu *insertNodePopup;
     QMenu *recentFileOpen;
     QMenu *utilityPopup;

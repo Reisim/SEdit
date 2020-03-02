@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -168,11 +170,30 @@ int RoadInfo::GetNearestStopLine(QVector2D pos, float &dist)
 
 void RoadInfo::CheckAllStopLineCrossLane()
 {
+
+    QProgressDialog *pd = new QProgressDialog("CheckAllStopLineCrossLane", "Cancel", 0, nodes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
     for(int i=0;i<nodes.size();++i){
         for(int j=0;j<nodes[i]->stopLines.size();++j){
             CheckStopLineCrossLanes( nodes[i]->stopLines[j]->id );
         }
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            break;
+        }
     }
+
+    pd->close();
 }
 
 

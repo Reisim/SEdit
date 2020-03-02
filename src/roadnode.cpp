@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -628,6 +630,15 @@ void RoadInfo::SetTurnDirectionInfo()
     }
 
 
+    QProgressDialog *pd = new QProgressDialog("SetTurnDirectionInfo", "Cancel", 0, nodes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
+
     // Set Data
     for(int i=0;i<nodes.size();++i){
 
@@ -730,9 +741,9 @@ void RoadInfo::SetTurnDirectionInfo()
                                         enterIntersectionSameTime = true;
                                         break;
                                     }
-                                    else if( cMoveTime[m].startTime <= myMoveTime[n].startTime &&
-                                             cMoveTime[m].endTime <= myMoveTime[n].endTime &&
-                                             myMoveTime[n].startTime < cMoveTime[m].endTime ){
+                                    else if( cMoveTime[n].startTime <= myMoveTime[m].startTime &&
+                                             cMoveTime[n].endTime <= myMoveTime[m].endTime &&
+                                             myMoveTime[m].startTime < cMoveTime[n].endTime ){
                                          enterIntersectionSameTime = true;
                                          break;
                                      }
@@ -831,5 +842,15 @@ void RoadInfo::SetTurnDirectionInfo()
                 }
             }
         }
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            break;
+        }
     }
+
+    pd->close();
 }

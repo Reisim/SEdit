@@ -90,6 +90,12 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showStopLineLabels = new QCheckBox("Label");
     showStopLineLabels->setChecked(true);
 
+    showPedestLanes = new QCheckBox("Pedestrian Lane");
+    showPedestLanes->setChecked(true);
+
+    showPedestLaneLabels = new QCheckBox("Label");
+    showPedestLaneLabels->setChecked(true);
+
     showLabels = new QCheckBox("Labels");
     showLabels->setChecked(true);
 
@@ -119,6 +125,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showTrafficSignalLabels, row++, 2 );
     grid->addWidget( showStopLines, row, 1 );
     grid->addWidget( showStopLineLabels, row++, 2 );
+    grid->addWidget( showPedestLanes, row, 1 );
+    grid->addWidget( showPedestLaneLabels, row++, 2 );
 
     grid->addWidget( showLabels, row++, 1 );
     grid->addWidget( showMapImage, row, 1 );
@@ -137,12 +145,15 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     selectStopLine = new QCheckBox("Stop Line");
     selectStopLine->setChecked(true);
 
+    selectPedestLane = new QCheckBox("Pedestrian Lane");
+    selectPedestLane->setChecked(true);
+
     grid->addWidget( new QLabel("Selection:"), row++, 0 );
     grid->addWidget( selectNode, row++, 1 );
     grid->addWidget( selectLane, row++, 1 );
     grid->addWidget( selectTrafficSignal, row++, 1 );
     grid->addWidget( selectStopLine, row++, 1 );
-
+    grid->addWidget( selectPedestLane, row++, 1 );
 
 
     QHBoxLayout *mainLayout = new QHBoxLayout();

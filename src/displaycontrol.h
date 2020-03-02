@@ -50,6 +50,7 @@ public:
     QSpinBox *laneWidth;
     QCheckBox *showTrafficSignals;
     QCheckBox *showStopLines;
+    QCheckBox *showPedestLanes;
     QCheckBox *showMapImage;
     QCheckBox *backMapImage;
 
@@ -57,12 +58,14 @@ public:
     QCheckBox *showLaneLabels;
     QCheckBox *showTrafficSignalLabels;
     QCheckBox *showStopLineLabels;
+    QCheckBox *showPedestLaneLabels;
     QCheckBox *showLabels;
 
     QCheckBox *selectNode;
     QCheckBox *selectLane;
     QCheckBox *selectTrafficSignal;
     QCheckBox *selectStopLine;
+    QCheckBox *selectPedestLane;
 
     QPushButton *prevLaneList;
     QPushButton *nextLaneList;

@@ -142,3 +142,16 @@ int RoadInfo::indexOfSL(int id,int relatedNodeID)
     }
 }
 
+
+int RoadInfo::indexOfPedestLane(int id)
+{
+    int index = -1;
+    for(int i=0;i<pedestLanes.size();++i){
+        if( pedestLanes[i]->id == id ){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+

@@ -30,6 +30,37 @@ void GraphicCanvas::mousePressEvent(QMouseEvent *e)
         wxyValid = false;
     }
 
+    if( pedestPathPointPickFlag == true ){
+
+        bool addOK = true;
+        for(int i=0;i<pedestLanePoints.size();++i){
+            float dx = wxMousePress - pedestLanePoints[i]->x();
+            float dy = wyMousePress - pedestLanePoints[i]->y();
+            float L = dx * dx + dy * dy;
+            if( L < 0.5 ){
+                addOK = false;
+                break;
+            }
+        }
+
+        if( addOK == true ){
+            QVector3D *p = new QVector3D();
+
+            p->setX( wxMousePress );
+            p->setY( wyMousePress );
+            p->setZ( 0.0 );
+
+            pedestLanePoints.append( p );
+        }
+
+        update();
+
+        objectMoveFlag = false;
+        mousePressed = true;
+
+        return;
+    }
+
     rotDir = 0;
 
     if( e->modifiers() & Qt::ControlModifier ){
@@ -409,6 +440,7 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
             }
         }
 
+        QOpenGLWidget::update();
     }
     else if( e->buttons() & Qt::LeftButton ){
 
@@ -674,6 +706,28 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                 }
             }
 
+            // Move PedestLane Point
+            {
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_PEDEST_LANE ){
+                        road->MovePedestLane( selectedObj.selObjID[i], xMove, yMove );
+                    }
+                }
+            }
+
+            // Move PedestLane Point
+            {
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_PEDEST_LANE_POINT ){
+
+                        int modID = selectedObj.selObjID[i];
+                        int laneID = modID / 100;
+                        int sectIdx = modID - laneID * 100;
+                        road->MovePedestLanePoint( laneID, sectIdx, xMove, yMove );
+                    }
+                }
+            }
+
 
             objectMoveFlag = true;
         }
@@ -692,9 +746,11 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
             X_eye += xMove;
             Y_eye += yMove;
         }
+
+        QOpenGLWidget::update();
     }
 
-    QOpenGLWidget::update();
+
     mousePressPosition = QVector2D(e->localPos());
 
     //qDebug() << "Eye: (" << X_eye << "," << Y_eye << "," << Z_eye << ") ptich=" << cameraPitch << " yaw=" << cameraYaw;
@@ -789,6 +845,7 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
 {
     float Dmin;
     int selID = -1;
+    int selID2 = -1;
     int kind = -1;
 
     if( nodePickModeFlag == true ){
@@ -886,6 +943,30 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                     selID = nearTSID;
                     Dmin = dist;
                     kind = _SEL_OBJ::SEL_STOPLINE;
+                }
+            }
+        }
+
+        if( selectPedestLaneFlag == true ){
+            float dist = 0.0;
+            int nearPedestLaneID = -1;
+            int nearPedestLanePointIndex = -1;
+
+            road->GetNearestPedestLanePoint( QVector2D(wxMouseMove, wyMousePress), dist, nearPedestLaneID, nearPedestLanePointIndex );
+            qDebug() << "nearPedestLaneID = " << nearPedestLaneID << " nearPedestLanePointIndex = " << nearPedestLanePointIndex;
+
+            if( nearPedestLaneID >= 0 ){
+
+                if( selID < 0 || Dmin > dist ){
+
+                    selID = nearPedestLaneID;
+                    Dmin = dist;
+                    kind = _SEL_OBJ::SEL_PEDEST_LANE;
+
+                    if( nearPedestLanePointIndex >= 0 ){
+                        selID2 = nearPedestLanePointIndex;
+                        kind = _SEL_OBJ::SEL_PEDEST_LANE_POINT;
+                    }
                 }
             }
         }
@@ -1091,6 +1172,58 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                     qDebug() << "SL Selected: ID = " << selID;
                 }
             }
+            else if( kind == _SEL_OBJ::SEL_PEDEST_LANE ){
+                bool alreadySelected = false;
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_PEDEST_LANE ){
+                        if( selectedObj.selObjID[i] == selID ){
+                            alreadySelected = true;
+                            if( shiftModifier == true ){
+                                selectedObj.selObjKind.removeAt(i);
+                                selectedObj.selObjID.removeAt(i);
+                            }
+                            break;
+                        }
+                    }
+                }
+                if( alreadySelected == false ){
+                    if( shiftModifier == false ){
+                        selectedObj.selObjKind.clear();
+                        selectedObj.selObjID.clear();
+                    }
+                    selectedObj.selObjKind.append( _SEL_OBJ::SEL_PEDEST_LANE );
+                    selectedObj.selObjID.append( selID );
+                    qDebug() << "Pedest Lane Selected: ID = " << selID;
+                }
+            }
+            else if( kind == _SEL_OBJ::SEL_PEDEST_LANE_POINT ){
+
+                int modId = selID * 100 + selID2;
+
+                bool alreadySelected = false;
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_PEDEST_LANE_POINT ){
+                        if( selectedObj.selObjID[i] == modId ){
+                            alreadySelected = true;
+                            if( shiftModifier == true ){
+                                selectedObj.selObjKind.removeAt(i);
+                                selectedObj.selObjID.removeAt(i);
+                            }
+                            break;
+                        }
+                    }
+                }
+                if( alreadySelected == false ){
+                    if( shiftModifier == false ){
+                        selectedObj.selObjKind.clear();
+                        selectedObj.selObjID.clear();
+                    }
+                    selectedObj.selObjKind.append( _SEL_OBJ::SEL_PEDEST_LANE_POINT );
+                    selectedObj.selObjID.append( modId );
+                    qDebug() << "Pedest Lane Point Selected: ID = " << modId;
+                }
+            }
+
 
             if( selectedObj.selObjKind.size() == 1 ){
                 if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE ){
@@ -1121,6 +1254,34 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                             roadProperty->ChangeStopLineInfo(selectedObj.selObjID[0]);
                         }
                         roadProperty->slIDSB->setValue( selectedObj.selObjID[0] );
+                    }
+                }
+                else if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_PEDEST_LANE ){
+                    if( roadProperty ){
+                        roadProperty->ChangeTabPage(4);
+                        qDebug() << "Change Tab Page 4";
+
+                        if( roadProperty->pedestLaneIDSB->value() == selectedObj.selObjID[0] ){
+                            roadProperty->ChangePedestLaneInfo(selectedObj.selObjID[0], -1);
+                        }
+                        roadProperty->pedestLaneIDSB->setValue( selectedObj.selObjID[0] );
+                        roadProperty->pedestLaneSectionSB->setValue(0);
+                    }
+                }
+                else if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_PEDEST_LANE_POINT ){
+                    if( roadProperty ){
+                        roadProperty->ChangeTabPage(4);
+                        qDebug() << "Change Tab Page 4";
+
+                        int modId = selectedObj.selObjID[0];
+                        int pedestLaneId = modId / 100;
+                        int pedestLanePointIndex = modId - pedestLaneId * 100;
+
+                        if( roadProperty->pedestLaneIDSB->value() == pedestLaneId ){
+                            roadProperty->ChangePedestLaneInfo(pedestLaneId, pedestLanePointIndex);
+                        }
+                        roadProperty->pedestLaneIDSB->setValue( pedestLaneId );
+                        roadProperty->pedestLaneSectionSB->setValue( pedestLanePointIndex );
                     }
                 }
             }

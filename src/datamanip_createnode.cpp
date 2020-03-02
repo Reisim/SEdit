@@ -176,6 +176,1136 @@ int DataManipulator::CreateNode_4x1x1()
     return cID;
 }
 
+
+int DataManipulator::CreateNode_4x2x1()
+{
+    float x = 0.0;
+    float y = 0.0;
+    if( canvas ){
+        QVector2D clickPos = canvas->GetMouseClickPosition();
+        canvas->Get3DPhysCoordFromPickPoint( clickPos.x(), clickPos.y(), x, y );
+        //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
+    }
+
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
+    int cID = -1;
+    {
+        QList<int> inlanes;
+        inlanes << 2 << 1 << 2 << 1;
+
+        QList<int> outlanes;
+        outlanes << 2 << 1 << 2 << 1;
+
+        cID = CreateNode(x,y,4,inlanes,outlanes);
+
+        for(int i=0;i<4;++i){
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("OutNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("InNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("InNodeOutDirect") );
+        }
+
+        QVector4D startPoint;
+        QVector4D endPoint;
+
+
+        int nLane = 1;
+        int nLane2 = 1;
+        float offset = 0.0;
+        float offset2 = 0.0;
+
+        for(int i=0;i<4;++i){
+
+            if( i == 0 || i == 2 ){
+                nLane = 2;
+                nLane2 = 1;
+                offset = 3.0;
+                offset2 = 3.0;
+            }
+            else{
+                nLane = 1;
+                nLane2 = 2;
+                offset = 3.0;
+                offset2 = 3.0;
+            }
+
+            for(int j=0;j<nLane;++j){
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0 + offset) * c + (1.5 + 3.0 * j) * s * LRrev  );
+                startPoint.setY( y + (6.0 + offset) * s - (1.5 + 3.0 * j) * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW(  angle - 180.0 * 0.017452 );
+
+                float L = 12.0 + offset * 2.0;
+                endPoint.setX( startPoint.x() - L * c );
+                endPoint.setY( startPoint.y() - L * s );
+                endPoint.setZ( 0.0 );
+                endPoint.setW( angle - 180.0 * 0.017452 );
+
+                int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+2) % 4, cID, true );
+                road->SetNodeRelatedLane( cID, lId );
+
+                if( j == 0 ){
+                    float angle2 = angle + 90.0 * 0.017452;
+                    c = cos( angle2 );
+                    s = sin( angle2 );
+                    for(int k=0;k<nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (1.5 + 3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (1.5 + 3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle2 );
+
+                        lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+1) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+
+                if( j == nLane - 1 ){
+                    float angle3 = angle - 90.0 * 0.017452;
+                    c = cos( angle3 );
+                    s = sin( angle3 );
+                    for(int k=0;k<nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (1.5 + 3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (1.5 + 3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle3 );
+
+                        lId = road->CreateLane( -1, startPoint,cID, i, cID, true, endPoint, cID , (i+3) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+            }
+        }
+    }
+
+
+    {
+        for(int i=0;i<4;++i){
+
+            QList<int> inlanes;
+            if( i == 0 || i == 2 ){
+                inlanes << 2;
+            }
+            else{
+                inlanes << 1;
+            }
+
+            QList<int> outlanes;
+            if( i == 0 || i == 2 ){
+                outlanes << 2;
+            }
+            else{
+                outlanes << 1;
+            }
+
+
+            float dx = 0.0;
+            float dy = 0.0;
+            float rot = 0.0;
+            switch(i){
+            case 0: dx =  80.0; rot = 180.0; break;
+            case 1: dy =  50.0; rot = -90.0; break;
+            case 2: dx = -80.0; rot = 0.0;   break;
+            case 3: dy = -50.0; rot = 90.0;  break;
+            }
+            int tID = CreateNode( x + dx, y + dy, 1,inlanes,outlanes);
+            road->RotateNodeLeg( tID, 0, rot);
+
+            road->SetNodeConnectInfo( tID, 0, cID, QString("OutNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( tID, 0, cID, QString("InNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("InNodeOutDirect") );
+
+            {
+                int nLane = 1;
+                if( i == 0 || i == 2 ){
+                    nLane = 2;
+                }
+                float offset = 3.0;
+
+                for(int k=0;k<nLane;++k){
+
+                    QVector4D startPoint;
+                    QVector4D endPoint;
+
+                    float angle = i * 90.0 * 0.017452;
+                    float c = cos( angle );
+                    float s = sin( angle );
+
+                    startPoint.setX( x + (6.0 + offset) * c - (1.5 + 3.0 * k) * s * LRrev );
+                    startPoint.setY( y + (6.0 + offset) * s + (1.5 + 3.0 * k) * c * LRrev );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle );
+
+                    float L = 35.0;
+                    if( i == 0 || i == 2 ){
+                        L += 30.0;
+                    }
+
+                    endPoint.setX( startPoint.x() + L * c );
+                    endPoint.setY( startPoint.y() + L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle );
+
+                    int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
+
+                    endPoint.setX( x + (6.0 + offset) * c + (1.5 + 3.0 * k) * s * LRrev );
+                    endPoint.setY( y + (6.0 + offset) * s - (1.5 + 3.0 * k) * c * LRrev );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle - 180.0 * 0.017452 );
+
+                    startPoint.setX( endPoint.x() + L * c );
+                    startPoint.setY( endPoint.y() + L * s );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle - 180.0 * 0.017452 );
+
+                    int lId2 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, cID, i, cID, true );
+
+                    road->SetNodeRelatedLane( cID, lId1 );
+                    road->SetNodeRelatedLane( cID, lId2 );
+
+                    road->SetNodeRelatedLane( tID, lId1 );
+                    road->SetNodeRelatedLane( tID, lId2 );
+                }
+            }
+        }
+    }
+
+    road->CheckLaneConnection();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cID;
+}
+
+
+int DataManipulator::CreateNode_4x2x2()
+{
+    float x = 0.0;
+    float y = 0.0;
+    if( canvas ){
+        QVector2D clickPos = canvas->GetMouseClickPosition();
+        canvas->Get3DPhysCoordFromPickPoint( clickPos.x(), clickPos.y(), x, y );
+        //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
+    }
+
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
+    int cID = -1;
+    {
+        QList<int> inlanes;
+        inlanes << 2 << 2 << 2 << 2;
+
+        QList<int> outlanes;
+        outlanes << 2 << 2 << 2 << 2;
+
+        cID = CreateNode(x,y,4,inlanes,outlanes);
+
+        for(int i=0;i<4;++i){
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("OutNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("InNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("InNodeOutDirect") );
+        }
+
+        QVector4D startPoint;
+        QVector4D endPoint;
+
+
+        int nLane = 2;
+        int nLane2 = 2;
+        float offset = 3.0;
+        float offset2 = 3.0;
+
+        for(int i=0;i<4;++i){
+
+            for(int j=0;j<nLane;++j){
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0 + offset) * c + (1.5 + 3.0 * j) * s * LRrev  );
+                startPoint.setY( y + (6.0 + offset) * s - (1.5 + 3.0 * j) * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW(  angle - 180.0 * 0.017452 );
+
+                float L = 12.0 + offset * 2.0;
+                endPoint.setX( startPoint.x() - L * c );
+                endPoint.setY( startPoint.y() - L * s );
+                endPoint.setZ( 0.0 );
+                endPoint.setW( angle - 180.0 * 0.017452 );
+
+                int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+2) % 4, cID, true );
+                road->SetNodeRelatedLane( cID, lId );
+
+                if( j == 0 ){
+                    float angle2 = angle + 90.0 * 0.017452;
+                    c = cos( angle2 );
+                    s = sin( angle2 );
+                    for(int k=0;k<nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (1.5 + 3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (1.5 + 3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle2 );
+
+                        lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+1) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+
+                if( j == nLane - 1 ){
+                    float angle3 = angle - 90.0 * 0.017452;
+                    c = cos( angle3 );
+                    s = sin( angle3 );
+                    for(int k=0;k<nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (1.5 + 3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (1.5 + 3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle3 );
+
+                        lId = road->CreateLane( -1, startPoint,cID, i, cID, true, endPoint, cID , (i+3) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+            }
+        }
+    }
+
+
+    {
+        for(int i=0;i<4;++i){
+
+            QList<int> inlanes;
+            inlanes << 2;
+
+            QList<int> outlanes;
+            outlanes << 2;
+
+            float dx = 0.0;
+            float dy = 0.0;
+            float rot = 0.0;
+            switch(i){
+            case 0: dx =  80.0; rot = 180.0; break;
+            case 1: dy =  80.0; rot = -90.0; break;
+            case 2: dx = -80.0; rot = 0.0;   break;
+            case 3: dy = -80.0; rot = 90.0;  break;
+            }
+            int tID = CreateNode( x + dx, y + dy, 1,inlanes,outlanes);
+            road->RotateNodeLeg( tID, 0, rot);
+
+            road->SetNodeConnectInfo( tID, 0, cID, QString("OutNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( tID, 0, cID, QString("InNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("InNodeOutDirect") );
+
+            {
+                int nLane = 2;
+                float offset = 3.0;
+
+                for(int k=0;k<nLane;++k){
+
+                    QVector4D startPoint;
+                    QVector4D endPoint;
+
+                    float angle = i * 90.0 * 0.017452;
+                    float c = cos( angle );
+                    float s = sin( angle );
+
+                    startPoint.setX( x + (6.0 + offset) * c - (1.5 + 3.0 * k) * s * LRrev );
+                    startPoint.setY( y + (6.0 + offset) * s + (1.5 + 3.0 * k) * c * LRrev );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle );
+
+                    float L = 65.0;
+
+                    endPoint.setX( startPoint.x() + L * c );
+                    endPoint.setY( startPoint.y() + L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle );
+
+                    int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
+
+                    endPoint.setX( x + (6.0 + offset) * c + (1.5 + 3.0 * k) * s * LRrev );
+                    endPoint.setY( y + (6.0 + offset) * s - (1.5 + 3.0 * k) * c * LRrev );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle - 180.0 * 0.017452 );
+
+                    startPoint.setX( endPoint.x() + L * c );
+                    startPoint.setY( endPoint.y() + L * s );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle - 180.0 * 0.017452 );
+
+                    int lId2 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, cID, i, cID, true );
+
+                    road->SetNodeRelatedLane( cID, lId1 );
+                    road->SetNodeRelatedLane( cID, lId2 );
+
+                    road->SetNodeRelatedLane( tID, lId1 );
+                    road->SetNodeRelatedLane( tID, lId2 );
+                }
+            }
+        }
+    }
+
+    road->CheckLaneConnection();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cID;
+}
+
+
+int DataManipulator::CreateNode_4x1x1_r()
+{
+    float x = 0.0;
+    float y = 0.0;
+    if( canvas ){
+        QVector2D clickPos = canvas->GetMouseClickPosition();
+        canvas->Get3DPhysCoordFromPickPoint( clickPos.x(), clickPos.y(), x, y );
+        //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
+    }
+
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
+    int cID = -1;
+    {
+        QList<int> inlanes;
+        inlanes << 2 << 2 << 2 << 2;
+
+        QList<int> outlanes;
+        outlanes << 1 << 1 << 1 << 1;
+
+        cID = CreateNode(x,y,4,inlanes,outlanes);
+
+        for(int i=0;i<4;++i){
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("OutNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("InNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("InNodeOutDirect") );
+        }
+
+        QVector4D startPoint;
+        QVector4D endPoint;
+
+
+        int nLane = 2;
+        int nLane2 = 1;
+        float offset = 3.0;
+        float offset2 = 3.0;
+
+        for(int i=0;i<4;++i){
+
+            for(int j=0;j<nLane;++j){
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0 + offset) * c + (3.0 * j) * s * LRrev  );
+                startPoint.setY( y + (6.0 + offset) * s - (3.0 * j) * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW(  angle - 180.0 * 0.017452 );
+
+
+                if( j > 0 ){
+                    float L = 12.0 + offset * 2.0;
+                    endPoint.setX( startPoint.x() - L * c );
+                    endPoint.setY( startPoint.y() - L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle - 180.0 * 0.017452 );
+
+                    int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+2) % 4, cID, true );
+                    road->SetNodeRelatedLane( cID, lId );
+                }
+
+                if( j == 0 ){
+                    float angle2 = angle + 90.0 * 0.017452;
+                    c = cos( angle2 );
+                    s = sin( angle2 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle2 );
+
+                        int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+1) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+                if( j == nLane - 1 ){
+                    float angle3 = angle - 90.0 * 0.017452;
+                    c = cos( angle3 );
+                    s = sin( angle3 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle3 );
+
+                        int lId = road->CreateLane( -1, startPoint,cID, i, cID, true, endPoint, cID , (i+3) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+            }
+        }
+    }
+
+    {
+        QList<int> inlanes;
+        inlanes << 1;
+
+        QList<int> outlanes;
+        outlanes << 1;
+
+        for(int i=0;i<4;++i){
+
+            float dx = 0.0;
+            float dy = 0.0;
+            float rot = 0.0;
+            switch(i){
+            case 0: dx =  80.0; rot = 180.0; break;
+            case 1: dy =  80.0; rot = -90.0; break;
+            case 2: dx = -80.0; rot = 0.0;   break;
+            case 3: dy = -80.0; rot = 90.0;  break;
+            }
+            int tID = CreateNode( x + dx, y + dy, 1,inlanes,outlanes);
+            road->RotateNodeLeg( tID, 0, rot);
+
+            road->SetNodeConnectInfo( tID, 0, cID, QString("OutNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( tID, 0, cID, QString("InNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("InNodeOutDirect") );
+
+            float offset2 = 3.0;
+            {
+                QVector4D startPoint;
+                QVector4D endPoint;
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0+offset2) * c - 3.0 * s * LRrev );
+                startPoint.setY( y + (6.0+offset2) * s + 3.0 * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW( angle );
+
+                float L = 65.0;
+                endPoint.setX( startPoint.x() + L * c );
+                endPoint.setY( startPoint.y() + L * s );
+                endPoint.setZ( 0.0 );
+                endPoint.setW( angle );
+
+                int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
+
+                endPoint.setX( x + (6.0+offset2) * c + 3.0 * s * LRrev );
+                endPoint.setY( y + (6.0+offset2) * s - 3.0 * c * LRrev );
+                endPoint.setZ( 0.0 );
+                endPoint.setW( angle - 180.0 * 0.017452 );
+
+                L = 30.0;
+                startPoint.setX( endPoint.x() + L * c );
+                startPoint.setY( endPoint.y() + L * s );
+                startPoint.setZ( 0.0 );
+                startPoint.setW( angle - 180.0 * 0.017452 );
+
+                int lId2 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+
+                endPoint.setX( x + (6.0+offset2) * c + 0.0 * s * LRrev );
+                endPoint.setY( y + (6.0+offset2) * s - 0.0 * c * LRrev );
+                endPoint.setZ( 0.0 );
+                endPoint.setW( angle - 180.0 * 0.017452 );
+
+                int lId3 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+                endPoint = startPoint;
+
+                L = 35.0;
+                startPoint.setX( endPoint.x() + L * c );
+                startPoint.setY( endPoint.y() + L * s );
+                startPoint.setZ( 0.0 );
+                startPoint.setW( angle - 180.0 * 0.017452 );
+
+                int lId4 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, -1, -1, cID, false );
+
+
+                road->SetNodeRelatedLane( cID, lId1 );
+                road->SetNodeRelatedLane( cID, lId2 );
+                road->SetNodeRelatedLane( cID, lId3 );
+                road->SetNodeRelatedLane( cID, lId4 );
+
+                road->SetNodeRelatedLane( tID, lId1 );
+                road->SetNodeRelatedLane( tID, lId2 );
+                road->SetNodeRelatedLane( tID, lId3 );
+                road->SetNodeRelatedLane( tID, lId4 );
+            }
+        }
+    }
+
+    road->CheckLaneConnection();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return  cID;
+}
+
+
+int DataManipulator::CreateNode_4x2x1_r()
+{
+    float x = 0.0;
+    float y = 0.0;
+    if( canvas ){
+        QVector2D clickPos = canvas->GetMouseClickPosition();
+        canvas->Get3DPhysCoordFromPickPoint( clickPos.x(), clickPos.y(), x, y );
+        //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
+    }
+
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
+    int cID = -1;
+    {
+        QList<int> inlanes;
+        inlanes << 3 << 2 << 3 << 2;
+
+        QList<int> outlanes;
+        outlanes << 2 << 1 << 2 << 1;
+
+        cID = CreateNode(x,y,4,inlanes,outlanes);
+
+        for(int i=0;i<4;++i){
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("OutNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("InNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("InNodeOutDirect") );
+        }
+
+        QVector4D startPoint;
+        QVector4D endPoint;
+
+
+        int nLane = 1;
+        int nLane2 = 1;
+        float offset = 3.0;
+        float offset2 = 3.0;
+
+        for(int i=0;i<4;++i){
+
+            if( i == 0 || i == 2 ){
+                nLane  = 3;
+                nLane2 = 1;
+                offset  = 3.0;
+                offset2 = 6.0;
+            }
+            else{
+                nLane  = 2;
+                nLane2 = 2;
+                offset  = 6.0;
+                offset2 = 3.0;
+            }
+
+            for(int j=0;j<nLane;++j){
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0 + offset) * c + (3.0 * j) * s * LRrev  );
+                startPoint.setY( y + (6.0 + offset) * s - (3.0 * j) * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW(  angle - 180.0 * 0.017452 );
+
+
+                if( j > 0 ){
+                    float L = 12.0 + offset * 2.0;
+                    endPoint.setX( startPoint.x() - L * c );
+                    endPoint.setY( startPoint.y() - L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle - 180.0 * 0.017452 );
+
+                    int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+2) % 4, cID, true );
+                    road->SetNodeRelatedLane( cID, lId );
+                }
+
+                if( j == 0 ){
+                    float angle2 = angle + 90.0 * 0.017452;
+                    c = cos( angle2 );
+                    s = sin( angle2 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle2 );
+
+                        int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+1) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+                if( j == nLane - 1 ){
+                    float angle3 = angle - 90.0 * 0.017452;
+                    c = cos( angle3 );
+                    s = sin( angle3 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle3 );
+
+                        int lId = road->CreateLane( -1, startPoint,cID, i, cID, true, endPoint, cID , (i+3) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+            }
+        }
+    }
+
+    {
+
+        for(int i=0;i<4;++i){
+
+            QList<int> inlanes;
+            if( i == 0 || i == 2 ){
+                inlanes << 2;
+            }
+            else{
+                inlanes << 1;
+            }
+
+            QList<int> outlanes;
+            if( i == 0 || i == 2 ){
+                outlanes << 2;
+            }
+            else{
+                outlanes << 1;
+            }
+
+            float dx = 0.0;
+            float dy = 0.0;
+            float rot = 0.0;
+            switch(i){
+            case 0: dx =  80.0; rot = 180.0; break;
+            case 1: dy =  80.0; rot = -90.0; break;
+            case 2: dx = -80.0; rot = 0.0;   break;
+            case 3: dy = -80.0; rot = 90.0;  break;
+            }
+            int tID = CreateNode( x + dx, y + dy, 1,inlanes,outlanes);
+            road->RotateNodeLeg( tID, 0, rot);
+
+            road->SetNodeConnectInfo( tID, 0, cID, QString("OutNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( tID, 0, cID, QString("InNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("InNodeOutDirect") );
+
+            float offset2 = 3.0;
+            {
+                int nLane = 1;
+                if( i == 0 || i == 2 ){
+                    nLane = 2;
+                    offset2 = 3.0;
+                }
+                else{
+                    offset2 = 6.0;
+                }
+
+                for(int k=1;k<=nLane;++k){
+
+                    QVector4D startPoint;
+                    QVector4D endPoint;
+
+                    float angle = i * 90.0 * 0.017452;
+                    float c = cos( angle );
+                    float s = sin( angle );
+
+                    startPoint.setX( x + (6.0+offset2) * c - (3.0 * k) * s * LRrev );
+                    startPoint.setY( y + (6.0+offset2) * s + (3.0 * k) * c * LRrev );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle );
+
+                    float L = 65.0;
+                    endPoint.setX( startPoint.x() + L * c );
+                    endPoint.setY( startPoint.y() + L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle );
+
+                    int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
+
+                    if( k == 1 ){
+                        endPoint.setX( x + (6.0+offset2) * c + 3.0 * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - 3.0 * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        L = 30.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId2 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+
+                        endPoint.setX( x + (6.0+offset2) * c + 0.0 * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - 0.0 * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId3 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+                        endPoint = startPoint;
+
+                        L = 35.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId4 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, -1, -1, cID, false );
+
+
+                        road->SetNodeRelatedLane( cID, lId1 );
+                        road->SetNodeRelatedLane( cID, lId2 );
+                        road->SetNodeRelatedLane( cID, lId3 );
+                        road->SetNodeRelatedLane( cID, lId4 );
+
+                        road->SetNodeRelatedLane( tID, lId1 );
+                        road->SetNodeRelatedLane( tID, lId2 );
+                        road->SetNodeRelatedLane( tID, lId3 );
+                        road->SetNodeRelatedLane( tID, lId4 );
+                    }
+                    else{
+
+                        endPoint.setX( x + (6.0+offset2) * c + (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        L = 65.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId2 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, cID, i, cID, true );
+
+                        road->SetNodeRelatedLane( cID, lId1 );
+                        road->SetNodeRelatedLane( cID, lId2 );
+
+                        road->SetNodeRelatedLane( tID, lId1 );
+                        road->SetNodeRelatedLane( tID, lId2 );
+                    }
+
+                }
+
+            }
+        }
+    }
+
+    road->CheckLaneConnection();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return  cID;
+}
+
+
+int DataManipulator::CreateNode_4x2x2_r()
+{
+    float x = 0.0;
+    float y = 0.0;
+    if( canvas ){
+        QVector2D clickPos = canvas->GetMouseClickPosition();
+        canvas->Get3DPhysCoordFromPickPoint( clickPos.x(), clickPos.y(), x, y );
+        //qDebug() << "Cursor: x = " << clickPos.x() << ", y = " << clickPos.y() << ",  World: x = " << x << " , y = " << y;
+    }
+
+    float LRrev = 1.0;
+    if( road->LeftOrRight == RIGHT_HAND_TRAFFIC ){
+        LRrev = -1.0;
+    }
+
+    int cID = -1;
+    {
+        QList<int> inlanes;
+        inlanes << 3 << 3 << 3 << 3;
+
+        QList<int> outlanes;
+        outlanes << 2 << 2 << 2 << 2;
+
+        cID = CreateNode(x,y,4,inlanes,outlanes);
+
+        for(int i=0;i<4;++i){
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("OutNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( cID, i, cID+i+1, QString("InNode") );
+            road->SetNodeConnectInfo( cID, i, 0      , QString("InNodeOutDirect") );
+        }
+
+        QVector4D startPoint;
+        QVector4D endPoint;
+
+        int nLane = 3;
+        int nLane2 = 2;
+        float offset = 3.0;
+        float offset2 = 3.0;
+
+        for(int i=0;i<4;++i){
+
+            if( i == 0 || i == 2 ){
+                nLane  = 3;
+                nLane2 = 2;
+                offset  = 3.0;
+                offset2 = 3.0;
+            }
+            else{
+                nLane  = 3;
+                nLane2 = 2;
+                offset  = 3.0;
+                offset2 = 3.0;
+            }
+
+            for(int j=0;j<nLane;++j){
+
+                float angle = i * 90.0 * 0.017452;
+                float c = cos( angle );
+                float s = sin( angle );
+
+                startPoint.setX( x + (6.0 + offset) * c + (3.0 * j) * s * LRrev  );
+                startPoint.setY( y + (6.0 + offset) * s - (3.0 * j) * c * LRrev );
+                startPoint.setZ( 0.0 );
+                startPoint.setW(  angle - 180.0 * 0.017452 );
+
+
+                if( j > 0 ){
+                    float L = 12.0 + offset * 2.0;
+                    endPoint.setX( startPoint.x() - L * c );
+                    endPoint.setY( startPoint.y() - L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle - 180.0 * 0.017452 );
+
+                    int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+2) % 4, cID, true );
+                    road->SetNodeRelatedLane( cID, lId );
+                }
+
+                if( j == 0 ){
+                    float angle2 = angle + 90.0 * 0.017452;
+                    c = cos( angle2 );
+                    s = sin( angle2 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle2 );
+
+                        int lId = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, cID, (i+1) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+                if( j == nLane - 1 ){
+                    float angle3 = angle - 90.0 * 0.017452;
+                    c = cos( angle3 );
+                    s = sin( angle3 );
+                    for(int k=1;k<=nLane2;++k){
+                        endPoint.setX( x + (6.0 + offset2) * c - (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0 + offset2) * s + (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle3 );
+
+                        int lId = road->CreateLane( -1, startPoint,cID, i, cID, true, endPoint, cID , (i+3) % 4, cID, true );
+                        road->SetNodeRelatedLane( cID, lId );
+                    }
+                }
+
+            }
+        }
+    }
+
+    {
+
+        for(int i=0;i<4;++i){
+
+            QList<int> inlanes;
+            if( i == 0 || i == 2 ){
+                inlanes << 2;
+            }
+            else{
+                inlanes << 2;
+            }
+
+            QList<int> outlanes;
+            if( i == 0 || i == 2 ){
+                outlanes << 2;
+            }
+            else{
+                outlanes << 2;
+            }
+
+            float dx = 0.0;
+            float dy = 0.0;
+            float rot = 0.0;
+            switch(i){
+            case 0: dx =  100.0; rot = 180.0; break;
+            case 1: dy =  100.0; rot = -90.0; break;
+            case 2: dx = -100.0; rot = 0.0;   break;
+            case 3: dy = -100.0; rot = 90.0;  break;
+            }
+            int tID = CreateNode( x + dx, y + dy, 1,inlanes,outlanes);
+            road->RotateNodeLeg( tID, 0, rot);
+
+            road->SetNodeConnectInfo( tID, 0, cID, QString("OutNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("OutNodeInDirect") );
+            road->SetNodeConnectInfo( tID, 0, cID, QString("InNode") );
+            road->SetNodeConnectInfo( tID, 0, i  , QString("InNodeOutDirect") );
+
+            float offset2 = 3.0;
+            {
+                int nLane = 2;
+                if( i == 0 || i == 2 ){
+                    nLane = 2;
+                    offset2 = 3.0;
+                }
+                else{
+                    nLane = 2;
+                    offset2 = 3.0;
+                }
+
+                for(int k=1;k<=nLane;++k){
+
+                    QVector4D startPoint;
+                    QVector4D endPoint;
+
+                    float angle = i * 90.0 * 0.017452;
+                    float c = cos( angle );
+                    float s = sin( angle );
+
+                    startPoint.setX( x + (6.0+offset2) * c - (3.0 * k) * s * LRrev );
+                    startPoint.setY( y + (6.0+offset2) * s + (3.0 * k) * c * LRrev );
+                    startPoint.setZ( 0.0 );
+                    startPoint.setW( angle );
+
+                    float L = 85.0;
+                    endPoint.setX( startPoint.x() + L * c );
+                    endPoint.setY( startPoint.y() + L * s );
+                    endPoint.setZ( 0.0 );
+                    endPoint.setW( angle );
+
+                    int lId1 = road->CreateLane( -1, startPoint, cID, i, cID, true, endPoint, tID, 0, tID, true );
+
+                    if( k == 1 ){
+                        endPoint.setX( x + (6.0+offset2) * c + 3.0 * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - 3.0 * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        L = 50.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId2 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+
+                        endPoint.setX( x + (6.0+offset2) * c + 0.0 * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - 0.0 * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId3 = road->CreateLane( -1, startPoint, -1, -1, tID, false, endPoint, cID, i, cID, true );
+
+                        endPoint = startPoint;
+
+                        L = 35.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId4 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, -1, -1, cID, false );
+
+
+                        road->SetNodeRelatedLane( cID, lId1 );
+                        road->SetNodeRelatedLane( cID, lId2 );
+                        road->SetNodeRelatedLane( cID, lId3 );
+                        road->SetNodeRelatedLane( cID, lId4 );
+
+                        road->SetNodeRelatedLane( tID, lId1 );
+                        road->SetNodeRelatedLane( tID, lId2 );
+                        road->SetNodeRelatedLane( tID, lId3 );
+                        road->SetNodeRelatedLane( tID, lId4 );
+                    }
+                    else{
+
+                        endPoint.setX( x + (6.0+offset2) * c + (3.0 * k) * s * LRrev );
+                        endPoint.setY( y + (6.0+offset2) * s - (3.0 * k) * c * LRrev );
+                        endPoint.setZ( 0.0 );
+                        endPoint.setW( angle - 180.0 * 0.017452 );
+
+                        L = 85.0;
+                        startPoint.setX( endPoint.x() + L * c );
+                        startPoint.setY( endPoint.y() + L * s );
+                        startPoint.setZ( 0.0 );
+                        startPoint.setW( angle - 180.0 * 0.017452 );
+
+                        int lId2 = road->CreateLane( -1, startPoint, tID, 0, tID, true, endPoint, cID, i, cID, true );
+
+                        road->SetNodeRelatedLane( cID, lId1 );
+                        road->SetNodeRelatedLane( cID, lId2 );
+
+                        road->SetNodeRelatedLane( tID, lId1 );
+                        road->SetNodeRelatedLane( tID, lId2 );
+                    }
+
+                }
+
+            }
+        }
+    }
+
+    road->CheckLaneConnection();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return  cID;
+}
+
+
 int DataManipulator::CreateNode_3x1x1()
 {
     float x = 0.0;
@@ -400,6 +1530,251 @@ int DataManipulator::CreateNode_3x1x1_noTS()
 int DataManipulator::CreateNode_4x1x1_TS()
 {
     int cNodeID = CreateNode_4x1x1();
+    int ndIdx = road->indexOfNode( cNodeID );
+
+    for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
+
+        // TS for Vehicle
+        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+        if( vtsIdx >= 0 ){
+            if(i % 2 == 0 ){
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+
+
+        // TS for Pedestrian
+        int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
+        int ptsIdx = road->indexOfTS( ptsId, cNodeID );
+        if( ptsIdx >= 0 ){
+            if(i % 2 == 1 ){
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+
+        // StopLine for TS
+        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+        if( sl >= 0 ){
+            road->CheckStopLineCrossLanes( sl );
+        }
+    }
+
+    road->CheckLaneCrossPoints();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cNodeID;
+}
+
+
+int DataManipulator::CreateNode_4x2x1_TS()
+{
+    int cNodeID = CreateNode_4x2x1();
+    int ndIdx = road->indexOfNode( cNodeID );
+
+    for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
+
+        // TS for Vehicle
+        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+        if( vtsIdx >= 0 ){
+            if(i % 2 == 0 ){
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+
+
+        // TS for Pedestrian
+        int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
+        int ptsIdx = road->indexOfTS( ptsId, cNodeID );
+        if( ptsIdx >= 0 ){
+            if(i % 2 == 1 ){
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+
+        // StopLine for TS
+        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+        if( sl >= 0 ){
+            road->CheckStopLineCrossLanes( sl );
+        }
+    }
+
+    road->CheckLaneCrossPoints();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cNodeID;
+}
+
+
+int DataManipulator::CreateNode_4x2x2_TS()
+{
+    int cNodeID = CreateNode_4x2x2();
+    int ndIdx = road->indexOfNode( cNodeID );
+
+    for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
+
+        // TS for Vehicle
+        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+        if( vtsIdx >= 0 ){
+            if(i % 2 == 0 ){
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+
+
+        // TS for Pedestrian
+        int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
+        int ptsIdx = road->indexOfTS( ptsId, cNodeID );
+        if( ptsIdx >= 0 ){
+            if(i % 2 == 1 ){
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+
+        // StopLine for TS
+        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+        if( sl >= 0 ){
+            road->CheckStopLineCrossLanes( sl );
+        }
+    }
+
+    road->CheckLaneCrossPoints();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cNodeID;
+}
+
+
+int DataManipulator::CreateNode_4x1x1_r_TS()
+{
+    int cNodeID = CreateNode_4x1x1_r();
+    int ndIdx = road->indexOfNode( cNodeID );
+
+    for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
+
+        // TS for Vehicle
+        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+        if( vtsIdx >= 0 ){
+            if(i % 2 == 0 ){
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+
+
+        // TS for Pedestrian
+        int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
+        int ptsIdx = road->indexOfTS( ptsId, cNodeID );
+        if( ptsIdx >= 0 ){
+            if(i % 2 == 1 ){
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+
+        // StopLine for TS
+        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+        if( sl >= 0 ){
+            road->CheckStopLineCrossLanes( sl );
+        }
+    }
+
+    road->CheckLaneCrossPoints();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cNodeID;
+}
+
+
+int DataManipulator::CreateNode_4x2x1_r_TS()
+{
+    int cNodeID = CreateNode_4x2x1_r();
+    int ndIdx = road->indexOfNode( cNodeID );
+
+    for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
+
+        // TS for Vehicle
+        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+        if( vtsIdx >= 0 ){
+            if(i % 2 == 0 ){
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+
+
+        // TS for Pedestrian
+        int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
+        int ptsIdx = road->indexOfTS( ptsId, cNodeID );
+        if( ptsIdx >= 0 ){
+            if(i % 2 == 1 ){
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+
+        // StopLine for TS
+        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+        if( sl >= 0 ){
+            road->CheckStopLineCrossLanes( sl );
+        }
+    }
+
+    road->CheckLaneCrossPoints();
+
+    if( canvas ){
+        canvas->update();
+    }
+
+    return cNodeID;
+}
+
+
+int DataManipulator::CreateNode_4x2x2_r_TS()
+{
+    int cNodeID = CreateNode_4x2x2_r();
     int ndIdx = road->indexOfNode( cNodeID );
 
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){

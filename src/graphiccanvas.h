@@ -111,6 +111,21 @@ struct UndoInfo
 };
 
 
+struct LineObject
+{
+    int color;
+    QList<QPointF> coord;
+    QList<QPointF> p;
+};
+
+struct LineObjectCoordInfo
+{
+    QPointF center;
+    float scale_x;
+    float scale_y;
+};
+
+
 class GraphicCanvas : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
@@ -137,6 +152,8 @@ public:
         SEL_LANE_EDGE_END,
         SEL_TRAFFIC_SIGNAL,
         SEL_STOPLINE,
+        SEL_PEDEST_LANE,
+        SEL_PEDEST_LANE_POINT,
         MOVE_OBJECT,
         ROTATE_OBJECT,
         SEL_NODE_ROUTE_PICK,
@@ -151,6 +168,14 @@ public:
     struct ObjectSelect selectedObj;
     struct UndoInfo undoInfo;
 
+    // Line Object
+    QList<struct LineObject *> lineObj;
+    struct LineObjectCoordInfo lineObjCoordInfo;
+
+    // Point Data for create Pedest Lane
+    QList<QVector3D*> pedestLanePoints;
+
+
 protected:
     void mousePressEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
@@ -160,6 +185,7 @@ protected:
 signals:
     void UpdateStatusBar(QString);
     void SetNodeListForRoute(QList<int>);
+    void PedestLanePointPicked();
 
 public slots:
     void SetMapVisibility(bool);
@@ -178,6 +204,8 @@ public slots:
     void SetTrafficSignalLabelVisibility(bool);
     void SetStopLineVisibility(bool);
     void SetStopLineLabelVisibility(bool);
+    void SetPedestLaneVisibility(bool);
+    void SetPedestLaneLabelVisibility(bool);
     void ResetRotate();
     void MoveTo(float x,float y);
     void SetProjectionOrthogonal(bool);
@@ -186,10 +214,14 @@ public slots:
     void SetLaneSelection(bool);
     void SetTrafficSignalSelection(bool);
     void SetStopLineSelection(bool);
+    void SetPedestLaneSelection(bool);
     void SetNodePickMode(int,int);
     void ResetNodePickMode();
     void LoadMapImage(struct baseMapImage *);
     void DeleteMapImage(struct baseMapImage *);
+    void SetPedestLanePointPickMode();
+    void ResetPedestLanePointPickMode();
+    void RemovePickedPedestLanePoint();
 
 
 private:
@@ -262,22 +294,26 @@ private:
     bool showLanesFlag;
     bool showTrafficSignalsFlag;
     bool showStopLinesFlag;
+    bool showPedestLaneFlag;
 
     bool showNodeLabelsFlag;
     bool showLaneLabelsFlag;
     bool showTrafficSignalLabelsFlag;
     bool showStopLineLabelsFlag;
+    bool showPedestLaneLabelsFlag;
     bool showLabelsFlag;
 
     bool selectNodeFlag;
     bool selectLaneFlag;
     bool selectTrafficSignalFlag;
     bool selectStopLineFlag;
+    bool selectPedestLaneFlag;
 
     bool LaneListFlag;
     bool RelatedLanesFlag;
     bool objectMoveFlag;
     bool nodePickModeFlag;
+    bool pedestPathPointPickFlag;
 
     int laneListIndex;
 

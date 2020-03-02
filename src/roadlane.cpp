@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 int RoadInfo::CreateLane(int assignId,
@@ -97,6 +99,7 @@ int RoadInfo::CreateLane(int assignId,
     }
 
     lane->speedInfo = 60.0;
+    lane->actualSpeed = 65.0;
 
 //    qDebug() << "[CreateLane] Call CalculateShape";
 
@@ -679,15 +682,32 @@ int RoadInfo::GetNearestLane(QVector2D pos)
 }
 
 
-void RoadInfo::CheckLaneCrossPoints()
+bool RoadInfo::CheckLaneCrossPoints()
 {
+    bool ret = true;
+
     for(int i=0;i<lanes.size();++i){
 
-        for(int i=0;i<lanes[i]->crossPoints.size();++i){
-            delete lanes[i]->crossPoints[i];
+        for(int j=0;j<lanes[i]->crossPoints.size();++j){
+            delete lanes[i]->crossPoints[j];
         }
         lanes[i]->crossPoints.clear();
+
+        for(int j=0;j<lanes[i]->pedestCrossPoints.size();++j){
+            delete lanes[i]->pedestCrossPoints[j];
+        }
+        lanes[i]->pedestCrossPoints.clear();
     }
+
+
+    QProgressDialog *pd = new QProgressDialog("CheckLaneCrossPoints", "Cancel", 0, lanes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
 
     for(int i=0;i<lanes.size();++i){
 
@@ -747,7 +767,71 @@ void RoadInfo::CheckLaneCrossPoints()
                 p1 = p2;
             }
         }
+
+
+        for(int j=0;j<pedestLanes.size();++j){
+
+            QPointF p1;
+            p1.setX( pedestLanes[j]->shape[0]->pos.x() );
+            p1.setY( pedestLanes[j]->shape[0]->pos.y() );
+
+            for(int k=0;k<pedestLanes[j]->shape.size()-1;++k){
+
+                QPointF p2;
+
+                p2.setX( pedestLanes[j]->shape[k+1]->pos.x() );
+                p2.setY( pedestLanes[j]->shape[k+1]->pos.y() );
+
+                if( lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k]->pos.x() &&
+                        lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k+1]->pos.x() ){
+                    p1 = p2;
+                    continue;
+                }
+
+                if( lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k]->pos.x() &&
+                        lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k+1]->pos.x() ){
+                     p1 = p2;
+                    continue;
+                }
+
+                if( lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k]->pos.y() &&
+                        lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k+1]->pos.y() ){
+                     p1 = p2;
+                    continue;
+                }
+
+                if( lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k]->pos.y() &&
+                        lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k+1]->pos.y() ){
+                     p1 = p2;
+                    continue;
+                }
+
+                struct CrossPointInfo* cp = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
+                if( cp != NULL ){
+                    cp->crossLaneID = pedestLanes[j]->id;
+                    cp->crossSectIndex = k;
+                    lanes[i]->pedestCrossPoints.append( cp );
+                }
+
+                p1 = p2;
+            }
+        }
+
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            ret = false;
+            break;
+        }
+
     }
+
+    pd->close();
+
+    return ret;
 }
 
 
@@ -900,12 +984,23 @@ QString RoadInfo::GetLaneProperty(int id)
 }
 
 
-void RoadInfo::CheckLaneConnection()
+bool RoadInfo::CheckLaneConnection()
 {
     for(int i=0;i<lanes.size();++i){
         lanes[i]->nextLanes.clear();
         lanes[i]->previousLanes.clear();
     }
+
+    bool ret = true;
+
+    QProgressDialog *pd = new QProgressDialog("CheckLaneConnection", "Cancel", 0, lanes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
 
     for(int i=0;i<lanes.size();++i){
 
@@ -936,5 +1031,19 @@ void RoadInfo::CheckLaneConnection()
                 lanes[j]->previousLanes.append( lanes[i]->id );
             }
         }
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            ret = false;
+            break;
+        }
     }
+
+    pd->close();
+
+    return ret;
 }
+

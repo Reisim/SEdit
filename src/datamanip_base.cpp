@@ -1392,7 +1392,7 @@ void DataManipulator::SearchNode()
 {
     int nodeId = QInputDialog::getInt(NULL,"Find Node","Node ID");
     int nIdx = road->indexOfNode( nodeId );
-    if( nIdx > 0 ){
+    if( nIdx >= 0 ){
 
         float x = road->nodes[nIdx]->pos.x();
         float y = road->nodes[nIdx]->pos.y();
@@ -1421,7 +1421,7 @@ void DataManipulator::SearchLane()
 
     qDebug() << "Lane ID = " << laneId << "  lIdx = " << lIdx;
 
-    if( lIdx > 0 ){
+    if( lIdx >= 0 ){
 
         float x = road->lanes[lIdx]->shape.pos.first()->x();
         float y = road->lanes[lIdx]->shape.pos.first()->y();
@@ -1443,3 +1443,184 @@ void DataManipulator::SearchLane()
         canvas->update();
     }
 }
+
+
+void DataManipulator::SearchTrafficSignal()
+{
+    int tsId = QInputDialog::getInt(NULL,"Find Traffic Signal","TS ID");
+
+    int rNd = road->indexOfTS( tsId, -1 );
+    int ndIdx = road->indexOfNode( rNd );
+    int tsIdx = road->indexOfTS( tsId, rNd );
+
+    if( ndIdx >= 0 && tsIdx >= 0 ){
+
+        float x = road->nodes[ndIdx]->trafficSignals[tsIdx]->pos.x();
+        float y = road->nodes[ndIdx]->trafficSignals[tsIdx]->pos.y();
+
+        canvas->ResetRotate();
+        canvas->MoveTo( x, y );
+
+        canvas->selectedObj.selObjKind.clear();
+        canvas->selectedObj.selObjID.clear();
+
+        canvas->selectedObj.selObjKind.append( canvas->SEL_TRAFFIC_SIGNAL );
+        canvas->selectedObj.selObjID.append( tsId );
+
+        roadObjProp->ChangeTabPage(2);
+        roadObjProp->ChangeLaneInfo(tsId);
+
+        canvas->update();
+    }
+}
+
+
+void DataManipulator::MoveXY()
+{
+    QString xyTxt = QInputDialog::getText(NULL,"Enter Coordinate","X,Y");
+    QStringList xyDiv = xyTxt.split(",");
+    if( xyDiv.size() != 2 ){
+        emit UpdateStatusBar( QString("Invalid coordinate data") );
+        return;
+    }
+
+    bool isOK;
+    float x = QString(xyDiv[0]).trimmed().toFloat(&isOK);
+    if( isOK == true ){
+        float y = QString(xyDiv[1]).trimmed().toFloat(&isOK);
+        if( isOK == true ){
+            canvas->ResetRotate();
+            canvas->MoveTo( x, y );
+            canvas->update();
+        }
+    }
+}
+
+
+void DataManipulator::SelectAllLanes()
+{
+    canvas->selectedObj.selObjKind.clear();
+    canvas->selectedObj.selObjID.clear();
+
+    for(int i=0;i<road->lanes.size();++i){
+        canvas->selectedObj.selObjKind.append( canvas->SEL_LANE );
+        canvas->selectedObj.selObjID.append( road->lanes[i]->id );
+    }
+
+    canvas->update();
+}
+
+
+
+void DataManipulator::ReadLineCSV()
+{
+    QString fileName = QFileDialog::getOpenFileName(NULL,
+                                                    tr("Choose Line Data CSV"),
+                                                    ".",
+                                                    tr("Data file(*.csv)"));
+
+    if( fileName.isNull() || fileName.isEmpty() ){
+        return;
+    }
+
+    QFile file(fileName);
+    if( file.open(QIODevice::ReadOnly | QIODevice::Text) == false ){
+        return;
+    }
+
+    QTextStream in(&file);
+
+    QString lineStr = in.readLine();
+    QStringList lineStrDiv = lineStr.split(",");
+    if( lineStrDiv.size() != 4 ){
+        return;
+    }
+
+    canvas->lineObjCoordInfo.center.setY( QString(lineStrDiv[0]).trimmed().toFloat() );
+    canvas->lineObjCoordInfo.center.setX( QString(lineStrDiv[1]).trimmed().toFloat() );
+    canvas->lineObjCoordInfo.scale_x = QString(lineStrDiv[2]).trimmed().toFloat();
+    canvas->lineObjCoordInfo.scale_y = QString(lineStrDiv[3]).trimmed().toFloat();
+
+
+    while(in.atEnd() == false ){
+
+        lineStr = in.readLine();
+
+        lineStrDiv = lineStr.split(",");
+        if( lineStrDiv.size() < 2 ){
+            continue;
+        }
+
+        struct LineObject *l = new LineObject;
+
+        l->color = QString(lineStrDiv[0]).trimmed().toInt();
+
+        for(int i=1;i<lineStrDiv.size();++i){
+
+            QStringList pointDiv = QString(lineStrDiv[i]).trimmed().split(":");
+
+            QPointF p;
+            p.setY( QString(pointDiv[0]).trimmed().toFloat() );
+            p.setX( QString(pointDiv[1]).trimmed().toFloat() );
+
+            l->coord.append( p );
+
+            QPointF p2;
+            p2.setX( (p.x() - canvas->lineObjCoordInfo.center.x()) * canvas->lineObjCoordInfo.scale_x );
+            p2.setY( (p.y() - canvas->lineObjCoordInfo.center.y()) * canvas->lineObjCoordInfo.scale_y );
+
+            l->p.append( p2 );
+        }
+
+
+        canvas->lineObj.append( l );
+    }
+
+
+    file.close();
+}
+
+
+void DataManipulator::ClearLineData()
+{
+    for(int i=0;i<canvas->lineObj.size();++i){
+        canvas->lineObj[i]->p.clear();
+        delete canvas->lineObj[i];
+    }
+    canvas->lineObj.clear();
+
+    canvas->update();
+}
+
+
+void DataManipulator::ChangeLineCoordInfo()
+{
+    QString currentData = QString("Lat:%1, Long:%2, ScaleX:%3, ScaleY:%4")
+            .arg( canvas->lineObjCoordInfo.center.y(), 0, 'g', 10 )
+            .arg( canvas->lineObjCoordInfo.center.x(), 0, 'g', 10 )
+            .arg( canvas->lineObjCoordInfo.scale_x )
+            .arg( canvas->lineObjCoordInfo.scale_y );
+
+    QString modData = QInputDialog::getText(NULL,"Set Coord Info",QString(),QLineEdit::Normal, currentData);
+    if( modData.isNull() || modData.isEmpty() ){
+        return;
+    }
+
+    QStringList divStr = modData.split(",");
+    if( divStr.size() != 4 ){
+        return;
+    }
+
+    float _lat = QString(divStr[0]).remove("Lat:").trimmed().toFloat();
+    float _long = QString(divStr[1]).remove("Long:").trimmed().toFloat();
+    float _sx = QString(divStr[2]).remove("ScaleX:").trimmed().toFloat();
+    float _sy = QString(divStr[3]).remove("ScaleY:").trimmed().toFloat();
+
+    canvas->lineObjCoordInfo.center.setX( _long );
+    canvas->lineObjCoordInfo.center.setY( _lat );
+    canvas->lineObjCoordInfo.scale_x = _sx;
+    canvas->lineObjCoordInfo.scale_y = _sy;
+
+    canvas->update();
+}
+

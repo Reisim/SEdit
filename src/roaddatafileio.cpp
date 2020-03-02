@@ -125,6 +125,9 @@ bool RoadInfo::SaveRoadData(QString filename)
     for(int i=0;i<lanes.size();++i){
         out << "[Lane] ID    : " << lanes[i]->id << "\n";
         out << "Speed Info   : " << lanes[i]->speedInfo << "\n";
+        out << "Actual Speed   : " << lanes[i]->actualSpeed << "\n";
+        out << "Automatic Driving : " << (lanes[i]->automaticDrivingEnabled == true ? "Enabled" : "Unabled") << "\n";
+        out << "Driver Error Tendency : " << lanes[i]->driverErrorProb << "\n";
         out << "LN Node Info : " << lanes[i]->connectedNodeOutDirect << " , " << lanes[i]->connectedNode << " , "
             << lanes[i]->connectedNodeInDirect << " , " << lanes[i]->departureNodeOutDirect << " , " << lanes[i]->departureNode << "\n";
         out << "Lane Number  : " << lanes[i]->laneNum << "\n";
@@ -179,6 +182,27 @@ bool RoadInfo::SaveRoadData(QString filename)
     }
     out << "\n";
 
+    for(int i=0;i<pedestLanes.size();++i){
+        out << "[PedestLane] ID    : " << pedestLanes[i]->id << "\n";
+        for(int j=0;j<pedestLanes[i]->shape.size();++j){
+            out << "PL Shape : " << pedestLanes[i]->shape[j]->pos.x() << " , " << pedestLanes[i]->shape[j]->pos.y() << " , "
+                << pedestLanes[i]->shape[j]->pos.z() << " , " << pedestLanes[i]->shape[j]->width << "\n";
+            out << "PL Property : " << (pedestLanes[i]->shape[j]->isCrossWalk == true ? 1 : 0) << " , "
+                << pedestLanes[i]->shape[j]->runOutProb << " , " << pedestLanes[i]->shape[j]->runOutDirect << "\n";
+        }
+        out << "PL Volumne : ";
+        for(int j=0;j<pedestLanes[i]->trafficVolume.size();++j){
+            out << pedestLanes[i]->trafficVolume[j];
+            if( j < pedestLanes[i]->trafficVolume.size() - 1 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+        out << "\n";
+    }
+    out << "\n";
 
     for(int i=0;i<mapImageMng->baseMapImages.size();++i){
         out << "BASE MAP : "
@@ -189,7 +213,7 @@ bool RoadInfo::SaveRoadData(QString filename)
             << mapImageMng->baseMapImages[i]->scale << " , "
             << mapImageMng->baseMapImages[i]->rotate << "\n";
     }
-     out << "\n";
+    out << "\n";
 
 
     file.close();
@@ -514,6 +538,10 @@ bool RoadInfo::LoadRoadData(QString filename)
             struct LaneInfo* ln = new struct LaneInfo;
             ln->id = dataStr.toInt();
 
+            // default values
+            ln->automaticDrivingEnabled = false;
+            ln->driverErrorProb = 0.0;
+
             lanes.append( ln );
 
 //            qDebug() << "[Lane] ID = " << ln->id;
@@ -525,6 +553,35 @@ bool RoadInfo::LoadRoadData(QString filename)
                 spInfo = 60.0;
             }
             lanes.last()->speedInfo = spInfo;
+            lanes.last()->actualSpeed = spInfo;  // in case "Actual Speed" is missed
+        }
+        else if( tagStr.contains("Actual Speed") == true ){
+
+            float spInfo = dataStr.toFloat();
+            if( spInfo < 0.1 ){
+                spInfo = 65.0;
+            }
+            lanes.last()->actualSpeed = spInfo;
+        }
+        else if( tagStr.contains("Automatic Driving") == true ){
+
+            if( dataStr.contains("Enabled") == true ){
+                lanes.last()->automaticDrivingEnabled = true;
+            }
+            else{
+                lanes.last()->automaticDrivingEnabled = false;
+            }
+        }
+        else if( tagStr.contains("Driver Error Tendency") == true ){
+
+            double val = dataStr.toDouble();
+            if( val < 0.0 ){
+                val = 0.0;
+            }
+            else if( val > 1.0 ){
+                val = 1.0;
+            }
+            lanes.last()->driverErrorProb = val;
         }
         else if( tagStr.contains("LN Boundary") == true ){
 
@@ -676,6 +733,43 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             lanes.last()->stopPoints.last()->distanceFromLaneStartPoint = dataStr.toFloat();
         }
+        else if( tagStr.contains("[PedestLane] ID") == true ){
+
+            struct PedestrianLane *pl = new PedestrianLane;
+
+            pl->id = dataStr.toInt();
+
+            pedestLanes.append( pl );
+        }
+        else if( tagStr.contains("PL Shape") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+
+            struct PedestrianLaneShapeElement *ple = new struct PedestrianLaneShapeElement;
+
+            ple->pos.setX( QString(divDataStr[0]).trimmed().toFloat() );
+            ple->pos.setY( QString(divDataStr[1]).trimmed().toFloat() );
+            ple->pos.setZ( QString(divDataStr[2]).trimmed().toFloat() );
+            ple->width = QString(divDataStr[3]).trimmed().toFloat();
+
+            pedestLanes.last()->shape.append( ple );
+        }
+        else if( tagStr.contains("PL Property") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+
+            pedestLanes.last()->shape.last()->isCrossWalk  = ( QString(divDataStr[0]).trimmed().toInt() == 1 ? true : false);
+            pedestLanes.last()->shape.last()->runOutProb   = QString(divDataStr[1]).trimmed().toFloat();
+            pedestLanes.last()->shape.last()->runOutDirect = QString(divDataStr[2]).trimmed().toFloat();
+
+        }
+        else if( tagStr.contains("PL Volumne") == true  ){
+
+            QStringList divDataStr = dataStr.split(",");
+            for(int i=0;i<divDataStr.size();++i){
+                pedestLanes.last()->trafficVolume.append( QString( divDataStr[i] ).trimmed().toInt() );
+            }
+        }
         else if( tagStr.contains("BASE MAP") == true ){
 
             QStringList divDataStr = dataStr.split(",");
@@ -714,85 +808,41 @@ bool RoadInfo::LoadRoadData(QString filename)
         nodes[i]->hasTS = nodes[i]->trafficSignals.size() > 0 ? true : false;
     }
 
+    for(int i=0;i<pedestLanes.size();++i){
+        UpdatePedestLaneShapeParams( pedestLanes[i]->id );
+    }
 
-    QProgressDialog *pdpp = new QProgressDialog("Processing Data ...", "Cancel", 0, 6, 0);
-    pdpp->setWindowModality(Qt::WindowModal);
-    pdpp->show();
 
-    pdpp->setValue(0);
-    QApplication::processEvents();
+    bool ret = true;
 
     // Calculate Stop Point Data
     CheckAllStopLineCrossLane();
 
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
-        return false;
-    }
-
-    pdpp->setValue(1);
-    QApplication::processEvents();
 
     // Calculate Lane Cross Points
-    CheckLaneCrossPoints();
-
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
+    ret = CheckLaneCrossPoints();
+    if( ret == false ){
         return false;
     }
-
-    pdpp->setValue(2);
-    QApplication::processEvents();
 
     // Create WP Data
     CreateWPData();
 
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
-        return false;
-    }
-
-    pdpp->setValue(3);
-    QApplication::processEvents();
 
     // Check Route Data
     CheckRouteInOutDirection();
 
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
-        return false;
-    }
-
-    pdpp->setValue(4);
-    QApplication::processEvents();
 
     // Set Lane List
     SetAllLaneLists();
 
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
-        return false;
-    }
-
-    pdpp->setValue(5);
-    QApplication::processEvents();
-
-    QApplication::processEvents();
-    if( pdpp->wasCanceled() ){
-        qDebug() << "Canceled.";
-        return false;
-    }
 
     // Set Turn Direction Info
     SetTurnDirectionInfo();
 
-    pdpp->setValue(6);
-    QApplication::processEvents();
+
+    // Find PedestSignal
+    FindPedestSignalFroCrossWalk();
 
 
 
@@ -805,20 +855,22 @@ bool RoadInfo::LoadRoadData(QString filename)
         pdimg->setValue(0);
         QApplication::processEvents();
 
+        bool loadImage = true;
         for(int i=0;i<imLoadData.size();++i){
 
             mapImageMng->AddMapImageFromFile( imLoadData[i]->pathToFile,
                                               imLoadData[i]->x,
                                               imLoadData[i]->y,
                                               imLoadData[i]->s,
-                                              imLoadData[i]->r );
+                                              imLoadData[i]->r,
+                                              loadImage );
 
             pdimg->setValue(i+1);
             QApplication::processEvents();
 
             if( pdimg->wasCanceled() ){
                 qDebug() << "Canceled.";
-                break;
+                loadImage = false;
             }
 
             if( i + 1 == imLoadData.size() ){
@@ -881,7 +933,7 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
 
     out << "#-----------------------------------------------------\n";
-    out << "# Path ; id , startWP , endWP , Ndiv , SpeedInfo[km/h]\n";
+    out << "# Path ; id , startWP , endWP , Ndiv , Speed Limit[km/h] , Actual Speed[km/h]\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<lanes.size();++i){
 
@@ -889,7 +941,8 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
             << lanes[i]->startWPID << " , "
             << lanes[i]->endWPID << " , "
             << (lanes[i]->shape.pos.size()-1) << " , "
-            << lanes[i]->speedInfo << "\n";
+            << lanes[i]->speedInfo << " , "
+            << lanes[i]->actualSpeed << "\n";
     }
     out << "\n";
 
@@ -975,6 +1028,85 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
             }
         }
     }
+    out << "\n";
+
+
+    out << "#-----------------------------------------------------\n";
+    out << "# PedestCrossPoint ; pathID , \n";
+    out << "#   ( crossPedestPathID, sectionIndex, xcp, ycp, zcp, Dx, Dy, L) * nCP\n";
+    out << "#-----------------------------------------------------\n";
+    for(int i=0;i<lanes.size();++i){
+
+        if( lanes[i]->pedestCrossPoints.size() == 0 ){
+            continue;
+        }
+
+        out << "PedestCrossPoint ; " << lanes[i]->id << " , ";
+
+        for(int j=0;j<lanes[i]->pedestCrossPoints.size();++j){
+
+            out << lanes[i]->pedestCrossPoints[j]->crossLaneID << " / "
+                << lanes[i]->pedestCrossPoints[j]->crossSectIndex << " / "
+                << lanes[i]->pedestCrossPoints[j]->pos.x() << " / "
+                << lanes[i]->pedestCrossPoints[j]->pos.y() << " / "
+                << lanes[i]->pedestCrossPoints[j]->pos.z() << " / "
+                << lanes[i]->pedestCrossPoints[j]->derivative.x() << " / "
+                << lanes[i]->pedestCrossPoints[j]->derivative.y() << " / "
+                << lanes[i]->pedestCrossPoints[j]->distanceFromLaneStartPoint;
+
+            if( j < lanes[i]->pedestCrossPoints.size() - 1 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+    }
+    out << "\n";
+
+
+    out << "#-----------------------------------------------------\n";
+    out << "# Pedest-Path ; pedestPathID, \n";
+    out << "# Pedest-Path Shape ; x, y, z, width, length, angle \n";
+    out << "# Pedest-Path Property ; isCrossWalk, pedestSignalID, runOutProb, runOutDir \n";
+    out << "# Pedest-Path Traffic ; Volume1 , Volume2 , ... , Volume_nPedKind\n";
+    out << "#-----------------------------------------------------\n";
+    for(int i=0;i<pedestLanes.size();++i){
+
+        out << "Pedest-Path ; " << pedestLanes[i]->id << "\n";
+
+        for(int j=0;j<pedestLanes[i]->shape.size();++j){
+
+            out << "Pedest-Path Shape ; "
+                << pedestLanes[i]->shape[j]->pos.x() << " , "
+                << pedestLanes[i]->shape[j]->pos.y() << " , "
+                << pedestLanes[i]->shape[j]->pos.z() << " , "
+                << pedestLanes[i]->shape[j]->width << " , "
+                << pedestLanes[i]->shape[j]->distanceToNextPos << " , "
+                << pedestLanes[i]->shape[j]->angleToNextPos << "\n";
+
+            out << "Pedest-Path Property ; "
+                << (pedestLanes[i]->shape[j]->isCrossWalk == true ? 1 : 0) << " , "
+                << pedestLanes[i]->shape[j]->controlPedestSignalID << " , "
+                << pedestLanes[i]->shape[j]->runOutProb << " , "
+                << pedestLanes[i]->shape[j]->runOutDirect << "\n";
+        }
+
+        out << "Pedest-Path Traffic ; ";
+        for(int j=0;j<pedestLanes[i]->trafficVolume.size();++j){
+
+            out << pedestLanes[i]->trafficVolume[j];
+            if( j < pedestLanes[i]->trafficVolume.size() - 1 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+
+        out << "\n";
+    }
+
     out << "\n";
 
 

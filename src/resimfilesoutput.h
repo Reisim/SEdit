@@ -43,6 +43,7 @@ signals:
 
 public slots:
     void SelectOutputFolder();
+    void SelectOutputFilename();
     void OutputFiles();
 
 
@@ -51,6 +52,7 @@ private:
     QLabel *outputFolderStr;
     QLineEdit *outputFilename;
     QPushButton *outputData;
+    QPushButton *selectFilename;
     QPushButton *selectFolder;
     QSpinBox *maxAgent;
 

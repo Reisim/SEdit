@@ -862,7 +862,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
         tmpTSRelatedLane.append( itmp );
     }
 
-    in >> itmp;
+    in >> btmp;
     in >> stmp;
 
     in >> N;
@@ -929,10 +929,10 @@ void DataManipulator::ImportERIS3Data(QString filename)
     if( in.atEnd() == false ){
         in >> N;
         for(int i=0;i<N;++i){
-            in >> btmp;
+            in >> btmp;    // heightSet
             if( btmp == true ){
                 for(int j=0;j<=10;++j){
-                    in >> ftmp;
+                    in >> ftmp;   // Zp
                 }
             }
         }
@@ -1006,6 +1006,9 @@ void DataManipulator::ImportERIS3Data(QString filename)
                 if( lIdx >= 0 ){
                     road->lanes[lIdx]->laneWidth = tmpPathWidth[i];
                     road->lanes[lIdx]->speedInfo = tmpPathSpeedLimit[i];
+                    road->lanes[lIdx]->actualSpeed = road->lanes[lIdx]->speedInfo;
+                    road->lanes[lIdx]->automaticDrivingEnabled = tmpPathAutomaticDriving[i];
+                    road->lanes[lIdx]->driverErrorProb = tmpPathDriverErrorProb[i];
 
                     if( road->lanes[lIdx]->connectedNode >= 0 ){
                         road->SetNodeRelatedLane( road->lanes[lIdx]->connectedNode, lId );
@@ -1024,66 +1027,98 @@ void DataManipulator::ImportERIS3Data(QString filename)
                 break;
             }
 
-            if( i + 1 == N ){
+            if( i + 1 == tmpPathIDs.size() ){
                 qDebug() << "Lanes created.";
             }
         }
     }
 
 
-    for(int i=0;i<tmpStopLineType.size();++i){
+    {
+        QProgressDialog *pd = new QProgressDialog("Creating StopLines ...", "Cancel", 0, tmpStopLineType.size(), 0);
+        pd->setWindowModality(Qt::WindowModal);
+        pd->show();
 
-//        qDebug() << "ID=" << tmpStopLineIDs[i] <<  " SLType = " << tmpStopLineType[i] << " Node=" << tmpStopLineRelatedNode[i] << " Dir=" << tmpStopLineRelatedDirect[i];
+        pd->setValue(0);
+        QApplication::processEvents();
 
-        if( tmpStopLineType[i] != 0 && tmpStopLineType[i] != 4 && tmpStopLineType[i] != 5 ){
-            continue;
-        }
+        for(int i=0;i<tmpStopLineType.size();++i){
 
-        road->CreateStopLine( tmpStopLineIDs[i],
-                              tmpStopLineRelatedNode[i],
-                              tmpStopLineRelatedDirect[i],
-                              _STOPLINE_KIND::STOPLINE_SIGNAL );
+    //        qDebug() << "ID=" << tmpStopLineIDs[i] <<  " SLType = " << tmpStopLineType[i] << " Node=" << tmpStopLineRelatedNode[i] << " Dir=" << tmpStopLineRelatedDirect[i];
 
-        int nIdx = road->indexOfNode( tmpStopLineRelatedNode[i] );
-        int slIdx = road->indexOfSL( tmpStopLineIDs[i], tmpStopLineRelatedNode[i] );
+            pd->setValue(i+1);
+            QApplication::processEvents();
 
-//        qDebug() << "Create SL: nIdx = " << nIdx << " slIdx = " << slIdx;
 
-        if( nIdx >= 0 && slIdx >= 0 ){
-            road->nodes[nIdx]->stopLines[slIdx]->leftEdge.setX( tmpStopLineXL[i] );
-            road->nodes[nIdx]->stopLines[slIdx]->leftEdge.setY( tmpStopLineYL[i] );
-            road->nodes[nIdx]->stopLines[slIdx]->rightEdge.setX( tmpStopLineXR[i] );
-            road->nodes[nIdx]->stopLines[slIdx]->rightEdge.setY( tmpStopLineYR[i] );
+            if( tmpStopLineType[i] != 0 && tmpStopLineType[i] != 4 && tmpStopLineType[i] != 5 ){
+                continue;
+            }
 
-//            qDebug() << "leftEdge = " << road->nodes[nIdx]->stopLines[slIdx]->leftEdge;
-//            qDebug() << "rightEdge = " << road->nodes[nIdx]->stopLines[slIdx]->rightEdge;
+            road->CreateStopLine( tmpStopLineIDs[i],
+                                  tmpStopLineRelatedNode[i],
+                                  tmpStopLineRelatedDirect[i],
+                                  _STOPLINE_KIND::STOPLINE_SIGNAL );
 
+            int nIdx = road->indexOfNode( tmpStopLineRelatedNode[i] );
+            int slIdx = road->indexOfSL( tmpStopLineIDs[i], tmpStopLineRelatedNode[i] );
+
+    //        qDebug() << "Create SL: nIdx = " << nIdx << " slIdx = " << slIdx;
+
+            if( nIdx >= 0 && slIdx >= 0 ){
+                road->nodes[nIdx]->stopLines[slIdx]->leftEdge.setX( tmpStopLineXL[i] );
+                road->nodes[nIdx]->stopLines[slIdx]->leftEdge.setY( tmpStopLineYL[i] );
+                road->nodes[nIdx]->stopLines[slIdx]->rightEdge.setX( tmpStopLineXR[i] );
+                road->nodes[nIdx]->stopLines[slIdx]->rightEdge.setY( tmpStopLineYR[i] );
+
+    //            qDebug() << "leftEdge = " << road->nodes[nIdx]->stopLines[slIdx]->leftEdge;
+    //            qDebug() << "rightEdge = " << road->nodes[nIdx]->stopLines[slIdx]->rightEdge;
+
+            }
+
+
+            if( pd->wasCanceled() ){
+                qDebug() << "Canceled.";
+                break;
+            }
         }
     }
 
-    for(int i=0;i<tmpTSIDs.size();++i){
 
-        road->CreateTrafficSignal( tmpTSIDs[i], tmpTSRelatedNode[i], tmpTSRelatedDirect[i], 0 );
+    {
+        QProgressDialog *pd = new QProgressDialog("Creating Traffic Signals ...", "Cancel", 0, tmpTSIDs.size(), 0);
+        pd->setWindowModality(Qt::WindowModal);
+        pd->show();
 
-        int nIdx = road->indexOfNode( tmpTSRelatedNode[i] );
-        int tsIdx = road->indexOfTS( tmpTSIDs[i], tmpTSRelatedNode[i] );
-        if( nIdx >= 0 && tsIdx >= 0 ){
-            road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setX( tmpTSPosX[i] );
-            road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setY( tmpTSPosY[i] );
-            road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setZ( tmpTSPosZ[i] );
-            road->nodes[nIdx]->trafficSignals[tsIdx]->facingDirect = tmpTSPsi[i];
+        pd->setValue(0);
+        QApplication::processEvents();
+
+        for(int i=0;i<tmpTSIDs.size();++i){
+
+            road->CreateTrafficSignal( tmpTSIDs[i], tmpTSRelatedNode[i], tmpTSRelatedDirect[i], 0 );
+
+            int nIdx = road->indexOfNode( tmpTSRelatedNode[i] );
+            int tsIdx = road->indexOfTS( tmpTSIDs[i], tmpTSRelatedNode[i] );
+            if( nIdx >= 0 && tsIdx >= 0 ){
+                road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setX( tmpTSPosX[i] );
+                road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setY( tmpTSPosY[i] );
+                road->nodes[nIdx]->trafficSignals[tsIdx]->pos.setZ( tmpTSPosZ[i] );
+                road->nodes[nIdx]->trafficSignals[tsIdx]->facingDirect = tmpTSPsi[i];
+            }
+
+            pd->setValue(i+1);
+            QApplication::processEvents();
+
+            if( pd->wasCanceled() ){
+                qDebug() << "Canceled.";
+                break;
+            }
+
+            if( i + 1 == tmpTSIDs.size() ){
+                qDebug() << "Lanes created.";
+            }
         }
 
     }
-
-
-    QProgressDialog *pd = new QProgressDialog("Post processing ...", "Cancel", 0, 8, 0);
-    pd->setWindowModality(Qt::WindowModal);
-    pd->show();
-
-    pd->setValue(0);
-    QApplication::processEvents();
-
 
 
     for(int i=0;i<road->nodes.size();++i){
@@ -1092,95 +1127,84 @@ void DataManipulator::ImportERIS3Data(QString filename)
     }
 
 
-    pd->setValue(1);
-    QApplication::processEvents();
+    bool ret;
 
     // Set Next and Previous Lanes
-    road->CheckLaneConnection();
+    ret = road->CheckLaneConnection();
+    if( ret == true ){
 
-    pd->setValue(2);
-    QApplication::processEvents();
+        while(1){
 
-    while(1){
+            bool CNAllSet = true;
+            for(int i=0;i<road->lanes.size();++i){
+                if( road->lanes[i]->connectedNode < 0 ){
+                    CNAllSet = false;
 
-        bool CNAllSet = true;
+                    for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
+                        int nlIdx = road->indexOfLane( road->lanes[i]->nextLanes[j] );
+                        if( nlIdx >= 0 ){
+                            if( road->lanes[nlIdx]->connectedNode >= 0 ){
+                                road->lanes[i]->connectedNode = road->lanes[nlIdx]->connectedNode;
+                                road->lanes[i]->connectedNodeInDirect = road->lanes[nlIdx]->connectedNodeInDirect;
+                                road->SetNodeRelatedLane( road->lanes[i]->connectedNode, road->lanes[i]->id );
+                                break;
+                            }
+                        }
+                    }
+                }
+                if( road->lanes[i]->departureNode < 0 ){
+                    CNAllSet = false;
+
+                    for(int j=0;j<road->lanes[i]->previousLanes.size();++j){
+                        int plIdx = road->indexOfLane( road->lanes[i]->previousLanes[j] );
+                        if( plIdx >= 0 ){
+                            if( road->lanes[plIdx]->departureNode >= 0 ){
+                                road->lanes[i]->departureNode = road->lanes[plIdx]->departureNode;
+                                road->lanes[i]->departureNodeOutDirect = road->lanes[plIdx]->departureNodeOutDirect;
+                                road->SetNodeRelatedLane( road->lanes[i]->departureNode, road->lanes[i]->id );
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if( CNAllSet == true ){
+                break;
+            }
+        }
+
         for(int i=0;i<road->lanes.size();++i){
-            if( road->lanes[i]->connectedNode < 0 ){
-                CNAllSet = false;
-
-                for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
-                    int nlIdx = road->indexOfLane( road->lanes[i]->nextLanes[j] );
-                    if( nlIdx >= 0 ){
-                        if( road->lanes[nlIdx]->connectedNode >= 0 ){
-                            road->lanes[i]->connectedNode = road->lanes[nlIdx]->connectedNode;
-                            road->lanes[i]->connectedNodeInDirect = road->lanes[nlIdx]->connectedNodeInDirect;
-                            road->SetNodeRelatedLane( road->lanes[i]->connectedNode, road->lanes[i]->id );
-                            break;
-                        }
-                    }
-                }
-            }
-            if( road->lanes[i]->departureNode < 0 ){
-                CNAllSet = false;
-
-                for(int j=0;j<road->lanes[i]->previousLanes.size();++j){
-                    int plIdx = road->indexOfLane( road->lanes[i]->previousLanes[j] );
-                    if( plIdx >= 0 ){
-                        if( road->lanes[plIdx]->departureNode >= 0 ){
-                            road->lanes[i]->departureNode = road->lanes[plIdx]->departureNode;
-                            road->lanes[i]->departureNodeOutDirect = road->lanes[plIdx]->departureNodeOutDirect;
-                            road->SetNodeRelatedLane( road->lanes[i]->departureNode, road->lanes[i]->id );
-                            break;
-                        }
-                    }
-                }
+            road->SetNodeRelatedLane( road->lanes[i]->connectedNode, road->lanes[i]->id );
+            if( road->lanes[i]->connectedNode != road->lanes[i]->departureNode ){
+                road->SetNodeRelatedLane( road->lanes[i]->departureNode, road->lanes[i]->id );
             }
         }
 
-        if( CNAllSet == true ){
-            break;
-        }
+    }
+    else {
+        return;
     }
 
-    for(int i=0;i<road->lanes.size();++i){
-        road->SetNodeRelatedLane( road->lanes[i]->connectedNode, road->lanes[i]->id );
-        if( road->lanes[i]->connectedNode != road->lanes[i]->departureNode ){
-            road->SetNodeRelatedLane( road->lanes[i]->departureNode, road->lanes[i]->id );
-        }
-    }
-
-    pd->setValue(3);
-    QApplication::processEvents();
 
     // Calculate Stop Point Data
     road->CheckAllStopLineCrossLane();
 
-    pd->setValue(4);
-    QApplication::processEvents();
 
     // Calculate Lane Cross Points
     road->CheckLaneCrossPoints();
 
-    pd->setValue(5);
-    QApplication::processEvents();
 
     // Create WP and Boundary WP Check
     road->CreateWPData();
 
-    pd->setValue(6);
-    QApplication::processEvents();
 
     // Set Lane List
     road->SetAllLaneLists();
 
-    pd->setValue(7);
-    QApplication::processEvents();
 
     // Set Turn Direction Info
     road->SetTurnDirectionInfo();
-
-    pd->setValue(8);
-    QApplication::processEvents();
 
 
     float xmean = (maxDataX + minDataX) / 2;
@@ -1266,8 +1290,16 @@ void DataManipulator::ImportERIS3TrafficSignalData(QString filename)
 
     bool headerCheck = true;
     for(int i=0;i<Nheader;++i){
-        if( QString(HeaderStrs[i]).remove("TS ").trimmed().toInt() != TSIDList[i].TSID ){
-            headerCheck = false;
+        bool isHit = false;
+        for(int j=0;j<TSIDList.size();++j){
+            if( QString(HeaderStrs[i]).remove("TS ").trimmed().toInt() == TSIDList[j].TSID ){
+                isHit = true;
+                break;
+            }
+            if( isHit == false ){
+                headerCheck = false;
+                break;
+            }
         }
     }
     if( headerCheck == false ){
@@ -1301,6 +1333,13 @@ void DataManipulator::ImportERIS3TrafficSignalData(QString filename)
         int rC;
         int cC;
         in >> rC >> cC;
+
+        for(int j=0;j<TSIDList.size();++j){
+            if( QString(HeaderStrs[i]).remove("TS ").trimmed().toInt() == TSIDList[j].TSID ){
+                idx = j;
+                break;
+            }
+        }
 
         //qDebug() << " rC = " << rC << " cC = " << cC;
         numTSInNode.append( rC );
@@ -1379,8 +1418,6 @@ void DataManipulator::ImportERIS3TrafficSignalData(QString filename)
                 if( txt.compare("NULL") == 0 )
                     continue;
             }
-
-            idx++;
         }
     }
 
@@ -1394,6 +1431,13 @@ void DataManipulator::ImportERIS3TrafficSignalData(QString filename)
 
         //qDebug() << " rC = " << rC << " cC = " << cC;
         QList<int> dur;
+
+        for(int j=0;j<TSIDList.size();++j){
+            if( QString(HeaderStrs[i]).remove("TS ").trimmed().toInt() == TSIDList[j].TSID ){
+                idx = j;
+                break;
+            }
+        }
 
         for(int j=0;j<rC;++j){
             for(int k=0;k<cC;++k){

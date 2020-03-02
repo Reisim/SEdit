@@ -23,6 +23,10 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
     outputFolderStr = new QLabel("Not selected.");
     outputFolderStr->setMinimumWidth(800);
 
+    selectFilename = new QPushButton();
+    selectFilename->setIcon( QIcon(":/images/Select.png") );
+    connect( selectFilename, SIGNAL(clicked()), this, SLOT(SelectOutputFilename()) );
+
     selectFolder = new QPushButton();
     selectFolder->setIcon( QIcon(":/images/Select.png") );
     connect( selectFolder, SIGNAL(clicked()), this, SLOT(SelectOutputFolder()) );
@@ -37,10 +41,11 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
 
     gridLayout->addWidget( new QLabel("Output Filename : "), 0, 0 );
     gridLayout->addWidget( outputFilename, 0, 1 );
+    gridLayout->addWidget( selectFilename, 0, 2 );
 
     gridLayout->addWidget( new QLabel("Output Folder : "), 1, 0 );
     gridLayout->addWidget( outputFolderStr, 1, 1 );
-    gridLayout->addWidget( selectFolder, 1, 2 );
+    gridLayout->addWidget( selectFolder,    1, 2 );
 
     gridLayout->addWidget( new QLabel("Max Agent Number : "), 2, 0 );
     gridLayout->addWidget( maxAgent, 2, 1 );
@@ -76,6 +81,17 @@ void ResimFilesOutput::SelectOutputFolder()
     }
 
     outputFolderStr->setText( folderName );
+    update();
+}
+
+void ResimFilesOutput::SelectOutputFilename()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,"Save File Name");
+    if( fileName.isNull() == true || fileName.isEmpty() == true ){
+        return;
+    }
+
+    outputFilename->setText( fileName );
     update();
 }
 
@@ -116,6 +132,9 @@ void ResimFilesOutput::OutputFiles()
 
     // Set Turn Direction Info
     road->SetTurnDirectionInfo();
+
+    // Find PedestSignal
+    road->FindPedestSignalFroCrossWalk();
 
 
     // Output Files

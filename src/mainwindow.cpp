@@ -45,6 +45,10 @@ MainWindow::MainWindow(QWidget *parent)
     dtManip = new DataManipulator();
     dtManip->road   = road;
     dtManip->canvas = canvas;
+    dtManip->setDlg = setDlg;
+    connect( dtManip, SIGNAL(UpdateStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)));
+    connect( canvas, SIGNAL(PedestLanePointPicked()), dtManip, SLOT(CreatePedestPath()) );
+
 
     //-------------------------
     mapImageMng = new BaseMapImageManager();
@@ -86,12 +90,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->showTrafficSignalLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetTrafficSignalLabelVisibility(bool)) );
     connect( dispCtrl->showStopLines, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineVisibility(bool)) );
     connect( dispCtrl->showStopLineLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineLabelVisibility(bool)) );
+    connect( dispCtrl->showPedestLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneVisibility(bool)) );
+    connect( dispCtrl->showPedestLaneLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneLabelVisibility(bool)) );
     connect( dispCtrl->showLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetLabelVisibility(bool)) );
 
     connect( dispCtrl->selectNode, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeSelection(bool)) );
     connect( dispCtrl->selectLane, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneSelection(bool)) );
     connect( dispCtrl->selectTrafficSignal, SIGNAL(toggled(bool)), canvas, SLOT(SetTrafficSignalSelection(bool)) );
     connect( dispCtrl->selectStopLine, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineSelection(bool)) );
+    connect( dispCtrl->selectPedestLane, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneSelection(bool)) );
+
 
     dispCtrl->move(50,50);
     dispCtrl->show();
@@ -105,6 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp->move(450,50);
     roadObjProp->show();
 
+    roadObjProp->setDlg  = setDlg;
     canvas->roadProperty = roadObjProp;
     dtManip->roadObjProp = roadObjProp;
 
@@ -232,25 +241,63 @@ MainWindow::MainWindow(QWidget *parent)
     //
     //   Popup menu preparation
     //
-    createNodePopup = new QMenu();
+    createObjectPopup = new QMenu();
 
     QAction *createNode_4x1x1_NoTS = new QAction();
     createNode_4x1x1_NoTS->setText("4-Leg 1x1 noTS");
     connect( createNode_4x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_noTS()));
-    createNodePopup->addAction( createNode_4x1x1_NoTS );
+    createObjectPopup->addAction( createNode_4x1x1_NoTS );
 
     QAction *createNode_3x1x1_NoTS = new QAction();
     createNode_3x1x1_NoTS->setText("3-Leg 1x1 noTS");
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_noTS()));
-    createNodePopup->addAction( createNode_3x1x1_NoTS );
+    createObjectPopup->addAction( createNode_3x1x1_NoTS );
+
+    createObjectPopup->addSeparator();
 
     QAction *createNode_4x1x1_TS = new QAction();
     createNode_4x1x1_TS->setText("4-Leg 1x1 TS");
     connect( createNode_4x1x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_TS()));
-    createNodePopup->addAction( createNode_4x1x1_TS );
+    createObjectPopup->addAction( createNode_4x1x1_TS );
 
+    QAction *createNode_4x1x1_r_TS = new QAction();
+    createNode_4x1x1_r_TS->setText("4-Leg 1x1 with Turn-Lane, TS");
+    connect( createNode_4x1x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_r_TS()));
+    createObjectPopup->addAction( createNode_4x1x1_r_TS );
+
+    QAction *createNode_4x2x1_TS = new QAction();
+    createNode_4x2x1_TS->setText("4-Leg 2x1 TS");
+    connect( createNode_4x2x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_TS()));
+    createObjectPopup->addAction( createNode_4x2x1_TS );
+
+    QAction *createNode_4x2x1_r_TS = new QAction();
+    createNode_4x2x1_r_TS->setText("4-Leg 2x1 with Turn-Lane, TS");
+    connect( createNode_4x2x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_r_TS()));
+    createObjectPopup->addAction( createNode_4x2x1_r_TS );
+
+    QAction *createNode_4x2x2_TS = new QAction();
+    createNode_4x2x2_TS->setText("4-Leg 2x2 TS");
+    connect( createNode_4x2x2_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_TS()));
+    createObjectPopup->addAction( createNode_4x2x2_TS );
+
+    QAction *createNode_4x2x2_r_TS = new QAction();
+    createNode_4x2x2_r_TS->setText("4-Leg 2x2 with Turn-Lane, TS");
+    connect( createNode_4x2x2_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_r_TS()));
+    createObjectPopup->addAction( createNode_4x2x2_r_TS );
+
+
+    createObjectPopup->addSeparator();
+
+    QAction *createPedestLane = new QAction();
+    createPedestLane->setText("Pedest Lane");
+    connect( createPedestLane, SIGNAL(triggered()),dtManip,SLOT(StartCreatePedestPath()));
+    createObjectPopup->addAction( createPedestLane );
+
+
+    //
     insertNodePopup = new QMenu();
 
+    //
     utilityPopup = new QMenu();
 
     QAction *createWPData = new QAction();
@@ -278,7 +325,24 @@ MainWindow::MainWindow(QWidget *parent)
     connect( setTurnDirection, SIGNAL(triggered()),dtManip,SLOT(SetTurnDirectionInfo()));
     utilityPopup->addAction( setTurnDirection );
 
+    utilityPopup->addSeparator();
 
+    QAction *readLineCSV = new QAction();
+    readLineCSV->setText("Read Line CSV");
+    connect( readLineCSV, SIGNAL(triggered()),dtManip,SLOT(ReadLineCSV()));
+    utilityPopup->addAction( readLineCSV );
+
+    QAction *clearLineCSV = new QAction();
+    clearLineCSV->setText("Clear Line Data");
+    connect( clearLineCSV, SIGNAL(triggered()),dtManip,SLOT(ClearLineData()));
+    utilityPopup->addAction( clearLineCSV );
+
+    QAction *changeLineObjCoordInfo = new QAction();
+    changeLineObjCoordInfo->setText("Change Line Coord Info");
+    connect( changeLineObjCoordInfo, SIGNAL(triggered()),dtManip,SLOT(ChangeLineCoordInfo()));
+    utilityPopup->addAction( changeLineObjCoordInfo );
+
+    //
     searchPopup = new QMenu();
 
     QAction *searchNode = new QAction();
@@ -290,6 +354,23 @@ MainWindow::MainWindow(QWidget *parent)
     searchLane->setText("Search Lane");
     connect( searchLane, SIGNAL(triggered()),dtManip,SLOT(SearchLane()));
     searchPopup->addAction( searchLane );
+
+    QAction *searchTS = new QAction();
+    searchTS->setText("Search Traffic Signal");
+    connect( searchTS, SIGNAL(triggered()),dtManip,SLOT(SearchTrafficSignal()));
+    searchPopup->addAction( searchTS );
+
+    QAction *moveXY = new QAction();
+    moveXY->setText("Move to XY");
+    connect( moveXY, SIGNAL(triggered()),dtManip,SLOT(MoveXY()));
+    searchPopup->addAction( moveXY );
+
+    searchPopup->addSeparator();
+
+    QAction *selectAllLanes = new QAction();
+    selectAllLanes->setText("Select All Lanes");
+    connect( selectAllLanes, SIGNAL(triggered()),dtManip,SLOT(SelectAllLanes()));
+    searchPopup->addAction( selectAllLanes );
 
 }
 
@@ -532,6 +613,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
         qDebug() << "[MainWindow::keyPressEvent] key = ESCAPE";
 
+        canvas->ResetPedestLanePointPickMode();
         canvas->ResetNodePickMode();
         canvas->selectedObj.selObjKind.clear();
         canvas->selectedObj.selObjID.clear();
@@ -541,10 +623,14 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         return;
     }
 
+    if( key == Qt::Key_Delete ){
+        canvas->RemovePickedPedestLanePoint();
+    }
+
     if( modifi & Qt::AltModifier ){
         if( key == Qt::Key_N ){
             if( canvas->selectedObj.selObjKind.size() == 0 ){
-                createNodePopup->exec( QCursor::pos() );
+                createObjectPopup->exec( QCursor::pos() );
             }
         }
         else if( key == Qt::Key_U ){

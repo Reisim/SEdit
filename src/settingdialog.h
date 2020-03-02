@@ -40,7 +40,10 @@ public:
     int GetCurrentLeftRightIndex();
     int GetVehicleKindNum();
     int GetPedestrianKindNum();
+    QStringList GetVehicleKindCategory();
+    QStringList GetPedestianKindCategory();
     QStringList GetVehicleKindSubcategory();
+    QStringList GetPedestianKindSubcategory();
 
     QString GetVehicleKindTableStr(int row,int col);
     QString GetPedestKindTableStr(int row,int col);

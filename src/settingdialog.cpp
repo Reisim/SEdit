@@ -305,12 +305,46 @@ QString SettingDialog::GetPedestKindTableStr(int row,int col)
 }
 
 
+QStringList SettingDialog::GetVehicleKindCategory()
+{
+    QStringList category;
+
+    for(int i=0;i<vehicleKindTable->rowCount();++i){
+        category << vehicleKindTable->item(i,0)->text();
+    }
+
+    return category;
+}
+
+QStringList SettingDialog::GetPedestianKindCategory()
+{
+    QStringList category;
+
+    for(int i=0;i<pedestrianKindTable->rowCount();++i){
+        category << pedestrianKindTable->item(i,0)->text();
+    }
+
+    return category;
+}
+
+
 QStringList SettingDialog::GetVehicleKindSubcategory()
 {
     QStringList subcategory;
 
     for(int i=0;i<vehicleKindTable->rowCount();++i){
         subcategory << vehicleKindTable->item(i,1)->text();
+    }
+
+    return subcategory;
+}
+
+QStringList SettingDialog::GetPedestianKindSubcategory()
+{
+    QStringList subcategory;
+
+    for(int i=0;i<pedestrianKindTable->rowCount();++i){
+        subcategory << pedestrianKindTable->item(i,1)->text();
     }
 
     return subcategory;

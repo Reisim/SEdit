@@ -24,7 +24,7 @@ void GraphicCanvas::ResetRotate()
 
 void GraphicCanvas::MoveTo(float x,float y)
 {
-    X_eye = x;
+    X_eye = -x;
     Y_eye = -y;
     update();
 }
@@ -143,6 +143,18 @@ void GraphicCanvas::SetStopLineLabelVisibility(bool b)
     update();
 }
 
+void GraphicCanvas::SetPedestLaneVisibility(bool b)
+{
+    showPedestLaneFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetPedestLaneLabelVisibility(bool b)
+{
+    showPedestLaneLabelsFlag = b;
+    update();
+}
+
 void GraphicCanvas::SetProjectionOrthogonal(bool b)
 {
     isOrthogonal = b;
@@ -201,4 +213,8 @@ void GraphicCanvas::SetStopLineSelection(bool b)
     selectStopLineFlag = b;
 }
 
+void GraphicCanvas::SetPedestLaneSelection(bool b)
+{
+    selectPedestLaneFlag = b;
+}
 

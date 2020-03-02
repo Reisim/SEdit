@@ -25,10 +25,12 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
 
     bool nDirCheck = false;
     float angle = 0.0;
+    int nLane = 1;
     for(int i=0;i<nodes[rndIdx]->legInfo.size();++i){
         if( nodes[rndIdx]->legInfo[i]->legID == relatedNodeDir ){
             nDirCheck = true;
             angle = nodes[rndIdx]->legInfo[i]->angle * 0.017452;
+            nLane = nodes[rndIdx]->legInfo[i]->nLaneIn;
             break;
         }
     }
@@ -75,9 +77,9 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
 
     if( TSType == 0 ){  // for vehicles
 
-        float shift = -2.0;
+        float shift = -2.0 - (nLane - 1) * 3.0;
         if( LeftOrRight == RIGHT_HAND_TRAFFIC ){
-            shift = 2.0;
+            shift = 2.0 + (nLane - 1) * 3.0;
         }
         float x_TS = nodes[rndIdx]->pos.x() + 5.0 * cp - shift * sp;
         float y_TS = nodes[rndIdx]->pos.y() + 5.0 * sp + shift * cp;
@@ -107,9 +109,9 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
     }
     else if( TSType == 1 ){  // for pedestrian
 
-        float shift = -3.0;
+        float shift = -3.0- (nLane - 1) * 3.0;
         if( LeftOrRight == RIGHT_HAND_TRAFFIC ){
-            shift = 3.0;
+            shift = 3.0 + (nLane - 1) * 3.0;
         }
         float x_TS = nodes[rndIdx]->pos.x() + 6.0 * cp - shift * sp;
         float y_TS = nodes[rndIdx]->pos.y() + 6.0 * sp + shift * cp;

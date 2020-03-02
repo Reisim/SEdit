@@ -87,6 +87,7 @@ struct StopPointInfo
 struct CrossPointInfo
 {
     int crossLaneID;
+    int crossSectIndex;
     QVector3D pos;
     QVector2D derivative;
     float distanceFromLaneStartPoint;
@@ -102,7 +103,11 @@ struct LaneInfo
     QList<int> previousLanes;
 
     float laneWidth;
-    float speedInfo;
+    float speedInfo;        // speed limit
+    float actualSpeed;      // actual speed
+
+    float driverErrorProb;
+    bool automaticDrivingEnabled;
 
     int connectedNode;
     int connectedNodeInDirect;
@@ -125,8 +130,31 @@ struct LaneInfo
 
     QList<struct CrossPointInfo*> crossPoints;
 
+    QList<struct CrossPointInfo*> pedestCrossPoints;
+
     int startWPID;
     int endWPID;
+};
+
+
+struct PedestrianLaneShapeElement
+{
+    QVector3D pos;
+    float angleToNextPos;  // in [rad]
+    float width;
+    float distanceToNextPos;
+    bool isCrossWalk;
+    int controlPedestSignalID;
+    int runOutDirect;
+    float runOutProb;
+};
+
+
+struct PedestrianLane
+{
+    int id;
+    QList<PedestrianLaneShapeElement*> shape;
+    QList<int> trafficVolume;
 };
 
 

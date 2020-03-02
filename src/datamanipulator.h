@@ -26,6 +26,7 @@
 #include "graphiccanvas.h"
 #include "basemapimagemanager.h"
 #include "objectproperty.h"
+#include "settingdialog.h"
 
 
 class DataManipulator : public QObject
@@ -38,6 +39,7 @@ public:
     GraphicCanvas *canvas;
     BaseMapImageManager *mapImageMng;
     RoadObjectProperty *roadObjProp;
+    SettingDialog *setDlg;
 
 
     int insertMode;
@@ -52,15 +54,34 @@ public:
     void MergeSelectedObject();
 
     int CreateNode_4x1x1();
+    int CreateNode_4x1x1_r();
+    int CreateNode_4x2x1();
+    int CreateNode_4x2x2();
+    int CreateNode_4x2x1_r();
+    int CreateNode_4x2x2_r();
     int CreateNode_3x1x1();
 
 
 signals:
+    void UpdateStatusBar(QString);
+
 
 public slots:
     int CreateNode_4x1x1_noTS();
     int CreateNode_3x1x1_noTS();
+
     int CreateNode_4x1x1_TS();
+    int CreateNode_4x1x1_r_TS();
+    int CreateNode_4x2x1_TS();
+    int CreateNode_4x2x1_r_TS();
+    int CreateNode_4x2x2_TS();
+    int CreateNode_4x2x2_r_TS();
+
+
+    void StartCreatePedestPath();
+    int CreatePedestPath();
+
+
 
     int CreateNode(float x,float y,int nLeg,QList<int> inlanes,QList<int> outlanes);
     int CreateTrafficSignal(int nodeID,int nodeDir,int type);
@@ -86,7 +107,13 @@ public slots:
 
     void SearchNode();
     void SearchLane();
+    void SearchTrafficSignal();
+    void MoveXY();
+    void SelectAllLanes();
 
+    void ReadLineCSV();
+    void ClearLineData();
+    void ChangeLineCoordInfo();
 };
 
 #endif // DATAMANIPULATPR_H

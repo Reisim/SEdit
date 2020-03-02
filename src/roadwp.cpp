@@ -12,6 +12,8 @@
 
 
 #include "roadinfo.h"
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -37,87 +39,106 @@ void RoadInfo::CreateWPData()
 
     qDebug() << "Create WP Data";
 
-    for(int i=0;i<lanes.size();++i){
+    {
+        QProgressDialog *pd = new QProgressDialog("CreateWPData - 1/2", "Cancel", 0, lanes.size(), 0);
+        pd->setWindowModality(Qt::WindowModal);
+        pd->setAttribute( Qt::WA_DeleteOnClose );
+        pd->show();
 
-        if( lanes[i]->startWPID < 0 ){
+        pd->setValue(0);
+        QApplication::processEvents();
 
-            struct WayPoint* w = new struct WayPoint;
+        for(int i=0;i<lanes.size();++i){
 
-            w->id = wps.size();
-            w->pos.setX( lanes[i]->shape.pos.first()->x() );
-            w->pos.setY( lanes[i]->shape.pos.first()->y() );
-            w->pos.setZ( lanes[i]->shape.pos.first()->z() );
-            w->angle = lanes[i]->shape.angles.first();  // [rad]
+            if( lanes[i]->startWPID < 0 ){
 
-            w->relatedLanes.append( lanes[i]->id );
+                struct WayPoint* w = new struct WayPoint;
 
-            lanes[i]->startWPID = w->id;
+                w->id = wps.size();
+                w->pos.setX( lanes[i]->shape.pos.first()->x() );
+                w->pos.setY( lanes[i]->shape.pos.first()->y() );
+                w->pos.setZ( lanes[i]->shape.pos.first()->z() );
+                w->angle = lanes[i]->shape.angles.first();  // [rad]
 
-            for(int j=0;j<lanes[i]->previousLanes.size();++j){
-                if( w->relatedLanes.indexOf( lanes[i]->previousLanes[j] ) < 0 ){
-                    w->relatedLanes.append( lanes[i]->previousLanes[j] );
-                }
-                int lidx = indexOfLane( lanes[i]->previousLanes[j] );
-                if(lidx >= 0){
+                w->relatedLanes.append( lanes[i]->id );
 
-                    lanes[lidx]->endWPID = w->id;
+                lanes[i]->startWPID = w->id;
 
-                    for(int k=0;k<lanes[lidx]->nextLanes.size();++k){
-                        if( lanes[lidx]->nextLanes[k] == lanes[i]->id ){
-                            continue;
-                        }
-                        if( w->relatedLanes.indexOf( lanes[lidx]->nextLanes[k] ) < 0 ){
-                            w->relatedLanes.append( lanes[lidx]->nextLanes[k] );
-                        }
-                        int nlidx = indexOfLane( lanes[lidx]->nextLanes[k] );
-                        if(nlidx >= 0){
-                            lanes[nlidx]->startWPID = w->id;
+                for(int j=0;j<lanes[i]->previousLanes.size();++j){
+                    if( w->relatedLanes.indexOf( lanes[i]->previousLanes[j] ) < 0 ){
+                        w->relatedLanes.append( lanes[i]->previousLanes[j] );
+                    }
+                    int lidx = indexOfLane( lanes[i]->previousLanes[j] );
+                    if(lidx >= 0){
+
+                        lanes[lidx]->endWPID = w->id;
+
+                        for(int k=0;k<lanes[lidx]->nextLanes.size();++k){
+                            if( lanes[lidx]->nextLanes[k] == lanes[i]->id ){
+                                continue;
+                            }
+                            if( w->relatedLanes.indexOf( lanes[lidx]->nextLanes[k] ) < 0 ){
+                                w->relatedLanes.append( lanes[lidx]->nextLanes[k] );
+                            }
+                            int nlidx = indexOfLane( lanes[lidx]->nextLanes[k] );
+                            if(nlidx >= 0){
+                                lanes[nlidx]->startWPID = w->id;
+                            }
                         }
                     }
                 }
+
+                wps.append( w );
             }
 
-            wps.append( w );
-        }
+            if( lanes[i]->endWPID < 0 ){
 
-        if( lanes[i]->endWPID < 0 ){
+                struct WayPoint* w = new struct WayPoint;
 
-            struct WayPoint* w = new struct WayPoint;
+                w->id = wps.size();
+                w->pos.setX( lanes[i]->shape.pos.last()->x() );
+                w->pos.setY( lanes[i]->shape.pos.last()->y() );
+                w->pos.setZ( lanes[i]->shape.pos.last()->z() );
+                w->angle = lanes[i]->shape.angles.last();  // [rad]
 
-            w->id = wps.size();
-            w->pos.setX( lanes[i]->shape.pos.last()->x() );
-            w->pos.setY( lanes[i]->shape.pos.last()->y() );
-            w->pos.setZ( lanes[i]->shape.pos.last()->z() );
-            w->angle = lanes[i]->shape.angles.last();  // [rad]
+                w->relatedLanes.append( lanes[i]->id );
 
-            w->relatedLanes.append( lanes[i]->id );
+                lanes[i]->endWPID = w->id;
 
-            lanes[i]->endWPID = w->id;
+                for(int j=0;j<lanes[i]->nextLanes.size();++j){
+                    if( w->relatedLanes.indexOf( lanes[i]->nextLanes[j] ) < 0 ){
+                        w->relatedLanes.append( lanes[i]->nextLanes[j] );
+                    }
+                    int lidx = indexOfLane( lanes[i]->nextLanes[j] );
+                    if(lidx >= 0){
+                        lanes[lidx]->startWPID = w->id;
 
-            for(int j=0;j<lanes[i]->nextLanes.size();++j){
-                if( w->relatedLanes.indexOf( lanes[i]->nextLanes[j] ) < 0 ){
-                    w->relatedLanes.append( lanes[i]->nextLanes[j] );
-                }
-                int lidx = indexOfLane( lanes[i]->nextLanes[j] );
-                if(lidx >= 0){
-                    lanes[lidx]->startWPID = w->id;
-
-                    for(int k=0;k<lanes[lidx]->previousLanes.size();++k){
-                        if( lanes[lidx]->previousLanes[k] == lanes[i]->id ){
-                            continue;
-                        }
-                        if( w->relatedLanes.indexOf( lanes[lidx]->previousLanes[k] ) < 0 ){
-                            w->relatedLanes.append( lanes[lidx]->previousLanes[k] );
-                        }
-                        int plidx = indexOfLane( lanes[lidx]->previousLanes[k] );
-                        if(plidx >= 0){
-                            lanes[plidx]->endWPID = w->id;
+                        for(int k=0;k<lanes[lidx]->previousLanes.size();++k){
+                            if( lanes[lidx]->previousLanes[k] == lanes[i]->id ){
+                                continue;
+                            }
+                            if( w->relatedLanes.indexOf( lanes[lidx]->previousLanes[k] ) < 0 ){
+                                w->relatedLanes.append( lanes[lidx]->previousLanes[k] );
+                            }
+                            int plidx = indexOfLane( lanes[lidx]->previousLanes[k] );
+                            if(plidx >= 0){
+                                lanes[plidx]->endWPID = w->id;
+                            }
                         }
                     }
                 }
+
+                wps.append( w );
             }
 
-            wps.append( w );
+            pd->setValue(i+1);
+            QApplication::processEvents();
+
+            if( pd->wasCanceled() ){
+                qDebug() << "Canceled.";
+                break;
+            }
+
         }
     }
 
@@ -133,39 +154,58 @@ void RoadInfo::CreateWPData()
         }
     }
 
-    for(int i=0;i<lanes.size();++i){
 
-        if( lanes[i]->sWPInNode >= 0 && lanes[i]->sWPNodeDir >= 0 && lanes[i]->sWPBoundary == true && lanes[i]->sWPInNode != lanes[i]->eWPInNode ){
+    {
+        QProgressDialog *pd = new QProgressDialog("CreateWPData - 2/2", "Cancel", 0, lanes.size(), 0);
+        pd->setWindowModality(Qt::WindowModal);
+        pd->setAttribute( Qt::WA_DeleteOnClose );
+        pd->show();
 
-            int ndIdx = indexOfNode( lanes[i]->sWPInNode );
-            if( ndIdx >= 0 ){
-                for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
-                    if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->sWPNodeDir ){
-                        if( nodes[ndIdx]->legInfo[j]->outWPs.contains( lanes[i]->startWPID ) == false ){
-                            nodes[ndIdx]->legInfo[j]->outWPs.append( lanes[i]->startWPID );
+        pd->setValue(0);
+        QApplication::processEvents();
+
+        for(int i=0;i<lanes.size();++i){
+
+            if( lanes[i]->sWPInNode >= 0 && lanes[i]->sWPNodeDir >= 0 && lanes[i]->sWPBoundary == true && lanes[i]->sWPInNode != lanes[i]->eWPInNode ){
+
+                int ndIdx = indexOfNode( lanes[i]->sWPInNode );
+                if( ndIdx >= 0 ){
+                    for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                        if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->sWPNodeDir ){
+                            if( nodes[ndIdx]->legInfo[j]->outWPs.contains( lanes[i]->startWPID ) == false ){
+                                nodes[ndIdx]->legInfo[j]->outWPs.append( lanes[i]->startWPID );
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
-        }
 
-        if( lanes[i]->eWPInNode >= 0 && lanes[i]->eWPNodeDir >= 0 && lanes[i]->eWPBoundary == true && lanes[i]->eWPInNode != lanes[i]->sWPInNode ){
+            if( lanes[i]->eWPInNode >= 0 && lanes[i]->eWPNodeDir >= 0 && lanes[i]->eWPBoundary == true && lanes[i]->eWPInNode != lanes[i]->sWPInNode ){
 
-            int ndIdx = indexOfNode( lanes[i]->eWPInNode );
-            if( ndIdx >= 0 ){
-                for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
-                    if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->eWPNodeDir ){
-                        if( nodes[ndIdx]->legInfo[j]->inWPs.contains( lanes[i]->endWPID ) == false ){
-                            nodes[ndIdx]->legInfo[j]->inWPs.append( lanes[i]->endWPID );
+                int ndIdx = indexOfNode( lanes[i]->eWPInNode );
+                if( ndIdx >= 0 ){
+                    for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                        if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->eWPNodeDir ){
+                            if( nodes[ndIdx]->legInfo[j]->inWPs.contains( lanes[i]->endWPID ) == false ){
+                                nodes[ndIdx]->legInfo[j]->inWPs.append( lanes[i]->endWPID );
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
-        }
 
+            pd->setValue(i+1);
+            QApplication::processEvents();
+
+            if( pd->wasCanceled() ){
+                qDebug() << "Canceled.";
+                break;
+            }
+        }
     }
+
 
 //    for(int i=0;i<nodes.size();++i){
 //        qDebug() << "Node " << nodes[i]->id << " :";
