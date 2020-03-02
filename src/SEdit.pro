@@ -47,6 +47,7 @@ SOURCES += \
         datamanip_createnode.cpp \
         datamanip_import.cpp \
         datamanip_insertnode.cpp \
+        datamanip_pedestlane.cpp \
         displaycontrol.cpp \
         gc_displaycontrol.cpp \
         gc_mouseoperation.cpp \
@@ -57,6 +58,7 @@ SOURCES += \
         objectproperty.cpp \
         objectproperty_lane.cpp \
         objectproperty_node.cpp \
+        objectproperty_pedestlane.cpp \
         objectproperty_stopline.cpp \
         objectproperty_trafficsignal.cpp \
         odrouteeditor.cpp \
@@ -65,6 +67,7 @@ SOURCES += \
         roadinfo.cpp \
         roadlane.cpp \
         roadnode.cpp \
+        roadpedestlane.cpp \
         roadroute.cpp \
         roadstopline.cpp \
         roadts.cpp \
