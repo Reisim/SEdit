@@ -26,6 +26,8 @@ RoadInfo::RoadInfo()
     }
 
     LeftOrRight = LEFT_HAND_TRAFFIC;
+
+    updateCPEveryOperation = true;
 }
 
 
@@ -154,4 +156,21 @@ int RoadInfo::indexOfPedestLane(int id)
     }
     return index;
 }
+
+
+void RoadInfo::ClearAllData()
+{
+    ClearWPs();
+    for(int i=0;i<8;++i){
+        ClearSearchHelper(i);
+    }
+
+    ClearPedestLanes();
+    ClearLanes();
+    ClearNodes();
+
+
+    roadDataFileName = QString();
+}
+
 

@@ -869,7 +869,9 @@ bool RoadInfo::LoadRoadData(QString filename)
             QApplication::processEvents();
 
             if( pdimg->wasCanceled() ){
-                qDebug() << "Canceled.";
+                if( loadImage == true ){
+                    qDebug() << "Canceled.";
+                }
                 loadImage = false;
             }
 

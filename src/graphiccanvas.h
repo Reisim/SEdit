@@ -229,6 +229,10 @@ private:
     float Y_eye;
     float Z_eye;
 
+    float X_trans;
+    float Y_trans;
+    float Z_trans;
+
     float fieldOfView;
     float aspectRatio;
     float currentWidth;

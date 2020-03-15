@@ -63,6 +63,10 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
     Y_eye = 0.0;
     Z_eye = -30.0;
 
+    X_trans = X_eye;
+    Y_trans = Y_eye;
+    Z_trans = Z_eye;
+
     cameraYaw   = 0.0;
     cameraPitch = 0.0;
     cameraQuat = QQuaternion(1.0,0.0,0.0,0.0);
@@ -512,8 +516,33 @@ void GraphicCanvas::paintGL()
 
     QMatrix4x4 world2camera;
     world2camera.setToIdentity();
-    world2camera.translate( QVector3D(X_eye,Y_eye,Z_eye) );
+
+    float xE = X_eye;
+    float yE = Y_eye;
+    float zE = Z_eye;
+
+    float cpc = cos( cameraPitch );
+    float cps = sin( cameraPitch );
+
+    float cyc = cos( cameraYaw );
+    float cys = sin( cameraYaw );
+
+    X_trans = xE * cyc - yE * cys;
+    Y_trans = xE * cys + yE * cyc;
+
+    yE = Y_trans;
+    Y_trans = yE * cpc;
+    Z_trans = yE * cps;
+
+    Z_trans += Z_eye;
+
+
+    world2camera.translate( QVector3D(X_trans,Y_trans, Z_trans) );
+
     world2camera.rotate( cameraQuat );
+
+
+
 
     program->setUniformValue( u_CameraToView, projection );
 
@@ -830,13 +859,21 @@ void GraphicCanvas::paintGL()
 
                         model2World.setTranslation( QVector3D( xsp, ysp, 0.1) );
                         model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
-                        model2World.setScale( QVector3D(0.15,0.15,0.15) );
+
 
                         program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
 
                         program->setUniformValue( u_useTex, 2 );
                         program->setUniformValue( u_isText, 0 );
-                        program->setUniformValue( u_vColor, QVector4D( 0.25, 0.0, 1.0, 1.0 ) );
+
+                        if( road->lanes[i]->crossPoints[j]->duality == false ){
+                            program->setUniformValue( u_vColor, QVector4D( 1.0, 0.85, 0.1, 1.0 ) );
+                            model2World.setScale( QVector3D(0.25,0.25,0.15) );
+                        }
+                        else{
+                            program->setUniformValue( u_vColor, QVector4D( 0.25, 0.0, 1.0, 1.0 ) );
+                            model2World.setScale( QVector3D(0.15,0.15,0.15) );
+                        }
 
                         glLineWidth(1.0);
                         glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
@@ -1930,7 +1967,7 @@ void GraphicCanvas::resizeGL(int w, int h)
     if( isOrthogonal == true ){
         float nearDist = 0.1;
         float farDist = 10000.0;
-        float t = Z_eye * tan(45.0f / 2.0f * 0.017452f) * (-1.0);
+        float t = fabs(Z_eye) * tan(45.0f / 2.0f * 0.017452f);
         float r = t * aspectRatio;
         projection.ortho( -r, r, -t, t, nearDist, farDist );
     }

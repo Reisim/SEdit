@@ -385,3 +385,16 @@ void RoadInfo::FindPedestSignalFroCrossWalk()
 }
 
 
+void RoadInfo::ClearPedestLanes()
+{
+    QList<int> allPedestLaneIDs;
+    for(int i=0;i<pedestLanes.size();++i){
+        allPedestLaneIDs.append( pedestLanes[i]->id );
+    }
+
+    for(int i=0;i<allPedestLaneIDs.size();++i){
+        DeletePedestLane( allPedestLaneIDs[i] );
+    }
+}
+
+

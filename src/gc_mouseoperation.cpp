@@ -95,7 +95,11 @@ void GraphicCanvas::mouseReleaseEvent(QMouseEvent *e)
 
     if( selectedObj.selObjKind.size() > 0 && objectMoveFlag == true ){
 
-        road->CheckLaneCrossPoints();
+
+        if( road->updateCPEveryOperation == true ){
+            road->CheckLaneCrossPoints();
+        }
+
 
         for(int i=0;i<selectedObj.selObjKind.size();++i){
             if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
@@ -432,8 +436,11 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                 float a = diff.length();
                 if( a > 0.0 ){
 
-                    cameraYaw += diff.x() * 0.75;
-                    cameraPitch += diff.y() * 0.75;
+                    float deltaYaw = diff.x() * 0.75;
+                    cameraYaw += deltaYaw;
+
+                    float deltaPitch = diff.y() * 0.75;
+                    cameraPitch += deltaPitch;
 
                     cameraQuat = QQuaternion(cos(cameraPitch*0.5), sin(cameraPitch*0.5) , 0.0 , 0.0 ) * QQuaternion(cos(cameraYaw*0.5), 0.0 , 0.0 , sin(cameraYaw*0.5));
                 }
@@ -736,15 +743,21 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
             QVector2D diff = QVector2D(e->localPos()) - mousePressPosition;
 
             float s = 0.04 * Z_eye / (-50.0);
-            if( e->modifiers() & Qt::ControlModifier ){
+            if( e->modifiers() & Qt::ShiftModifier ){
                 s *= 4.0;
             }
 
             float xMove = diff.x() * s;
             float yMove = diff.y() * (-s);
 
-            X_eye += xMove;
-            Y_eye += yMove;
+            float cyc = cos( cameraYaw );
+            float cys = sin( cameraYaw );
+
+            float xMm = xMove * cyc + cys * yMove;
+            float yMm = -xMove * cys + cyc * yMove;
+
+            X_eye += xMm;
+            Y_eye += yMm;
         }
 
         QOpenGLWidget::update();
@@ -753,32 +766,48 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
     mousePressPosition = QVector2D(e->localPos());
 
-    //qDebug() << "Eye: (" << X_eye << "," << Y_eye << "," << Z_eye << ") ptich=" << cameraPitch << " yaw=" << cameraYaw;
+//    qDebug() << "Eye: (" << X_eye << "," << Y_eye << "," << Z_eye << ") ptich=" << cameraPitch << " yaw=" << cameraYaw;
 }
 
 
 void GraphicCanvas::wheelEvent(QWheelEvent *e)
 {
-    float s = 1.0;
-    if( e->modifiers() & Qt::ControlModifier ){
-        s *= 2.2;
-    }
-    if( e->delta() > 0.0 ){
-        if( Z_eye < -0.2 ){
-            Z_eye /= (1.05 * s);
-        }
-    }
-    else if( e->delta() < 0.0 ){
-        Z_eye *= 1.05 * s;
-    }
+
 
     if( isOrthogonal == true ){
+
+        float s = 1.1;
+        if( e->modifiers() & Qt::ShiftModifier ){
+            s *= 5.0;
+        }
+
+        if( e->delta() < 0.0 ){
+            Z_eye *= s;
+        }
+        else{
+            Z_eye /= s;
+        }
+
         float nearDist = 0.1;
         float farDist = 10000.0;
-        float t = Z_eye * tan(45.0f / 2.0f * 0.017452f) * (-1.0);
+        float t = fabs(Z_eye) * tan(45.0f / 2.0f * 0.017452f);
         float r = t * aspectRatio;
         projection.setToIdentity();
         projection.ortho( -r, r, -t, t, nearDist, farDist );
+    }
+    else{
+
+        float s = 1.1;
+        if( e->modifiers() & Qt::ShiftModifier ){
+            s *= 4.0;
+        }
+
+        if( e->delta() > 0.0 ){
+            s = 1.0 / s;
+        }
+
+        Z_eye *= s;
+
     }
 
     QOpenGLWidget::update();

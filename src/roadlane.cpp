@@ -12,9 +12,13 @@
 
 
 #include "roadinfo.h"
+#include "workingthread.h"
+
 #include <QProgressDialog>
 #include <QApplication>
 #include <QDebug>
+
+
 
 int RoadInfo::CreateLane(int assignId,
                          QVector4D startPoint, int sWPInNode, int sWPNodeDir, int departureNode, bool sWPBoundary,
@@ -386,13 +390,13 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
             shape->diff[i-1]->setY( dy );
             shape->segmentLength[i-1] = L;
             if( i == shape->pos.size() - 1 ){
-                dx = shape->derivative[i]->x();
-                dy = shape->derivative[i]->y();
+                dx = shape->diff[i-1]->x();
+                dy = shape->diff[i-1]->y();
                 shape->angles[i-1] = atan2(dy,dx);
             }
             else if( i == 1 ){
-                dx = shape->derivative[0]->x();
-                dy = shape->derivative[0]->y();
+                dx = shape->diff[0]->x();
+                dy = shape->diff[0]->y();
                 shape->angles[i-1] = atan2(dy,dx);
             }
             else{
@@ -413,13 +417,13 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
             shape->segmentLength.append( L );
 
             if( i == shape->pos.size() - 1 ){
-                dx = shape->derivative[i]->x();
-                dy = shape->derivative[i]->y();
+                dx = shape->diff[i-1]->x();
+                dy = shape->diff[i-1]->y();
                 shape->angles.append( atan2(dy,dx) );
             }
             else if( i == 1 ){
-                dx = shape->derivative[0]->x();
-                dy = shape->derivative[0]->y();
+                dx = shape->diff[0]->x();
+                dy = shape->diff[0]->y();
                 shape->angles.append( atan2(dy,dx) );
             }
             else{
@@ -682,6 +686,153 @@ int RoadInfo::GetNearestLane(QVector2D pos)
 }
 
 
+void RoadInfo::CheckIfTwoLanesCross(int lID1,int lID2)
+{
+    if( lID1 == lID2 ){
+        return;
+    }
+
+    int i = indexOfLane( lID1 );
+    int j = indexOfLane( lID2 );
+    if( i < 0 || j < 0 ){
+        return;
+    }
+
+    if( lanes[i]->connectedNode != lanes[j]->connectedNode ){
+        return;
+    }
+
+    if( lanes[i]->shape.searchHelper.xmax < lanes[j]->shape.searchHelper.xmin ||
+        lanes[i]->shape.searchHelper.xmin > lanes[j]->shape.searchHelper.xmax ||
+        lanes[i]->shape.searchHelper.ymax < lanes[j]->shape.searchHelper.ymin ||
+        lanes[i]->shape.searchHelper.ymin > lanes[j]->shape.searchHelper.ymax  ){
+        return;
+    }
+
+    if( lanes[i]->sWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPNodeDir == lanes[j]->sWPNodeDir ){
+        return;
+    }
+
+    if( lanes[i]->sWPInNode == lanes[j]->eWPInNode && lanes[i]->eWPInNode != lanes[j]->sWPInNode ){
+        return;
+    }
+
+    if( lanes[i]->eWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPInNode != lanes[j]->eWPInNode ){
+        return;
+    }
+
+    if( lanes[i]->endWPID == lanes[j]->startWPID || lanes[i]->startWPID == lanes[j]->endWPID ){
+        return;
+    }
+
+    // Check the lanes merge
+    float dx = lanes[i]->shape.pos.last()->x() - lanes[j]->shape.pos.last()->x();
+    float dy = lanes[i]->shape.pos.last()->y() - lanes[j]->shape.pos.last()->y();
+    float L = dx * dx + dy * dy;
+    if( L < 1.0 ){
+        return;
+    }
+
+
+    QPointF p1;
+    p1.setX( lanes[j]->shape.pos[0]->x() );
+    p1.setY( lanes[j]->shape.pos[0]->y() );
+
+    float z1 = lanes[j]->shape.pos[0]->z();
+
+    for(int k=1;k<lanes[j]->shape.pos.size();++k){
+
+        QPointF p2;
+
+        p2.setX( lanes[j]->shape.pos[k]->x() );
+        p2.setY( lanes[j]->shape.pos[k]->y() );
+
+        float z2 = lanes[j]->shape.pos[k]->z();
+
+        struct CrossPointInfo* cp = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
+
+        // height check
+        if( cp != NULL ){
+
+            float mz = (z1 + z2) * 0.5;
+            if( fabs(mz - cp->pos.z()) > 5.0 ){
+
+                qDebug() << "mz = " << mz << " cp.z = " << cp->pos.z();
+
+                delete cp;
+                cp = NULL;
+            }
+        }
+
+
+        if( cp != NULL ){
+            cp->crossLaneID = lanes[j]->id;
+            lanes[i]->crossPoints.append( cp );
+            break;
+        }
+
+        p1 = p2;
+        z1 = z2;
+    }
+}
+
+
+void RoadInfo::CheckLaneCrossWithPedestLane(int lID,int pedestID)
+{
+    int i = indexOfLane( lID );
+    int j = indexOfPedestLane( pedestID );
+    if( i < 0 || j < 0 ){
+        return;
+    }
+
+    QPointF p1;
+    p1.setX( pedestLanes[j]->shape[0]->pos.x() );
+    p1.setY( pedestLanes[j]->shape[0]->pos.y() );
+
+    for(int k=0;k<pedestLanes[j]->shape.size()-1;++k){
+
+        QPointF p2;
+
+        p2.setX( pedestLanes[j]->shape[k+1]->pos.x() );
+        p2.setY( pedestLanes[j]->shape[k+1]->pos.y() );
+
+        if( lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k]->pos.x() &&
+                lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k+1]->pos.x() ){
+            p1 = p2;
+            continue;
+        }
+
+        if( lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k]->pos.x() &&
+                lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k+1]->pos.x() ){
+             p1 = p2;
+            continue;
+        }
+
+        if( lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k]->pos.y() &&
+                lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k+1]->pos.y() ){
+             p1 = p2;
+            continue;
+        }
+
+        if( lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k]->pos.y() &&
+                lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k+1]->pos.y() ){
+             p1 = p2;
+            continue;
+        }
+
+        struct CrossPointInfo* cp = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
+        if( cp != NULL ){
+            cp->crossLaneID = pedestLanes[j]->id;
+            cp->crossSectIndex = k;
+            lanes[i]->pedestCrossPoints.append( cp );
+        }
+
+        p1 = p2;
+    }
+
+}
+
+
 bool RoadInfo::CheckLaneCrossPoints()
 {
     bool ret = true;
@@ -700,6 +851,28 @@ bool RoadInfo::CheckLaneCrossPoints()
     }
 
 
+    int nThread = 8;
+    WorkingThread *wt = new WorkingThread[nThread];
+    for(int i=0;i<nThread;++i){
+        wt[i].mode = 2;
+        wt[i].road = this;
+        wt[i].wtID = i;
+    }
+
+    int thrIdx = 0;
+    for(int i=0;i<nodes.size();++i){
+        wt[thrIdx].params.append( i );
+        thrIdx++;
+        if( thrIdx == nThread ){
+            thrIdx = 0;
+        }
+    }
+
+    for(int i=0;i<nThread;++i){
+        wt[i].start();
+    }
+
+
     QProgressDialog *pd = new QProgressDialog("CheckLaneCrossPoints", "Cancel", 0, lanes.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
@@ -708,128 +881,60 @@ bool RoadInfo::CheckLaneCrossPoints()
     pd->setValue(0);
     QApplication::processEvents();
 
+    while(1){
 
-    for(int i=0;i<lanes.size();++i){
-
-        for(int j=0;j<lanes.size();++j){
-
-            if( i == j ){
-                continue;
-            }
-
-            if( lanes[i]->shape.searchHelper.xmax < lanes[j]->shape.searchHelper.xmin ||
-                lanes[i]->shape.searchHelper.xmin > lanes[j]->shape.searchHelper.xmax ||
-                lanes[i]->shape.searchHelper.ymax < lanes[j]->shape.searchHelper.ymin ||
-                lanes[i]->shape.searchHelper.ymin > lanes[j]->shape.searchHelper.ymax  ){
-                continue;
-            }
-
-            if( lanes[i]->sWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPNodeDir == lanes[j]->sWPNodeDir ){
-                continue;
-            }
-
-            if( lanes[i]->sWPInNode == lanes[j]->eWPInNode && lanes[i]->eWPInNode != lanes[j]->sWPInNode ){
-                continue;
-            }
-
-            if( lanes[i]->eWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPInNode != lanes[j]->eWPInNode ){
-                continue;
-            }
-
-            // Check the lanes merge
-            float dx = lanes[i]->shape.pos.last()->x() - lanes[j]->shape.pos.last()->x();
-            float dy = lanes[i]->shape.pos.last()->y() - lanes[j]->shape.pos.last()->y();
-            float L = dx * dx + dy * dy;
-            if( L < 1.0 ){
-                continue;
-            }
-
-
-            QPointF p1;
-            p1.setX( lanes[j]->shape.pos[0]->x() );
-            p1.setY( lanes[j]->shape.pos[0]->y() );
-
-            for(int k=1;k<lanes[j]->shape.pos.size();++k){
-
-                QPointF p2;
-
-                p2.setX( lanes[j]->shape.pos[k]->x() );
-                p2.setY( lanes[j]->shape.pos[k]->y() );
-
-                struct CrossPointInfo* cp = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
-
-                if( cp != NULL ){
-                    cp->crossLaneID = lanes[j]->id;
-                    lanes[i]->crossPoints.append( cp );
-                    break;
-                }
-
-                p1 = p2;
+        int nFinish = 0;
+        int nProcessed = 0;
+        for(int i=0;i<nThread;++i){
+            nProcessed += wt[i].nProcessed;
+            if( wt[i].mode < 0 ){
+                nFinish++;
             }
         }
 
-
-        for(int j=0;j<pedestLanes.size();++j){
-
-            QPointF p1;
-            p1.setX( pedestLanes[j]->shape[0]->pos.x() );
-            p1.setY( pedestLanes[j]->shape[0]->pos.y() );
-
-            for(int k=0;k<pedestLanes[j]->shape.size()-1;++k){
-
-                QPointF p2;
-
-                p2.setX( pedestLanes[j]->shape[k+1]->pos.x() );
-                p2.setY( pedestLanes[j]->shape[k+1]->pos.y() );
-
-                if( lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k]->pos.x() &&
-                        lanes[i]->shape.searchHelper.xmax < pedestLanes[j]->shape[k+1]->pos.x() ){
-                    p1 = p2;
-                    continue;
-                }
-
-                if( lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k]->pos.x() &&
-                        lanes[i]->shape.searchHelper.xmin > pedestLanes[j]->shape[k+1]->pos.x() ){
-                     p1 = p2;
-                    continue;
-                }
-
-                if( lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k]->pos.y() &&
-                        lanes[i]->shape.searchHelper.ymax < pedestLanes[j]->shape[k+1]->pos.y() ){
-                     p1 = p2;
-                    continue;
-                }
-
-                if( lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k]->pos.y() &&
-                        lanes[i]->shape.searchHelper.ymin > pedestLanes[j]->shape[k+1]->pos.y() ){
-                     p1 = p2;
-                    continue;
-                }
-
-                struct CrossPointInfo* cp = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
-                if( cp != NULL ){
-                    cp->crossLaneID = pedestLanes[j]->id;
-                    cp->crossSectIndex = k;
-                    lanes[i]->pedestCrossPoints.append( cp );
-                }
-
-                p1 = p2;
-            }
-        }
-
-
-        pd->setValue(i+1);
+        pd->setValue(nProcessed);
         QApplication::processEvents();
-
         if( pd->wasCanceled() ){
             qDebug() << "Canceled.";
-            ret = false;
+            for(int i=0;i<nThread;++i){
+                if( wt[i].mode > 0 ){
+                    wt[i].SetStopFlag();
+                }
+            }
+
+            if( nFinish == nThread ){
+                break;
+            }
+
+        }
+        else if( nFinish == nThread ){
+            qDebug() << "Finished.";
             break;
         }
-
     }
 
+    pd->setValue( lanes.size() );
+
     pd->close();
+
+    delete [] wt;
+
+
+
+    // Last Check
+    for(int i=0;i<lanes.size();++i){
+        for(int j=0;j<lanes[i]->crossPoints.size();++j){
+            bool duality = false;
+            int cLane = indexOfLane( lanes[i]->crossPoints[j]->crossLaneID );
+            for(int k=0;k<lanes[cLane]->crossPoints.size();++k){
+                if( lanes[i]->id == lanes[cLane]->crossPoints[k]->crossLaneID ){
+                    duality = true;
+                    break;
+                }
+            }
+            lanes[i]->crossPoints[j]->duality = duality;
+        }
+    }
 
     return ret;
 }
@@ -889,11 +994,44 @@ struct CrossPointInfo* RoadInfo::CheckLaneCrossPoint(int id, QPointF p1, QPointF
 
     struct LaneShapeInfo *s = &(lanes[index]->shape);
 
+
+    // Check to reject the lane that do not have cross point
+    {
+        float rx1 = p1.x() - s->pos.first()->x();
+        float ry1 = p1.y() - s->pos.first()->y();
+
+        float rx2 = p2.x() - s->pos.first()->x();
+        float ry2 = p2.y() - s->pos.first()->y();
+
+        float L1 = rx1 * s->derivative.first()->x() + ry1 * s->derivative.first()->y();
+        float L2 = rx2 * s->derivative.first()->x() + ry2 * s->derivative.first()->y();
+
+        if( L1 < 0 && L2 < 0.0 ){
+            return  ret;
+        }
+    }
+
+    {
+        float rx1 = p1.x() - s->pos.last()->x();
+        float ry1 = p1.y() - s->pos.last()->y();
+
+        float rx2 = p2.x() - s->pos.last()->x();
+        float ry2 = p2.y() - s->pos.last()->y();
+
+        float L1 = rx1 * s->derivative.last()->x() + ry1 * s->derivative.last()->y();
+        float L2 = rx2 * s->derivative.last()->x() + ry2 * s->derivative.last()->y();
+
+        if( L1 > 0 && L2 > 0.0 ){
+            return  ret;
+        }
+    }
+
+
+
     for(int i=0;i<s->diff.size();++i){
 
         float rx1 = p1.x() - s->pos[i]->x();
         float ry1 = p1.y() - s->pos[i]->y();
-
 
         float rx2 = p2.x() - s->pos[i]->x();
         float ry2 = p2.y() - s->pos[i]->y();
@@ -916,10 +1054,10 @@ struct CrossPointInfo* RoadInfo::CheckLaneCrossPoint(int id, QPointF p1, QPointF
 
         float L = A * L2 + B * L1;
 
-        if( L < -0.08 ){  // Arrow small error at boundary
+        if( L < -0.20 ){  // Arrow small error at boundary
             continue;
         }
-        else if( L + 0.08 > s->segmentLength[i] ){
+        else if( L + 0.20 > s->segmentLength[i] ){
             continue;
         }
 
@@ -942,6 +1080,8 @@ struct CrossPointInfo* RoadInfo::CheckLaneCrossPoint(int id, QPointF p1, QPointF
         ret->derivative.setY( s->derivative[i]->y() );
 
         ret->distanceFromLaneStartPoint = s->length[i] + L;
+
+        ret->duality = false;
 
         break;
     }
@@ -1045,5 +1185,18 @@ bool RoadInfo::CheckLaneConnection()
     pd->close();
 
     return ret;
+}
+
+
+void RoadInfo::ClearLanes()
+{
+    QList<int> allLaneIDs;
+    for(int i=0;i<lanes.size();++i){
+        allLaneIDs.append( lanes[i]->id );
+    }
+
+    for(int i=0;i<allLaneIDs.size();++i){
+        DeleteLane( allLaneIDs[i] );
+    }
 }
 

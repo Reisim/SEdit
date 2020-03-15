@@ -73,6 +73,14 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
 }
 
 
+void ResimFilesOutput::Clear()
+{
+    outputFilename->clear();
+    outputFolderStr->setText("Not selected.");
+    maxAgent->setValue(1000);
+}
+
+
 void ResimFilesOutput::SelectOutputFolder()
 {
     QString folderName = QFileDialog::getExistingDirectory(this,"Output Folder");
@@ -86,12 +94,21 @@ void ResimFilesOutput::SelectOutputFolder()
 
 void ResimFilesOutput::SelectOutputFilename()
 {
-    QString fileName = QFileDialog::getSaveFileName(this,"Save File Name");
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                    "Save File Name",
+                                                    ".",
+                                                    tr("Re:sim Config file(*.rc.txt)"),
+                                                    nullptr,
+                                                    QFileDialog::DontConfirmOverwrite) ;
+
     if( fileName.isNull() == true || fileName.isEmpty() == true ){
         return;
     }
 
-    outputFilename->setText( fileName );
+    QStringList fnDiv = fileName.split("/");
+    QString fileNameWitoutExt = fnDiv.last().trimmed().remove(".rc.txt");
+
+    outputFilename->setText( fileNameWitoutExt );
     update();
 }
 

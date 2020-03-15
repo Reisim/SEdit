@@ -92,6 +92,9 @@ public slots:
     void SetAllLaneLists();
     void SetSelectedNodeLaneLists();
     void SetTurnDirectionInfo();
+    void CheckAllStopLineCrossLane();
+    void CheckLaneCrossPoints();
+    void CheckCrossPointsOfSelectedLane();
 
     void InsertNode_4x1_noTS();
     void InsertNode_4x2_noTS();

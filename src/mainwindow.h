@@ -81,6 +81,7 @@ public slots:
     void ImportOtherData();
 
     void SetTrafficDirection(int dir);
+    void WrapWinModified(){ setWindowModified(true); }
 
 
 private:

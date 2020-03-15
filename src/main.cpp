@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
     MainWindow w;
-    w.setWindowTitle("MDS02-Canopus | S-Edit");
+    w.setWindowTitle("MDS02-Canopus | S-Edit[*]");
     w.show();
 
     return a.exec();

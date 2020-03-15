@@ -154,6 +154,12 @@ void ConfigFileManager::ClearData()
         }
     }
 
+    ClearDataWithoutConfirm();
+}
+
+
+void ConfigFileManager::ClearDataWithoutConfirm()
+{
     configFilename->clear();
     selectedScenariofile->clear();
     logOutputFolder->clear();

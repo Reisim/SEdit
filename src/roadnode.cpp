@@ -114,7 +114,7 @@ void RoadInfo::DeleteNode(int id)
 
     delete nodes[index];
 
-    qDebug() << "[DeleteNode] delete node; id = " << id;
+    qDebug() << "[DeleteNode] delete node; id = " << id << ", size of nodes = " << nodes.size();
 
     nodes.removeAt(index);
 }
@@ -138,6 +138,21 @@ void RoadInfo::DeleteNodeLeg(int id, int legID)
     if( leg < 0 ){
         qDebug() << "[DeleteNodeLeg] invalid legID: legID = " << legID << ", can not file the legID";
         return;
+    }
+
+    for(int i=nodes[index]->trafficSignals.size()-1;i>=0;--i){
+        if( nodes[index]->trafficSignals[i]->controlNodeDirection == legID ){
+            delete nodes[index]->trafficSignals[i];
+            nodes[index]->trafficSignals.removeAt(i);
+        }
+    }
+
+    for(int i=nodes[index]->stopLines.size()-1;i>=0;--i){
+        if( nodes[index]->stopLines[i]->relatedNodeDir == legID ){
+            nodes[index]->stopLines[i]->crossLanes.clear();
+            delete nodes[index]->stopLines[i];
+            nodes[index]->stopLines.removeAt(i);
+        }
     }
 
     delete nodes[index]->legInfo[leg];
@@ -854,3 +869,18 @@ void RoadInfo::SetTurnDirectionInfo()
 
     pd->close();
 }
+
+
+void RoadInfo::ClearNodes()
+{
+    QList<int> allNodeIDs;
+    for(int i=0;i<nodes.size();++i){
+        allNodeIDs.append( nodes[i]->id );
+    }
+
+    for(int i=0;i<allNodeIDs.size();++i){
+        DeleteNode( allNodeIDs[i] );
+    }
+}
+
+

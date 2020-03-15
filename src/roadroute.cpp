@@ -12,9 +12,12 @@
 
 
 #include "roadinfo.h"
+#include "workingthread.h"
+
 #include <QProgressDialog>
 #include <QApplication>
 #include <QDebug>
+
 
 
 void RoadInfo::CheckRouteInOutDirection()
@@ -110,6 +113,28 @@ void RoadInfo::CheckRouteInOutDirection()
 
 void RoadInfo::SetAllLaneLists()
 {
+    int nThread = 8;
+    WorkingThread *wt = new WorkingThread[nThread];
+    for(int i=0;i<nThread;++i){
+        wt[i].mode = 3;
+        wt[i].road = this;
+        wt[i].wtID = i;
+    }
+
+    int thrIdx = 0;
+    for(int i=0;i<nodes.size();++i){
+        wt[thrIdx].params.append( i );
+        thrIdx++;
+        if( thrIdx == nThread ){
+            thrIdx = 0;
+        }
+    }
+
+    for(int i=0;i<nThread;++i){
+        wt[i].start();
+    }
+
+
     QProgressDialog *pd = new QProgressDialog("SetAllLaneLists", "Cancel", 0, nodes.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
@@ -118,23 +143,49 @@ void RoadInfo::SetAllLaneLists()
     pd->setValue(0);
     QApplication::processEvents();
 
-    for(int i=0;i<nodes.size();++i){
-        SetLaneLists( nodes[i]->id );
 
-        pd->setValue(i+1);
+    while(1){
+
+        int nFinish = 0;
+        int nProcessed = 0;
+        for(int i=0;i<nThread;++i){
+            nProcessed += wt[i].nProcessed;
+            if( wt[i].mode < 0 ){
+                nFinish++;
+            }
+        }
+
+        pd->setValue(nProcessed);
         QApplication::processEvents();
-
         if( pd->wasCanceled() ){
-            qDebug() << "Canceled.";
+            qDebug() << "Canceled.  nFinish = " << nFinish;
+            for(int i=0;i<nThread;++i){
+                if( wt[i].mode > 0 ){
+                    wt[i].SetStopFlag();
+                }
+            }
+
+            if( nFinish == nThread ){
+                break;
+            }
+
+        }
+        else if( nFinish == nThread ){
+            qDebug() << "Finished.";
             break;
         }
     }
 
+    pd->setValue( nodes.size() );
+
     pd->close();
+
+
+    delete [] wt;
 }
 
 
-void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
+void RoadInfo::SetLaneLists(int id, int hIdx,bool showConsoleOutput)
 {
     int ndIdx = indexOfNode( id );
     if( ndIdx < 0 ){
@@ -149,7 +200,8 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
     }
 
     if( NWPs == 0){
-        CreateWPData();
+        qDebug() << "[RoadInfo::SetLaneLists] no in and out WPs found.  Node = " << id;
+        return;
     }
 
     if( showConsoleOutput == true ){
@@ -209,29 +261,29 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 
                 for(int k=0;k<topLanes.size();++k){
 
-                    ClearSearchHelper();
-                    ForwardTreeSearch(id, -1, topLanes[k]);
+                    ClearSearchHelper(hIdx);
+                    ForwardTreeSearch(id, -1, topLanes[k],hIdx);
 
                     bool foundAll = false;
                     while( 1 ){
 
                         QList<int> extractedLanes;
 
-                        for(int l=0;l<treeSeachHelper.size();++l){
-                            if( treeSeachHelper[l]->isEnd == false ){
-                                extractedLanes.append( treeSeachHelper[l]->currentLane );
+                        for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+                            if( treeSeachHelper[hIdx][l]->isEnd == false ){
+                                extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
                             }
-                            else if( treeSeachHelper[l]->isEnd == true ){
-                                extractedLanes.append( treeSeachHelper[l]->currentLane );
+                            else if( treeSeachHelper[hIdx][l]->isEnd == true ){
+                                extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
 
                                 LLs->lanes.append( extractedLanes );
 
-                                if( l < treeSeachHelper.size() - 1 ){
-                                    int branch = treeSeachHelper[l+1]->nextLane;
+                                if( l < treeSeachHelper[hIdx].size() - 1 ){
+                                    int branch = treeSeachHelper[hIdx][l+1]->nextLane;
                                     for(int m=l;m>0;m--){
-                                        if( treeSeachHelper[m]->currentLane != branch ){
-                                            delete treeSeachHelper[m];
-                                            treeSeachHelper.removeAt(m);
+                                        if( treeSeachHelper[hIdx][m]->currentLane != branch ){
+                                            delete treeSeachHelper[hIdx][m];
+                                            treeSeachHelper[hIdx].removeAt(m);
                                         }
                                         else{
                                             break;
@@ -327,13 +379,13 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 
             for(int k=0;k<topLanes.size();++k){
 
-                ClearSearchHelper();
-                ForwardTreeSearch(id, -1, topLanes[k]);
+                ClearSearchHelper(hIdx);
+                ForwardTreeSearch(id, -1, topLanes[k], hIdx);
 
                 if( showConsoleOutput == true ){
                     qDebug() << "Extracted:";
-                    for(int l=0;l<treeSeachHelper.size();++l){
-                        qDebug() << treeSeachHelper[l]->nextLane << " , " << treeSeachHelper[l]->currentLane;
+                    for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+                        qDebug() << treeSeachHelper[hIdx][l]->nextLane << " , " << treeSeachHelper[hIdx][l]->currentLane;
                     }
                 }
 
@@ -342,12 +394,12 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 
                     QList<int> extractedLanes;
 
-                    for(int l=0;l<treeSeachHelper.size();++l){
-                        if( treeSeachHelper[l]->isEnd == false ){
-                            extractedLanes.append( treeSeachHelper[l]->currentLane );
+                    for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+                        if( treeSeachHelper[hIdx][l]->isEnd == false ){
+                            extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
                         }
-                        else if( treeSeachHelper[l]->isEnd == true ){
-                            extractedLanes.append( treeSeachHelper[l]->currentLane );
+                        else if( treeSeachHelper[hIdx][l]->isEnd == true ){
+                            extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
 
                             for(int m=0;m<extractedLanes.size();++m){
                                 int tlIdx = indexOfLane(extractedLanes[m]);
@@ -366,12 +418,12 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
                                 }
                             }
 
-                            if( l < treeSeachHelper.size() - 1 ){
-                                int branch = treeSeachHelper[l+1]->nextLane;
+                            if( l < treeSeachHelper[hIdx].size() - 1 ){
+                                int branch = treeSeachHelper[hIdx][l+1]->nextLane;
                                 for(int m=l;m>0;m--){
-                                    if( treeSeachHelper[m]->currentLane != branch ){
-                                        delete treeSeachHelper[m];
-                                        treeSeachHelper.removeAt(m);
+                                    if( treeSeachHelper[hIdx][m]->currentLane != branch ){
+                                        delete treeSeachHelper[hIdx][m];
+                                        treeSeachHelper[hIdx].removeAt(m);
                                     }
                                     else{
                                         break;
@@ -413,7 +465,7 @@ void RoadInfo::SetLaneLists(int id, bool showConsoleOutput)
 }
 
 
-void RoadInfo::ForwardTreeSearch(int nodeId,int nextLane,int currentLane)
+void RoadInfo::ForwardTreeSearch(int nodeId,int nextLane,int currentLane,int hIdx)
 {
     struct TreeSearchElem *e = new struct TreeSearchElem;
 
@@ -421,27 +473,28 @@ void RoadInfo::ForwardTreeSearch(int nodeId,int nextLane,int currentLane)
     e->currentLane = currentLane;
     e->isEnd = false;
 
-    treeSeachHelper.append( e );
+    treeSeachHelper[hIdx].append( e );
 
     int cIdx = indexOfLane( currentLane );
     if( lanes[cIdx]->sWPBoundary == true && lanes[cIdx]->sWPInNode != nodeId ){
+//    if( lanes[cIdx]->connectedNode != nodeId ){
         e->isEnd = true;
         return;
     }
     else{
         for(int i=0;i<lanes[cIdx]->previousLanes.size();++i){
             int prevLane = lanes[cIdx]->previousLanes[i];
-            ForwardTreeSearch( nodeId, currentLane, prevLane );
+            ForwardTreeSearch( nodeId, currentLane, prevLane, hIdx );
         }
     }
 }
 
 
-void RoadInfo::ClearSearchHelper()
+void RoadInfo::ClearSearchHelper(int hIdx)
 {
-    for(int l=0;l<treeSeachHelper.size();++l){
-        delete treeSeachHelper[l];
+    for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+        delete treeSeachHelper[hIdx][l];
     }
-    treeSeachHelper.clear();
+    treeSeachHelper[hIdx].clear();
 }
 

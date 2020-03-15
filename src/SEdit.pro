@@ -72,7 +72,8 @@ SOURCES += \
         roadstopline.cpp \
         roadts.cpp \
         roadwp.cpp \
-        settingdialog.cpp
+        settingdialog.cpp \
+        workingthread.cpp
 
 HEADERS += \
         basemapimagemanager.h \
@@ -87,7 +88,8 @@ HEADERS += \
         resimfilesoutput.h \
         roadinfo.h \
         roadinfoelement.h \
-        settingdialog.h
+        settingdialog.h \
+        workingthread.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

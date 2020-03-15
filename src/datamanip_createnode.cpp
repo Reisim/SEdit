@@ -1489,7 +1489,11 @@ int DataManipulator::CreateNode_4x1x1_noTS()
 
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1517,7 +1521,11 @@ int DataManipulator::CreateNode_3x1x1_noTS()
 
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1566,7 +1574,11 @@ int DataManipulator::CreateNode_4x1x1_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1615,7 +1627,11 @@ int DataManipulator::CreateNode_4x2x1_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1664,7 +1680,11 @@ int DataManipulator::CreateNode_4x2x2_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1713,7 +1733,11 @@ int DataManipulator::CreateNode_4x1x1_r_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1762,7 +1786,11 @@ int DataManipulator::CreateNode_4x2x1_r_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();
@@ -1811,7 +1839,11 @@ int DataManipulator::CreateNode_4x2x2_r_TS()
         }
     }
 
-    road->CheckLaneCrossPoints();
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+    }
+
 
     if( canvas ){
         canvas->update();

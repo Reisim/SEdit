@@ -100,9 +100,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->selectStopLine, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineSelection(bool)) );
     connect( dispCtrl->selectPedestLane, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneSelection(bool)) );
 
-
+    dispCtrl->road = road;
     dispCtrl->move(50,50);
     dispCtrl->show();
+
 
     road->LeftOrRight = setDlg->GetCurrentLeftRightIndex();
 
@@ -149,9 +150,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction* newAct = new QAction( tr("&New"), this );
     newAct->setIcon(QIcon(":/images/new.png"));
-    //newAct->setShortcut( tr("Ctrl+N") );
-    //newAct->setStatusTip( tr("Create a New Map Data") );
-    //connect( newAct, SIGNAL(triggered()), this, SLOT(newFile()));
+    newAct->setShortcut( tr("Ctrl+N") );
+    newAct->setStatusTip( tr("Clear All Data nad Create a New Map Data") );
+    connect( newAct, SIGNAL(triggered()), this, SLOT(NewFile()));
     fileMenu->addAction( newAct );
 
 
@@ -246,11 +247,13 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *createNode_4x1x1_NoTS = new QAction();
     createNode_4x1x1_NoTS->setText("4-Leg 1x1 noTS");
     connect( createNode_4x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_noTS()));
+    connect( createNode_4x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_NoTS );
 
     QAction *createNode_3x1x1_NoTS = new QAction();
     createNode_3x1x1_NoTS->setText("3-Leg 1x1 noTS");
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_noTS()));
+    connect( createNode_3x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_NoTS );
 
     createObjectPopup->addSeparator();
@@ -258,31 +261,37 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *createNode_4x1x1_TS = new QAction();
     createNode_4x1x1_TS->setText("4-Leg 1x1 TS");
     connect( createNode_4x1x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_TS()));
+    connect( createNode_4x1x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_TS );
 
     QAction *createNode_4x1x1_r_TS = new QAction();
     createNode_4x1x1_r_TS->setText("4-Leg 1x1 with Turn-Lane, TS");
     connect( createNode_4x1x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_r_TS()));
+    connect( createNode_4x1x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_r_TS );
 
     QAction *createNode_4x2x1_TS = new QAction();
     createNode_4x2x1_TS->setText("4-Leg 2x1 TS");
     connect( createNode_4x2x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_TS()));
+    connect( createNode_4x2x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x1_TS );
 
     QAction *createNode_4x2x1_r_TS = new QAction();
     createNode_4x2x1_r_TS->setText("4-Leg 2x1 with Turn-Lane, TS");
     connect( createNode_4x2x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_r_TS()));
+    connect( createNode_4x2x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x1_r_TS );
 
     QAction *createNode_4x2x2_TS = new QAction();
     createNode_4x2x2_TS->setText("4-Leg 2x2 TS");
     connect( createNode_4x2x2_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_TS()));
+    connect( createNode_4x2x2_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x2_TS );
 
     QAction *createNode_4x2x2_r_TS = new QAction();
     createNode_4x2x2_r_TS->setText("4-Leg 2x2 with Turn-Lane, TS");
     connect( createNode_4x2x2_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_r_TS()));
+    connect( createNode_4x2x2_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x2_r_TS );
 
 
@@ -291,6 +300,7 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *createPedestLane = new QAction();
     createPedestLane->setText("Pedest Lane");
     connect( createPedestLane, SIGNAL(triggered()),dtManip,SLOT(StartCreatePedestPath()));
+    connect( createPedestLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createPedestLane );
 
 
@@ -303,27 +313,50 @@ MainWindow::MainWindow(QWidget *parent)
     QAction *createWPData = new QAction();
     createWPData->setText("Create WP Data");
     connect( createWPData, SIGNAL(triggered()),dtManip,SLOT(CreateWPData()));
+    connect( createWPData, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( createWPData );
 
     QAction *setODTerm = new QAction();
     setODTerm->setText("Terminal Node -> OD Node");
     connect( setODTerm, SIGNAL(triggered()),dtManip,SLOT(SetODFlagOfTerminalNode()));
+    connect( setODTerm, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( setODTerm );
 
     QAction *setAllLaneLists = new QAction();
     setAllLaneLists->setText("Set All Lane-Lists");
     connect( setAllLaneLists, SIGNAL(triggered()),dtManip,SLOT(SetAllLaneLists()));
+    connect( setAllLaneLists, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( setAllLaneLists );
 
     QAction *setSelectedNodeLaneLists = new QAction();
     setSelectedNodeLaneLists->setText("Set Lane-Lists for Selected Node");
     connect( setSelectedNodeLaneLists, SIGNAL(triggered()),dtManip,SLOT(SetSelectedNodeLaneLists()));
+    connect( setSelectedNodeLaneLists, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( setSelectedNodeLaneLists );
 
     QAction *setTurnDirection = new QAction();
     setTurnDirection->setText("Set Turn-Direction Info");
     connect( setTurnDirection, SIGNAL(triggered()),dtManip,SLOT(SetTurnDirectionInfo()));
+    connect( setTurnDirection, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( setTurnDirection );
+
+    QAction *checkAllSLCrossLane = new QAction();
+    checkAllSLCrossLane->setText("Check Cross Point of StopLines and Lanes");
+    connect( checkAllSLCrossLane, SIGNAL(triggered()),dtManip,SLOT(CheckAllStopLineCrossLane()));
+    connect( checkAllSLCrossLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( checkAllSLCrossLane );
+
+    QAction *checkAllCPOfLane = new QAction();
+    checkAllCPOfLane->setText("Check Cross Points of All Lanes");
+    connect( checkAllCPOfLane, SIGNAL(triggered()),dtManip,SLOT(CheckLaneCrossPoints()));
+    connect( checkAllCPOfLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( checkAllCPOfLane );
+
+    QAction *checkCPOfSelectedLane = new QAction();
+    checkCPOfSelectedLane->setText("Check Cross Points of Selected Lane");
+    connect( checkCPOfSelectedLane, SIGNAL(triggered()),dtManip,SLOT(CheckCrossPointsOfSelectedLane()));
+    connect( checkCPOfSelectedLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( checkCPOfSelectedLane );
 
     utilityPopup->addSeparator();
 
@@ -441,7 +474,54 @@ bool MainWindow::okToContinue()
 
 void MainWindow::NewFile()
 {
+    qDebug() << "[MainWindow::NewFile]";
 
+    if( (currentSEditFilename.isNull() == false && currentSEditFilename.isEmpty() == false ) || isWindowModified() == true ){
+        int ret = QMessageBox::warning(this, tr("S-Edit"),
+                                       tr("All Data will be cleared.\n"
+                                          "Do you want to continue?"),
+                                       QMessageBox::Yes | QMessageBox::Default,
+                                       QMessageBox::Cancel | QMessageBox::Escape);
+        if( ret == QMessageBox::Cancel ){
+            qDebug() << "Canceled.";
+            return ;
+        }
+    }
+
+    qDebug() << "Clear Data...";
+
+    currentSEditFilename = QString();
+
+    road->ClearAllData();
+    qDebug() << "Road Data cleared.";
+
+    dtManip->operationHistory.clear();
+
+    mapImageMng->ClearAll();
+    qDebug() << "Map Image Data cleared.";
+
+    dispCtrl->InitSetting();
+
+    roadObjProp->ChangeTabPage(0);
+    odRoute->hide();
+
+    resimOut->Clear();
+    resimOut->hide();
+
+    configMgr->ClearDataWithoutConfirm();
+
+    canvas->ResetPedestLanePointPickMode();
+    canvas->ResetNodePickMode();
+    canvas->selectedObj.selObjKind.clear();
+    canvas->selectedObj.selObjID.clear();
+    canvas->SetNumberKeyPressed(-1);
+    canvas->MoveTo(0.0,0.0);
+    canvas->ResetRotate();
+
+    setWindowModified(false);
+    setWindowTitle(QString("MDS02-Canopus | S-Edit[*]"));
+
+    qDebug() << "End.";
 }
 
 void MainWindow::OpenFile()

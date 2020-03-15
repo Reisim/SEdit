@@ -25,6 +25,8 @@
 #include <QDoubleValidator>
 #include <QSpinBox>
 
+#include "roadinfo.h"
+
 
 class DisplayControl : public QWidget
 {
@@ -32,17 +34,25 @@ class DisplayControl : public QWidget
 public:
     explicit DisplayControl(QWidget *parent = nullptr);
 
+    void InitSetting();
+
+    RoadInfo *road;
+
+
 signals:
     void ViewMoveTo(float x,float y);
 
 
 public slots:
     void moveToClicked();
+    void SetManualUpdateCPFlag(bool);
+
 
 public:
     QPushButton *resetRotate;
     QPushButton *moveTo;
     QCheckBox *OrthogonalView;
+
     QCheckBox *showNodes;
     QCheckBox *showNodeLaneList;
     QCheckBox *showRelatedLanes;
@@ -69,6 +79,8 @@ public:
 
     QPushButton *prevLaneList;
     QPushButton *nextLaneList;
+    QCheckBox *manualUpdateOfCP;
+
 
 private:
     QLineEdit *moveToX;

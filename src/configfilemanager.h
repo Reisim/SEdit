@@ -34,6 +34,8 @@ class ConfigFileManager : public QWidget
 public:
     explicit ConfigFileManager(QWidget *parent = nullptr);
 
+    void ClearDataWithoutConfirm();
+
 signals:
 
 public slots:

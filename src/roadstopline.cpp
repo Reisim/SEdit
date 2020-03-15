@@ -16,6 +16,8 @@
 #include <QApplication>
 #include <QDebug>
 
+#include "workingthread.h"
+
 
 
 int RoadInfo::CreateStopLine(int assignId, int relatedNodeID, int relatedNodeDir, int SLType)
@@ -171,7 +173,44 @@ int RoadInfo::GetNearestStopLine(QVector2D pos, float &dist)
 void RoadInfo::CheckAllStopLineCrossLane()
 {
 
-    QProgressDialog *pd = new QProgressDialog("CheckAllStopLineCrossLane", "Cancel", 0, nodes.size(), 0);
+    QList<int> SLList;
+    for(int i=0;i<nodes.size();++i){
+        for(int j=0;j<nodes[i]->stopLines.size();++j){
+            SLList.append( nodes[i]->stopLines[j]->id );
+        }
+    }
+    if( SLList.size() == 0 ){
+        return;
+    }
+
+
+    int nThread = 8;
+    WorkingThread *wt = new WorkingThread[nThread];
+    int nSLWT = (SLList.size() / nThread + 1);
+
+    int SLIndex = 0;
+    for(int i=0;i<nThread;++i){
+        int nSLCount = 0;
+
+        wt[i].mode = 1;
+        wt[i].road = this;
+        wt[i].wtID = i;
+
+        for(int j=0;j<nSLWT;++j){
+            if( SLIndex < SLList.size() ){
+                wt[i].params.append( SLList[SLIndex] );
+                SLIndex++;
+            }
+        }
+    }
+
+
+    for(int i=0;i<nThread;++i){
+        wt[i].start();
+    }
+
+    QProgressDialog *pd = new QProgressDialog("CheckAllStopLineCrossLane", "Cancel", 0, nThread, 0);
+
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
     pd->show();
@@ -179,21 +218,32 @@ void RoadInfo::CheckAllStopLineCrossLane()
     pd->setValue(0);
     QApplication::processEvents();
 
-    for(int i=0;i<nodes.size();++i){
-        for(int j=0;j<nodes[i]->stopLines.size();++j){
-            CheckStopLineCrossLanes( nodes[i]->stopLines[j]->id );
+    while(1){
+
+        int nFinish = 0;
+        for(int i=0;i<nThread;++i){
+
+            if( wt[i].mode < 0 ){
+                nFinish++;
+            }
         }
 
-        pd->setValue(i+1);
+        pd->setValue(nFinish);
         QApplication::processEvents();
-
         if( pd->wasCanceled() ){
             qDebug() << "Canceled.";
+            break;
+        }
+        else if( nFinish == nThread ){
+            qDebug() << "Finished.";
             break;
         }
     }
 
     pd->close();
+
+    delete [] wt;
+
 }
 
 

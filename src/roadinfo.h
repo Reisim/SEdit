@@ -31,6 +31,10 @@ class RoadInfo
 public:
     RoadInfo();
 
+
+    void ClearAllData();
+
+
     // Node
     int CreateNode(int assignId, float x, float y, QList<int> inLanes, QList<int> outLanes);
     void DeleteNode(int id);
@@ -52,9 +56,11 @@ public:
     QString GetNodeProperty(int id);
 
     void SetAllLaneLists();
-    void SetLaneLists(int id,bool showConsoleOutput=false);
+    void SetLaneLists(int id,int hIdx,bool showConsoleOutput=false);
     void SetODFlagOfTerminalNode();
     void SetTurnDirectionInfo();
+
+    void ClearNodes();
 
 
     // Lane
@@ -73,9 +79,15 @@ public:
 
     int GetNearestLane(QVector2D pos);
     int GetDistanceLaneFromPoint(int id,QVector2D pos,float &dist,int &isEdge);
+    void CheckIfTwoLanesCross(int lID1,int lID2);
+    void CheckLaneCrossWithPedestLane(int lID,int pedestID);
     bool CheckLaneCrossPoints();
     struct CrossPointInfo* CheckLaneCrossPoint(int id,QPointF p1,QPointF p2, bool debugFlag=false);
     QString GetLaneProperty(int id);
+
+    void ClearLanes();
+
+    bool updateCPEveryOperation;
 
 
     // WP
@@ -98,6 +110,8 @@ public:
     int GetNearestPedestLane(QVector2D pos,float &dist);
     void GetNearestPedestLanePoint(QVector2D pos, float &dist,int &nearPedestLaneID,int &nearPedestLanePointIndex);
     void FindPedestSignalFroCrossWalk();
+
+    void ClearPedestLanes();
 
 
     // Traffic Signal
@@ -153,9 +167,9 @@ public:
     SettingDialog *setDlg;
     BaseMapImageManager *mapImageMng;
 
-    QList<struct TreeSearchElem*> treeSeachHelper;
-    void ForwardTreeSearch(int nodeId,int nextLane,int currentLane);
-    void ClearSearchHelper();
+    QList<struct TreeSearchElem*> treeSeachHelper[8];
+    void ForwardTreeSearch(int nodeId,int nextLane,int currentLane,int);
+    void ClearSearchHelper(int);
 };
 
 #endif // ROADINFO_H

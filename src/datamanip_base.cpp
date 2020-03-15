@@ -393,7 +393,11 @@ void DataManipulator::UndoOperation()
             }
         }
 
-        road->CheckLaneCrossPoints();
+
+        if( road->updateCPEveryOperation == true ){
+            road->CheckLaneCrossPoints();
+        }
+
 
         for(int i=0;i<canvas->undoInfo.selObjKind.size();++i){
             if( canvas->undoInfo.selObjKind[i] == canvas->SEL_NODE ){
@@ -623,7 +627,11 @@ void DataManipulator::UndoOperation()
             }
         }
 
-        road->CheckLaneCrossPoints();
+
+        if( road->updateCPEveryOperation == true ){
+            road->CheckLaneCrossPoints();
+        }
+
 
         for(int i=0;i<canvas->undoInfo.selObjKind.size();++i){
             if( canvas->undoInfo.selObjKind[i] == canvas->SEL_NODE ){
@@ -1375,7 +1383,7 @@ void DataManipulator::SetSelectedNodeLaneLists()
     for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
         if( canvas->selectedObj.selObjKind[i] == canvas->SEL_NODE ){
 
-            road->SetLaneLists( canvas->selectedObj.selObjID[i] , true );
+            road->SetLaneLists( canvas->selectedObj.selObjID[i] , 0, true );
         }
     }
 }
@@ -1386,6 +1394,84 @@ void DataManipulator::SetTurnDirectionInfo()
     road->SetTurnDirectionInfo();
 }
 
+
+void DataManipulator::CheckAllStopLineCrossLane()
+{
+    road->CheckAllStopLineCrossLane();
+}
+
+
+void DataManipulator::CheckLaneCrossPoints()
+{
+    road->CheckLaneCrossPoints();
+}
+
+
+void DataManipulator::CheckCrossPointsOfSelectedLane()
+{
+    if( canvas->selectedObj.selObjKind.first() != canvas->SEL_LANE ){
+        return;
+    }
+
+    int selLaneID = canvas->selectedObj.selObjID.first();
+    int lIdx = road->indexOfLane( selLaneID );
+
+    {
+        int i = lIdx;
+
+        for(int j=0;j<road->lanes[i]->crossPoints.size();++j){
+            delete road->lanes[i]->crossPoints[j];
+        }
+        road->lanes[i]->crossPoints.clear();
+
+        for(int j=0;j<road->lanes[i]->pedestCrossPoints.size();++j){
+            delete road->lanes[i]->pedestCrossPoints[j];
+        }
+        road->lanes[i]->pedestCrossPoints.clear();
+
+        for(int j=0;j<road->lanes.size();++j){
+            if( j == i ){
+                continue;
+            }
+            if( road->lanes[j]->crossPoints.size() == 0 ){
+                continue;
+            }
+            QList<int> delCPInfo;
+            for(int k=0;k<road->lanes[j]->crossPoints.size();++k){
+                if( road->lanes[j]->crossPoints[k]->crossLaneID == selLaneID ){
+                    delCPInfo.prepend( k );
+                }
+            }
+            if( delCPInfo.size() == 0 ){
+                continue;
+            }
+            for(int k=0;k<delCPInfo.size();++k){
+                delete road->lanes[j]->crossPoints[ delCPInfo[k] ];
+                road->lanes[j]->crossPoints.removeAt( delCPInfo[k] );
+            }
+        }
+    }
+
+    for(int j=0;j<road->lanes.size();++j){
+        if( lIdx == j ){
+            continue;
+        }
+
+        //qDebug() << "Checking lane " << road->lanes[j]->id;
+
+        road->CheckIfTwoLanesCross( road->lanes[lIdx]->id, road->lanes[j]->id );
+    }
+
+    for(int j=0;j<road->pedestLanes.size();++j){
+
+        //qDebug() << "Checking pedestLane " << road->pedestLanes[j]->id;
+
+        road->CheckLaneCrossWithPedestLane( road->lanes[lIdx]->id, road->pedestLanes[j]->id );
+    }
+
+    UpdateStatusBar(QString("Cross Point Checked."));
+    canvas->update();
+}
 
 
 void DataManipulator::SearchNode()

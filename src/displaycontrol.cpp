@@ -46,17 +46,11 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( resetRotate, row++, 1 );
 
 
-    showNodes = new QCheckBox("Nodes");
-    showNodes->setChecked(true);
-
+    showNodes      = new QCheckBox("Nodes");
     showNodeLabels = new QCheckBox("Labels");
-    showNodeLabels->setChecked(true);
 
     showNodeLaneList = new QCheckBox("Lane Lists");
-    showNodeLaneList->setChecked(false);
-
     showRelatedLanes = new QCheckBox("Related Lanes");
-    showRelatedLanes->setChecked(false);
 
     prevLaneList = new QPushButton();
     prevLaneList->setIcon( QIcon(":/images/back.png") );
@@ -66,44 +60,31 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     nextLaneList->setIcon( QIcon(":/images/next.png") );
     nextLaneList->setFixedSize( nextLaneList->sizeHint() );
 
-    showLanes = new QCheckBox("Lanes");
-    showLanes->setChecked(true);
-
+    showLanes      = new QCheckBox("Lanes");
     showLaneLabels = new QCheckBox("Labels");
-    showLaneLabels->setChecked(true);
 
     laneWidth = new QSpinBox();
     laneWidth->setMinimum(1);
-    laneWidth->setMaximum(10);
-    laneWidth->setValue(6);
+    laneWidth->setMaximum(10); 
     laneWidth->setFixedSize( laneWidth->sizeHint() );
 
-    showTrafficSignals = new QCheckBox("Traffic Signals");
-    showTrafficSignals->setChecked(true);
+    manualUpdateOfCP = new QCheckBox("Manual Update of CP");
+    connect( manualUpdateOfCP,SIGNAL(toggled(bool)),this,SLOT(SetManualUpdateCPFlag(bool)) );
 
+    showTrafficSignals      = new QCheckBox("Traffic Signals");
     showTrafficSignalLabels = new QCheckBox("Label");
-    showTrafficSignalLabels->setChecked(true);
 
-    showStopLines = new QCheckBox("Stop Lines");
-    showStopLines->setChecked(true);
-
+    showStopLines      = new QCheckBox("Stop Lines");
     showStopLineLabels = new QCheckBox("Label");
-    showStopLineLabels->setChecked(true);
 
-    showPedestLanes = new QCheckBox("Pedestrian Lane");
-    showPedestLanes->setChecked(true);
-
+    showPedestLanes      = new QCheckBox("Pedestrian Lane");
     showPedestLaneLabels = new QCheckBox("Label");
-    showPedestLaneLabels->setChecked(true);
 
     showLabels = new QCheckBox("Labels");
-    showLabels->setChecked(true);
 
     showMapImage = new QCheckBox("Map Image");
-    showMapImage->setChecked(true);
-
     backMapImage = new QCheckBox("Move Back");
-    backMapImage->setChecked(false);
+
 
     grid->addWidget( new QLabel("Visilibity:"), row++, 0 );
     grid->addWidget( showNodes, row, 1 );
@@ -121,6 +102,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showLaneLabels, row++, 2 );
     grid->addWidget( new QLabel("Width:"), row, 1, 1, 1, Qt::AlignRight );
     grid->addWidget( laneWidth, row++, 2 );
+    grid->addWidget( manualUpdateOfCP, row++, 2 );
+
     grid->addWidget( showTrafficSignals, row, 1 );
     grid->addWidget( showTrafficSignalLabels, row++, 2 );
     grid->addWidget( showStopLines, row, 1 );
@@ -133,20 +116,12 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( backMapImage, row++, 2 );
 
 
-    selectNode = new QCheckBox("Node");
-    selectNode->setChecked(true);
-
-    selectLane = new QCheckBox("Lane");
-    selectLane->setChecked(true);
-
+    selectNode          = new QCheckBox("Node");
+    selectLane          = new QCheckBox("Lane");
     selectTrafficSignal = new QCheckBox("Traffic Signal");
-    selectTrafficSignal->setChecked(true);
+    selectStopLine      = new QCheckBox("Stop Line");
+    selectPedestLane    = new QCheckBox("Pedestrian Lane");
 
-    selectStopLine = new QCheckBox("Stop Line");
-    selectStopLine->setChecked(true);
-
-    selectPedestLane = new QCheckBox("Pedestrian Lane");
-    selectPedestLane->setChecked(true);
 
     grid->addWidget( new QLabel("Selection:"), row++, 0 );
     grid->addWidget( selectNode, row++, 1 );
@@ -156,6 +131,9 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( selectPedestLane, row++, 1 );
 
 
+    InitSetting();
+
+
     QHBoxLayout *mainLayout = new QHBoxLayout();
 
     mainLayout->addLayout( grid );
@@ -163,6 +141,43 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     setLayout( mainLayout );
 
     setWindowTitle("Display&Edit Control");
+
+    road = NULL;
+}
+
+
+void DisplayControl::InitSetting()
+{
+    showNodes->setChecked(true);
+    showNodeLabels->setChecked(true);
+
+    showNodeLaneList->setChecked(false);
+    showRelatedLanes->setChecked(false);
+
+    showLanes->setChecked(true);
+    laneWidth->setValue(6);
+    manualUpdateOfCP->setChecked(false);
+    showLaneLabels->setChecked(true);
+
+    showTrafficSignals->setChecked(true);
+    showTrafficSignalLabels->setChecked(true);
+
+    showStopLines->setChecked(true);
+    showStopLineLabels->setChecked(true);
+
+    showPedestLanes->setChecked(true);
+    showPedestLaneLabels->setChecked(true);
+
+    showLabels->setChecked(true);
+
+    showMapImage->setChecked(true);
+    backMapImage->setChecked(false);
+
+    selectNode->setChecked(true);
+    selectLane->setChecked(true);
+    selectTrafficSignal->setChecked(true);
+    selectStopLine->setChecked(true);
+    selectPedestLane->setChecked(true);
 }
 
 
@@ -171,5 +186,18 @@ void DisplayControl::moveToClicked()
     float x = moveToX->text().toFloat();
     float y = moveToY->text().toFloat();
     emit ViewMoveTo(x,y);
+}
+
+
+void DisplayControl::SetManualUpdateCPFlag(bool v)
+{
+    if( road != NULL ){
+        if( v == true ){
+            road->updateCPEveryOperation = false;
+        }
+        else{
+            road->updateCPEveryOperation = true;
+        }
+    }
 }
 

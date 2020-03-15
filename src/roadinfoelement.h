@@ -91,6 +91,7 @@ struct CrossPointInfo
     QVector3D pos;
     QVector2D derivative;
     float distanceFromLaneStartPoint;
+    bool duality;
 };
 
 

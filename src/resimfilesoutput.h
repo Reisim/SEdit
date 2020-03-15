@@ -37,6 +37,7 @@ class ResimFilesOutput : public QWidget
 public:
     explicit ResimFilesOutput(QWidget *parent = nullptr);
 
+    void Clear();
     RoadInfo *road;
 
 signals:
