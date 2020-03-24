@@ -40,7 +40,7 @@ public:
     void DeleteNode(int id);
     void DeleteNodeLeg(int id,int legID);
     void SetNodePosition(int id,float atX,float atY);
-    void MoveNode(int id,float moveX,float moveY);
+    void MoveNode(int id,float moveX,float moveY,bool moveNonEdge=false);
     void RotateNode(int id,float rotate);
     void RotateNodeLeg(int id,int leg,float rotate);
     void AddStopLineToNode(int nodeId,int assignStopLintId,int type,int relatedDirection);
@@ -68,11 +68,13 @@ public:
     void DeleteLane(int id);
     void MoveLane(int id,float moveX,float moveY,bool onlyThisLane);
     void MoveLaneEdge(int id,float moveX,float moveY,int edgeFlag);
+    void HeightChangeLaneEdge(int id,float moveZ,int edgeFlag);
     void RotateLane(int id,float rotate,QVector2D rotCenter);
     void RotateLaneEdge(int id,float rotate,int edgeFlag);
     void SetLaneNumber(int id,int laneNumner);
     void CalculateShape(struct LaneShapeInfo*);
     bool CheckLaneConnection();
+    bool CheckLaneConnectionFull();
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);

@@ -113,6 +113,8 @@ void RoadInfo::CheckRouteInOutDirection()
 
 void RoadInfo::SetAllLaneLists()
 {
+    qDebug() << "[RoadInfo::SetAllLaneLists]";
+
     int nThread = 8;
     WorkingThread *wt = new WorkingThread[nThread];
     for(int i=0;i<nThread;++i){
@@ -154,6 +156,10 @@ void RoadInfo::SetAllLaneLists()
                 nFinish++;
             }
         }
+
+        Sleep(200);
+
+        qDebug() << "nFinish = " << nFinish << " nThread = " << nThread;
 
         pd->setValue(nProcessed);
         QApplication::processEvents();
@@ -476,16 +482,24 @@ void RoadInfo::ForwardTreeSearch(int nodeId,int nextLane,int currentLane,int hId
     treeSeachHelper[hIdx].append( e );
 
     int cIdx = indexOfLane( currentLane );
-    if( lanes[cIdx]->sWPBoundary == true && lanes[cIdx]->sWPInNode != nodeId ){
-//    if( lanes[cIdx]->connectedNode != nodeId ){
+    if( lanes[cIdx]->previousLanes.size() == 0 ){
         e->isEnd = true;
         return;
     }
-    else{
-        for(int i=0;i<lanes[cIdx]->previousLanes.size();++i){
-            int prevLane = lanes[cIdx]->previousLanes[i];
-            ForwardTreeSearch( nodeId, currentLane, prevLane, hIdx );
+
+    int nIdx = indexOfNode( nodeId );
+
+    for(int i=0;i<lanes[cIdx]->previousLanes.size();++i){
+
+        int prevLane = lanes[cIdx]->previousLanes[i];
+
+        // check if prevLane is relatedLane of nodeId
+        if( nodes[nIdx]->relatedLanes.contains( prevLane ) == false ){
+            e->isEnd = true;
+            return;
         }
+
+        ForwardTreeSearch( nodeId, currentLane, prevLane, hIdx );
     }
 }
 

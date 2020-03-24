@@ -1201,30 +1201,25 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<nodes.size();++i){
 
-        out << "In-boundary WPs ; " << nodes[i]->id << " , ";
+        out << "In-boundary WPs ; " << nodes[i]->id;
 
         for(int j=0;j<nodes[i]->legInfo.size();++j){
 
-            if( nodes[i]->legInfo[j]->inWPs.size() == 0 ){
-                continue;
-            }
+            if( nodes[i]->legInfo[j]->inWPs.size() > 0 ){
 
-            out << nodes[i]->legInfo[j]->legID << " / ";
+                out << " , " << nodes[i]->legInfo[j]->legID << " / ";
 
-            for(int k=0;k<nodes[i]->legInfo[j]->inWPs.size();++k){
+                for(int k=0;k<nodes[i]->legInfo[j]->inWPs.size();++k){
 
-                out << nodes[i]->legInfo[j]->inWPs[k];
+                    out << nodes[i]->legInfo[j]->inWPs[k];
 
-                if( k < nodes[i]->legInfo[j]->inWPs.size() - 1 ){
-                    out << " / ";
+                    if( k < nodes[i]->legInfo[j]->inWPs.size() - 1 ){
+                        out << " / ";
+                    }
                 }
-
             }
 
-            if( j < nodes[i]->legInfo.size() - 1 ){
-                out << " , ";
-            }
-            else{
+            if( j == nodes[i]->legInfo.size() - 1 ){
                 out << "\n";
             }
 
@@ -1238,33 +1233,27 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<nodes.size();++i){
 
-        out << "Out-boundary WPs ; " << nodes[i]->id << " , ";
+        out << "Out-boundary WPs ; " << nodes[i]->id;
 
         for(int j=0;j<nodes[i]->legInfo.size();++j){
 
-            if( nodes[i]->legInfo[j]->outWPs.size() == 0 ){
-                continue;
-            }
+            if( nodes[i]->legInfo[j]->outWPs.size() > 0 ){
 
-            out << nodes[i]->legInfo[j]->legID << " / ";
+                out << " , " << nodes[i]->legInfo[j]->legID << " / ";
 
-            for(int k=0;k<nodes[i]->legInfo[j]->outWPs.size();++k){
+                for(int k=0;k<nodes[i]->legInfo[j]->outWPs.size();++k){
 
-                out << nodes[i]->legInfo[j]->outWPs[k];
+                    out << nodes[i]->legInfo[j]->outWPs[k];
 
-                if( k < nodes[i]->legInfo[j]->outWPs.size() - 1 ){
-                    out << " / ";
+                    if( k < nodes[i]->legInfo[j]->outWPs.size() - 1 ){
+                        out << " / ";
+                    }
                 }
-
             }
 
-            if( j < nodes[i]->legInfo.size() - 1 ){
-                out << " , ";
-            }
-            else{
+            if( j == nodes[i]->legInfo.size() - 1 ){
                 out << "\n";
             }
-
         }
     }
     out << "\n";

@@ -133,7 +133,6 @@ void BaseMapImageManager::AddMapImage()
     map->y = 0.0;
     map->scale = 1.0;
     map->rotate = 0.0;
-    map->scale = 0;
 
     baseMapImages.append( map );
 
@@ -197,19 +196,19 @@ void BaseMapImageManager::AddMapImageToList(struct baseMapImage* map)
     item->setFlags( Qt::ItemIsEnabled );
     mapImageList->setItem( nRow, 1, item );
 
-    item = new QTableWidgetItem( QString("%1").arg(map->x,0,'g',4) );
+    item = new QTableWidgetItem( QString("%1").arg(map->x,0,'g',6) );
     item->setFlags( Qt::ItemIsEnabled );
     mapImageList->setItem( nRow, 2, item );
 
-    item = new QTableWidgetItem( QString("%1").arg(map->y,0,'g',4) );
+    item = new QTableWidgetItem( QString("%1").arg(map->y,0,'g',6) );
     item->setFlags( Qt::ItemIsEnabled );
     mapImageList->setItem( nRow, 3, item );
 
-    item = new QTableWidgetItem( QString("%1").arg(map->scale,0,'g',4) );
+    item = new QTableWidgetItem( QString("%1").arg(map->scale,0,'g',6) );
     item->setFlags( Qt::ItemIsEnabled );
     mapImageList->setItem( nRow, 4, item );
 
-    item = new QTableWidgetItem( QString("%1").arg(map->rotate,0,'g',4) );
+    item = new QTableWidgetItem( QString("%1").arg(map->rotate,0,'g',6) );
     item->setFlags( Qt::ItemIsEnabled );
     mapImageList->setItem( nRow, 5, item );
 }
@@ -244,18 +243,25 @@ void BaseMapImageManager::EditMapImageProperty()
 
     QDoubleSpinBox *xPos = new QDoubleSpinBox();
     xPos->setFixedWidth(150);
+    xPos->setRange(-1.0e8, 1.0e8);
+    xPos->setDecimals(4);
     xPos->setValue( baseMapImages[selRow]->x );
 
     QDoubleSpinBox *yPos = new QDoubleSpinBox();
     yPos->setFixedWidth(150);
+    yPos->setRange(-1.0e8, 1.0e8);
+    yPos->setDecimals(4);
     yPos->setValue( baseMapImages[selRow]->y );
 
     QDoubleSpinBox *scale = new QDoubleSpinBox();
     scale->setFixedWidth(150);
+    scale->setDecimals(4);
     scale->setValue( baseMapImages[selRow]->scale );
 
     QDoubleSpinBox *rot = new QDoubleSpinBox();
     rot->setFixedWidth(150);
+    rot->setRange(-180.0, 180.0);
+    rot->setDecimals(4);
     rot->setValue( baseMapImages[selRow]->rotate );
 
     gLay->addWidget( xPos  , 0, 1 );
@@ -291,10 +297,10 @@ void BaseMapImageManager::EditMapImageProperty()
         baseMapImages[selRow]->scale = scale->value();
         baseMapImages[selRow]->rotate = rot->value();
 
-        mapImageList->item( selRow, 2 )->setText( QString("%1").arg(baseMapImages[selRow]->x,0,'g',4) );
-        mapImageList->item( selRow, 3 )->setText( QString("%1").arg(baseMapImages[selRow]->y,0,'g',4) );
-        mapImageList->item( selRow, 4 )->setText( QString("%1").arg(baseMapImages[selRow]->scale,0,'g',4) );
-        mapImageList->item( selRow, 5 )->setText( QString("%1").arg(baseMapImages[selRow]->rotate,0,'g',4) );
+        mapImageList->item( selRow, 2 )->setText( QString("%1").arg(baseMapImages[selRow]->x,0,'g',6) );
+        mapImageList->item( selRow, 3 )->setText( QString("%1").arg(baseMapImages[selRow]->y,0,'g',6) );
+        mapImageList->item( selRow, 4 )->setText( QString("%1").arg(baseMapImages[selRow]->scale,0,'g',6) );
+        mapImageList->item( selRow, 5 )->setText( QString("%1").arg(baseMapImages[selRow]->rotate,0,'g',6) );
 
         emit UpdateGraphic();
     }

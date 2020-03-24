@@ -176,11 +176,12 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
             diff.setX( diff.x() * sx );
             diff.setY( diff.y() * sy );
-            float a = diff.length();
+            float a = diff.length() * 0.05;
             if( a > 0.0 ){
 
                 QVector2D pos_center;
 
+                bool isFirst = true;
                 for(int i=0;i<selectedObj.selObjKind.size();++i){
                     if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
                         if(i == 0){
@@ -233,7 +234,8 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
                             float xMove = rx - dx;
                             float yMove = ry - dy;
-                            road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+                            road->MoveNode( selectedObj.selObjID[i], xMove, yMove, isFirst );
+                            isFirst = false;
                         }
                     }
                     else if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE_EDGE_START ){
@@ -529,9 +531,11 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
             // Move Node
             {
+                bool isFirst = true;
                 for(int i=0;i<selectedObj.selObjKind.size();++i){
                     if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
-                        road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+                        road->MoveNode( selectedObj.selObjID[i], xMove, yMove, isFirst );
+                        isFirst = false;
                     }
                 }
             }
@@ -646,12 +650,26 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                     }
                 }
 
-                for(int i=0;i<sMoveLane.size();++i){
-                    road->MoveLaneEdge( sMoveLane[i], xMove, yMove, 0 );  // Lane Start Point
+                if( e->modifiers() & Qt::ShiftModifier ){
+
+                    float zMove = diff.y() * (-s);
+
+                    for(int i=0;i<sMoveLane.size();++i){
+                        road->HeightChangeLaneEdge( sMoveLane[i], zMove, 0 );  // Lane Start Point
+                    }
+                    for(int i=0;i<eMoveLane.size();++i){
+                        road->HeightChangeLaneEdge( eMoveLane[i], zMove, 1 );  // Lane End Point
+                    }
                 }
-                for(int i=0;i<eMoveLane.size();++i){
-                    road->MoveLaneEdge( eMoveLane[i], xMove, yMove, 1 );  // Lane End Point
+                else{
+                    for(int i=0;i<sMoveLane.size();++i){
+                        road->MoveLaneEdge( sMoveLane[i], xMove, yMove, 0 );  // Lane Start Point
+                    }
+                    for(int i=0;i<eMoveLane.size();++i){
+                        road->MoveLaneEdge( eMoveLane[i], xMove, yMove, 1 );  // Lane End Point
+                    }
                 }
+
             }
 
             // Move Lane Edge END
@@ -687,12 +705,26 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                     }
                 }
 
-                for(int i=0;i<sMoveLane.size();++i){
-                    road->MoveLaneEdge( sMoveLane[i], xMove, yMove, 0 );  // Lane Start Point
+                if( e->modifiers() & Qt::ShiftModifier ){
+
+                    float zMove = diff.y() * (-s);
+
+                    for(int i=0;i<sMoveLane.size();++i){
+                        road->HeightChangeLaneEdge( sMoveLane[i], zMove, 0 );  // Lane Start Point
+                    }
+                    for(int i=0;i<eMoveLane.size();++i){
+                        road->HeightChangeLaneEdge( eMoveLane[i], zMove, 1 );  // Lane End Point
+                    }
                 }
-                for(int i=0;i<eMoveLane.size();++i){
-                    road->MoveLaneEdge( eMoveLane[i], xMove, yMove, 1 );  // Lane End Point
+                else{
+                    for(int i=0;i<sMoveLane.size();++i){
+                        road->MoveLaneEdge( sMoveLane[i], xMove, yMove, 0 );  // Lane Start Point
+                    }
+                    for(int i=0;i<eMoveLane.size();++i){
+                        road->MoveLaneEdge( eMoveLane[i], xMove, yMove, 1 );  // Lane End Point
+                    }
                 }
+
             }
 
             // Move Traffic Signal
@@ -850,8 +882,27 @@ int GraphicCanvas::Get3DPhysCoordFromPickPoint(int xp,int yp, float &x,float &y)
     float A12 = q12 - Kx * q32;
     float A21 = q21 - Ky * q31;
     float A22 = q22 - Ky * q32;
-    float B11 = Kx * Z_eye - X_eye;
-    float B21 = Ky * Z_eye - Y_eye;
+
+    float xE = X_eye;
+    float yE = Y_eye;
+
+    float cpc = cos( cameraPitch );
+    float cps = sin( cameraPitch );
+
+    float cyc = cos( cameraYaw );
+    float cys = sin( cameraYaw );
+
+    X_trans = xE * cyc - yE * cys;
+    Y_trans = xE * cys + yE * cyc;
+
+    yE = Y_trans;
+    Y_trans = yE * cpc;
+    Z_trans = yE * cps;
+
+    Z_trans += Z_eye;
+
+    float B11 = Kx * Z_trans - X_trans;
+    float B21 = Ky * Z_trans - Y_trans;
 
     float det = A11 * A22 - A12 * A21;
     if( fabs(det) > 1.0e-5 ){

@@ -519,7 +519,6 @@ void GraphicCanvas::paintGL()
 
     float xE = X_eye;
     float yE = Y_eye;
-    float zE = Z_eye;
 
     float cpc = cos( cameraPitch );
     float cps = sin( cameraPitch );

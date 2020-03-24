@@ -1130,7 +1130,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
     bool ret;
 
     // Set Next and Previous Lanes
-    ret = road->CheckLaneConnection();
+    ret = road->CheckLaneConnectionFull();
     if( ret == true ){
 
         while(1){

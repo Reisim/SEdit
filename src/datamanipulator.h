@@ -52,6 +52,7 @@ public:
     void SelectAllNode();
     void DeleteSelectedObject();
     void MergeSelectedObject();
+    void SplitSelectedLane();
 
     int CreateNode_4x1x1();
     int CreateNode_4x1x1_r();
@@ -77,6 +78,11 @@ public slots:
     int CreateNode_4x2x2_TS();
     int CreateNode_4x2x2_r_TS();
 
+    int CreateNode_2L_exist();
+    int CreateNode_2L_merge();
+    int CreateNode_3L_exist();
+    int CreateNode_3L_merge();
+
 
     void StartCreatePedestPath();
     int CreatePedestPath();
@@ -87,6 +93,7 @@ public slots:
     int CreateTrafficSignal(int nodeID,int nodeDir,int type);
     int CreateStopLine(int nodeID,int nodeDir,int type);
 
+    void CheckLaneConnectionFull();
     void CreateWPData();
     void SetODFlagOfTerminalNode();
     void SetAllLaneLists();

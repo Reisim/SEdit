@@ -297,6 +297,34 @@ MainWindow::MainWindow(QWidget *parent)
 
     createObjectPopup->addSeparator();
 
+    QAction *createNode_2L_exist = new QAction();
+    createNode_2L_exist->setText("2-Lanes and 1 exist Lane");
+    connect( createNode_2L_exist, SIGNAL(triggered()),dtManip,SLOT(CreateNode_2L_exist()));
+    connect( createNode_2L_exist, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_2L_exist );
+
+    QAction *createNode_3L_exist = new QAction();
+    createNode_3L_exist->setText("3-Lanes and 1 exist Lane");
+    connect( createNode_3L_exist, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3L_exist()));
+    connect( createNode_3L_exist, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3L_exist );
+
+    QAction *createNode_2L_merge = new QAction();
+    createNode_2L_merge->setText("2-Lanes and 1 merging Lane");
+    connect( createNode_2L_merge, SIGNAL(triggered()),dtManip,SLOT(CreateNode_2L_merge()));
+    connect( createNode_2L_merge, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_2L_merge );
+
+    QAction *createNode_3L_merge = new QAction();
+    createNode_3L_merge->setText("3-Lanes and 1 merging Lane");
+    connect( createNode_3L_merge, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3L_merge()));
+    connect( createNode_3L_merge, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3L_merge );
+
+
+    createObjectPopup->addSeparator();
+
+
     QAction *createPedestLane = new QAction();
     createPedestLane->setText("Pedest Lane");
     connect( createPedestLane, SIGNAL(triggered()),dtManip,SLOT(StartCreatePedestPath()));
@@ -309,6 +337,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     //
     utilityPopup = new QMenu();
+
+    QAction *checkLaneConnect = new QAction();
+    checkLaneConnect->setText("Check Lane Connection");
+    connect( checkLaneConnect, SIGNAL(triggered()),dtManip,SLOT(CheckLaneConnectionFull()));
+    connect( checkLaneConnect, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( checkLaneConnect );
 
     QAction *createWPData = new QAction();
     createWPData->setText("Create WP Data");
@@ -724,6 +758,9 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         }
         else if( key == Qt::Key_M ){
             dtManip->MergeSelectedObject();
+        }
+        else if( key == Qt::Key_D ){
+            dtManip->SplitSelectedLane();
         }
         else if( key == Qt::Key_I ){
             int checkInsertCondition = 0;

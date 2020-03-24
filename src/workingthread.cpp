@@ -81,9 +81,11 @@ void WorkingThread::run()
 
             int ndIdx = params[i];
 
-            qDebug() << "Check Node " << road->nodes[ndIdx]->id;
+            qDebug() << "[Start] Check Node " << road->nodes[ndIdx]->id;
 
             road->SetLaneLists( road->nodes[ndIdx]->id, wtID );
+
+            qDebug() << "[End] Check Node " << road->nodes[ndIdx]->id;
 
         }
 

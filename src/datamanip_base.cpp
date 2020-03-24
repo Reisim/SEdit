@@ -1359,6 +1359,13 @@ void DataManipulator::MergeSelectedObject()
 }
 
 
+void DataManipulator::CheckLaneConnectionFull()
+{
+    road->CheckLaneConnectionFull();
+    canvas->update();
+}
+
+
 void DataManipulator::CreateWPData()
 {
     road->CreateWPData();
@@ -1710,3 +1717,27 @@ void DataManipulator::ChangeLineCoordInfo()
     canvas->update();
 }
 
+
+void DataManipulator::SplitSelectedLane()
+{
+    qDebug() << "[SplitSelectedLane]";
+
+    QList<int> targetLanes;
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_LANE ){
+            targetLanes.append( canvas->selectedObj.selObjID[i] );
+        }
+    }
+
+    canvas->selectedObj.selObjKind.clear();
+    canvas->selectedObj.selObjID.clear();
+
+    qDebug() << "targetLanes: " << targetLanes;
+
+    for(int i=0;i<targetLanes.size();++i){
+        road->DivideLaneHalf( targetLanes[i] );
+    }
+
+    canvas->update();
+}

@@ -105,6 +105,9 @@ int RoadInfo::CreateLane(int assignId,
     lane->speedInfo = 60.0;
     lane->actualSpeed = 65.0;
 
+    lane->driverErrorProb = 0.0;
+    lane->automaticDrivingEnabled = false;
+
 //    qDebug() << "[CreateLane] Call CalculateShape";
 
     CalculateShape( &(lane->shape) );
@@ -229,6 +232,29 @@ void RoadInfo::MoveLaneEdge(int id, float moveX, float moveY, int edgeFlag)
         float y = s->pos.last()->y() + moveY;
         s->pos.last()->setX( x );
         s->pos.last()->setY( y );
+    }
+
+    CalculateShape( s );
+}
+
+
+void RoadInfo::HeightChangeLaneEdge(int id, float moveZ, int edgeFlag)
+{
+    int index = indexOfLane(id);
+    if( index < 0 ){
+        qDebug() << "[MoveLaneEdge] cannot find index of id = " << id;
+        return;
+    }
+
+    struct LaneShapeInfo *s = &(lanes[index]->shape);
+
+    if( edgeFlag == 0 ){
+        float z = s->pos[0]->z() + moveZ;
+        s->pos[0]->setZ( z );
+    }
+    else{
+        float z = s->pos.last()->z() + moveZ;
+        s->pos.last()->setZ( z );
     }
 
     CalculateShape( s );
@@ -560,6 +586,8 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
 
 void RoadInfo::DivideLaneHalf(int id)
 {
+    qDebug() << "[RoadInfo::DivideLaneHalf] ld = " << id;
+
     int index = indexOfLane(id);
     if( index < 0 ){
         qDebug() << "[DivideLaneHalf] cannot find index of id = " << id;
@@ -592,7 +620,21 @@ void RoadInfo::DivideLaneHalf(int id)
     if( sWPInNode == eWPInNode ){
         tWPInNode = eWPInNode;
     }
-    CreateLane( -1, sP, tWPInNode, -1, departureNode, -1, eP, eWPInNode, eWPNodeDir, connectedNode, lanes[index]->eWPBoundary );
+    int newLaneId = CreateLane( -1, sP, tWPInNode, -1, departureNode, -1, eP, eWPInNode, eWPNodeDir, connectedNode, lanes[index]->eWPBoundary );
+
+    qDebug() << "New Lane ID = " << newLaneId;
+    SetNodeRelatedLane( connectedNode, newLaneId );
+    SetNodeRelatedLane( departureNode, newLaneId );
+
+    int idx = indexOfLane(newLaneId);
+    lanes[idx]->nextLanes.clear();
+    lanes[idx]->previousLanes.clear();
+    for(int i=0;i<lanes[index]->nextLanes.size();++i){
+        lanes[idx]->nextLanes.append( lanes[index]->nextLanes[i] );
+    }
+    lanes[index]->nextLanes.clear();
+    lanes[index]->nextLanes.append( newLaneId );
+    lanes[idx]->previousLanes.append( id );
 
     s->pos.last()->setX( s->pos[Np]->x() );
     s->pos.last()->setY( s->pos[Np]->y() );
@@ -1125,6 +1167,50 @@ QString RoadInfo::GetLaneProperty(int id)
 
 
 bool RoadInfo::CheckLaneConnection()
+{
+    bool ret = true;
+
+
+    for(int i=0;i<lanes.size();++i){
+
+        if( lanes[i]->nextLanes.size() > 0 || lanes[i]->previousLanes.size() > 0 ){
+            continue;
+        }
+
+        float lx = lanes[i]->shape.pos.last()->x();
+        float ly = lanes[i]->shape.pos.last()->y();
+
+        for(int j=0;j<lanes.size();++j){
+
+            if( i == j ){
+                continue;
+            }
+
+            float dx = lanes[j]->shape.pos.first()->x() - lx;
+            float dy = lanes[j]->shape.pos.first()->y() - ly;
+
+            if( dx < -0.5 || dx > 0.5 ){
+                continue;
+            }
+
+            if( dy < -0.5 || dy > 0.5 ){
+                continue;
+            }
+
+            if( lanes[i]->nextLanes.contains( lanes[j]->id ) == false ){
+                lanes[i]->nextLanes.append( lanes[j]->id );
+            }
+            if( lanes[j]->previousLanes.contains( lanes[i]->id ) == false ){
+                lanes[j]->previousLanes.append( lanes[i]->id );
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+bool RoadInfo::CheckLaneConnectionFull()
 {
     for(int i=0;i<lanes.size();++i){
         lanes[i]->nextLanes.clear();

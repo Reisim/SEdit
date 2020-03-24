@@ -180,7 +180,7 @@ void RoadInfo::SetNodePosition(int id, float atX, float atY)
 }
 
 
-void RoadInfo::MoveNode(int id,float moveX,float moveY)
+void RoadInfo::MoveNode(int id,float moveX,float moveY,bool moveNonEdge)
 {
     int index = indexOfNode(id);
     if( index < 0 ){
@@ -197,12 +197,12 @@ void RoadInfo::MoveNode(int id,float moveX,float moveY)
             continue;
         }
         bool isMoved = false;
-        if( lanes[lidx]->sWPInNode == id ){
+        if( lanes[lidx]->sWPInNode == id || (lanes[lidx]->sWPInNode < 0 && moveNonEdge == true) ){
             lanes[lidx]->shape.pos.first()->setX( lanes[lidx]->shape.pos.first()->x() + moveX );
             lanes[lidx]->shape.pos.first()->setY( lanes[lidx]->shape.pos.first()->y() + moveY );
             isMoved = true;
         }
-        if( lanes[lidx]->eWPInNode == id ){
+        if( lanes[lidx]->eWPInNode == id || (lanes[lidx]->eWPInNode < 0 && moveNonEdge == true) ){
             lanes[lidx]->shape.pos.last()->setX( lanes[lidx]->shape.pos.last()->x() + moveX );
             lanes[lidx]->shape.pos.last()->setY( lanes[lidx]->shape.pos.last()->y() + moveY );
             isMoved = true;
