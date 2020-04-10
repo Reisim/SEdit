@@ -111,6 +111,197 @@ void RoadInfo::CheckRouteInOutDirection()
 }
 
 
+void RoadInfo::CheckRouteInOutDirectionGivenODNode(int origNodeId,int destNodeID)
+{
+    qDebug() << "[RoadInfo::CheckRouteInOutDirectionGivenODNode] origNodeId = " << origNodeId << " destNodeID = " << destNodeID;
+
+    int i = indexOfNode( origNodeId );
+    int j = -1;
+    for(int m=0;m<nodes[i]->odData.size();++m){
+        if( nodes[i]->odData[m]->destinationNode == destNodeID ){
+            j = m;
+            break;
+        }
+    }
+    if( j < 0 ){
+        return;
+    }
+
+
+    for(int k=0;k<nodes[i]->odData[j]->route.size();++k){
+
+        for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
+            nodes[i]->odData[j]->route[k]->nodeList[l]->inDir = -1;
+            nodes[i]->odData[j]->route[k]->nodeList[l]->outDir = -1;
+        }
+
+        for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
+
+            if( l == 0 ){
+
+                int nd = nodes[i]->odData[j]->route[k]->nodeList[l]->node;
+                int ndIdx = indexOfNode( nd );
+                if( ndIdx >= 0 ){
+                    if( nodes[ndIdx]->legInfo.size() == 1 ){
+                        nodes[i]->odData[j]->route[k]->nodeList[l]->inDir  = -1;
+                    }
+                    else if( nodes[ndIdx]->legInfo.size() > 1 ){
+                        nodes[i]->odData[j]->route[k]->nodeList[l]->inDir  = -2;
+                    }
+
+                    int nextNd = nodes[i]->odData[j]->route[k]->nodeList[l+1]->node;
+                    for(int m=0;m<nodes[ndIdx]->legInfo.size();++m){
+                        if( nodes[ndIdx]->legInfo[m]->connectingNode == nextNd ){
+                            nodes[i]->odData[j]->route[k]->nodeList[l]->outDir = nodes[ndIdx]->legInfo[m]->legID;
+                            break;
+                        }
+                    }
+                }
+            }
+            else if( l == nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
+
+                int nd = nodes[i]->odData[j]->route[k]->nodeList[l]->node;
+                int ndIdx = indexOfNode( nd );
+                if( ndIdx >= 0 ){
+
+                    if( nodes[ndIdx]->legInfo.size() == 1 ){
+                        nodes[i]->odData[j]->route[k]->nodeList[l]->outDir  = -1;
+                    }
+                    else if( nodes[ndIdx]->legInfo.size() > 1 ){
+                        nodes[i]->odData[j]->route[k]->nodeList[l]->outDir  = -2;
+                    }
+
+                    int prevNd = nodes[i]->odData[j]->route[k]->nodeList[l-1]->node;
+                    for(int m=0;m<nodes[ndIdx]->legInfo.size();++m){
+                        if( nodes[ndIdx]->legInfo[m]->connectedNode == prevNd ){
+                            nodes[i]->odData[j]->route[k]->nodeList[l]->inDir = nodes[ndIdx]->legInfo[m]->legID;
+                            break;
+                        }
+                    }
+                }
+            }
+            else{
+
+                int nd = nodes[i]->odData[j]->route[k]->nodeList[l]->node;
+                int ndIdx = indexOfNode( nd );
+                if( ndIdx >= 0 ){
+
+                    int prevNd = nodes[i]->odData[j]->route[k]->nodeList[l-1]->node;
+                    for(int m=0;m<nodes[ndIdx]->legInfo.size();++m){
+                        if( nodes[ndIdx]->legInfo[m]->connectedNode == prevNd ){
+                            nodes[i]->odData[j]->route[k]->nodeList[l]->inDir = nodes[ndIdx]->legInfo[m]->legID;
+                            break;
+                        }
+                    }
+
+                    int nextNd = nodes[i]->odData[j]->route[k]->nodeList[l+1]->node;
+                    for(int m=0;m<nodes[ndIdx]->legInfo.size();++m){
+                        if( nodes[ndIdx]->legInfo[m]->connectingNode == nextNd ){
+                            nodes[i]->odData[j]->route[k]->nodeList[l]->outDir = nodes[ndIdx]->legInfo[m]->legID;
+                            break;
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+}
+
+
+void RoadInfo::SetAllRouteLaneList()
+{
+    qDebug() << "[RoadInfo::SetAllRouteLaneList]";
+
+    int nThread = 8;
+    WorkingThread *wt = new WorkingThread[nThread];
+    for(int i=0;i<nThread;++i){
+        wt[i].mode = 4;
+        wt[i].road = this;
+        wt[i].wtID = i;
+    }
+
+    int nSet = 0;
+    int thrIdx = 0;
+    for(int i=0;i<nodes.size();++i){
+        if( nodes[i]->isOriginNode == false ){
+            continue;
+        }
+        if( nodes[i]->odData.size() == 0 ){
+            continue;
+        }
+        wt[thrIdx].params.append( i );
+        thrIdx++;
+        if( thrIdx == nThread ){
+            thrIdx = 0;
+        }
+        nSet++;
+    }
+
+    if( nSet == 0 ){
+        delete [] wt;
+        return;
+    }
+
+    for(int i=0;i<nThread;++i){
+        wt[i].start();
+    }
+
+
+    QProgressDialog *pd = new QProgressDialog("SetAllRouteLaneList", "Cancel", 0, nodes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
+
+    while(1){
+
+        int nFinish = 0;
+        int nProcessed = 0;
+        for(int i=0;i<nThread;++i){
+            nProcessed += wt[i].nProcessed;
+            if( wt[i].mode < 0 ){
+                nFinish++;
+            }
+        }
+
+        Sleep(200);
+
+        qDebug() << "nFinish = " << nFinish << " nThread = " << nThread;
+
+        pd->setValue(nProcessed);
+        QApplication::processEvents();
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.  nFinish = " << nFinish;
+            for(int i=0;i<nThread;++i){
+                if( wt[i].mode > 0 ){
+                    wt[i].SetStopFlag();
+                }
+            }
+
+            if( nFinish == nThread ){
+                break;
+            }
+
+        }
+        else if( nFinish == nThread ){
+            qDebug() << "Finished.";
+            break;
+        }
+    }
+
+    pd->setValue( nodes.size() );
+
+    pd->close();
+
+
+    delete [] wt;
+}
+
+
 void RoadInfo::SetAllLaneLists()
 {
     qDebug() << "[RoadInfo::SetAllLaneLists]";
@@ -510,5 +701,206 @@ void RoadInfo::ClearSearchHelper(int hIdx)
         delete treeSeachHelper[hIdx][l];
     }
     treeSeachHelper[hIdx].clear();
+}
+
+
+void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
+{
+    int ndIdx = indexOfNode(origNodeId);  // Origin Node Index
+    if( nodes[ndIdx]->odData.size() == 0 ){
+        return;
+    }
+
+    int n = -1;
+    for(int i=0;i<nodes[ndIdx]->odData.size();++i){
+        if( nodes[ndIdx]->odData[i]->destinationNode == destNodeId ){
+            n = i;
+            break;
+        }
+    }
+    if( n < 0 ){
+        return;
+    }
+
+    qDebug() << "[RoadInfo::GetLaneListForRoute]";
+    qDebug() << "  origNodeId = " << origNodeId << " destNodeId = " << destNodeId;
+
+
+    for(int m=0;m<nodes[ndIdx]->odData[n]->route.size();++m){
+
+        // Clear Existing Data
+        for(int i=0;i<nodes[ndIdx]->odData[n]->route[m]->laneList.size();++i){
+            nodes[ndIdx]->odData[n]->route[m]->laneList[i].clear();
+        }
+        nodes[ndIdx]->odData[n]->route[m]->laneList.clear();
+
+
+        qDebug() << " checking route " << (m+1) << " / " << nodes[ndIdx]->odData[n]->route.size();
+        for(int i=0;i<nodes[ndIdx]->odData[n]->route[m]->nodeList.size();++i){
+            qDebug() << "[" << i << "]: " << " In:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->inDir
+                     << " Nd:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->node
+                     << " Out:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->outDir;
+        }
+
+
+        int destNdIdx = indexOfNode( destNodeId );
+        int destInDir = nodes[ndIdx]->odData[n]->route[m]->nodeList.last()->inDir;
+
+        qDebug() << " destInDir = " << destInDir;
+
+
+        QList<int> topLanes;
+        for(int i=0;i<nodes[destNdIdx]->relatedLanes.size();++i ){
+
+            qDebug() << " checking lane " << nodes[destNdIdx]->relatedLanes[i];
+
+            int lIdx = indexOfLane( nodes[destNdIdx]->relatedLanes[i] );
+
+//            qDebug() << " eWPInNode   = " << lanes[lIdx]->eWPInNode;
+//            qDebug() << " sWPInNode   = " << lanes[lIdx]->sWPInNode;
+//            qDebug() << " eWPNodeDir  = " << lanes[lIdx]->eWPNodeDir;
+//            qDebug() << " eWPBoundary = " << lanes[lIdx]->eWPBoundary;
+
+
+            if( lanes[lIdx]->eWPInNode != lanes[lIdx]->sWPInNode &&
+                    lanes[lIdx]->eWPInNode == destNodeId &&
+                    lanes[lIdx]->eWPBoundary == true &&
+                    lanes[lIdx]->eWPNodeDir == destInDir ){
+
+                if( topLanes.indexOf(nodes[destNdIdx]->relatedLanes[i]) < 0 ){
+                    topLanes.append( nodes[destNdIdx]->relatedLanes[i] );
+//                    qDebug() << "Add this lane to topLanes";
+                }
+            }
+        }
+        qDebug() << "  topLanes = " << topLanes;
+
+
+        for(int k=0;k<topLanes.size();++k){
+
+            qDebug() << " checking topLane = " << topLanes[k];
+
+            ClearSearchHelper(hIdx);
+
+            qDebug() << " start search";
+
+            ForwardTreeSearchForRouteLaneList( nodes[ndIdx]->odData[n]->route[m], -1, topLanes[k], hIdx);
+
+            qDebug() << " end search";
+
+
+            bool foundAll = false;
+            while( 1 ){
+
+                QList<int> extractedLanes;
+
+                //qDebug() << " treeSeachHelper size = " << treeSeachHelper[hIdx].size();
+
+                for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+
+                    //qDebug() << " isEnd[" << l << "] = " << treeSeachHelper[hIdx][l]->isEnd;
+
+                    if( treeSeachHelper[hIdx][l]->isEnd == false ){
+                        extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
+                    }
+                    else if( treeSeachHelper[hIdx][l]->isEnd == true ){
+                        extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
+
+                        // Check this list reached origin
+
+                        //qDebug() << "Last Lane = " << extractedLanes.last();
+                        int lastLaneIdx = indexOfLane( extractedLanes.last() );
+
+                        //qDebug() << "sWPInNode = " << lanes[lastLaneIdx]->sWPInNode;
+                        //qDebug() << "origNodeId = " << origNodeId;
+
+                        if( lanes[lastLaneIdx]->sWPInNode == origNodeId ){
+                            nodes[ndIdx]->odData[n]->route[m]->laneList.append( extractedLanes );
+                            //qDebug() << "Get Lane List.";
+                        }
+
+
+                        if( l < treeSeachHelper[hIdx].size() - 1 ){
+                            int branch = treeSeachHelper[hIdx][l+1]->nextLane;
+                            for(int m=l;m>0;m--){
+                                if( treeSeachHelper[hIdx][m]->currentLane != branch ){
+                                    delete treeSeachHelper[hIdx][m];
+                                    treeSeachHelper[hIdx].removeAt(m);
+                                }
+                                else{
+                                    break;
+                                }
+                            }
+                        }
+                        else{
+                            foundAll = true;
+                        }
+                        break;
+                    }
+                }
+                if( foundAll == true ){
+                    break;
+                }
+            }
+        }
+
+        qDebug() << " extracted:";
+        for(int i=0;i<nodes[ndIdx]->odData[n]->route[m]->laneList.size();++i){
+            qDebug() << "  " << i << " : " << nodes[ndIdx]->odData[n]->route[m]->laneList[i];
+        }
+    }
+}
+
+
+void RoadInfo::ForwardTreeSearchForRouteLaneList(struct RouteData* route,int nextLane,int currentLane,int hIdx)
+{
+    struct TreeSearchElem *e = new struct TreeSearchElem;
+
+    e->nextLane = nextLane;
+    e->currentLane = currentLane;
+    e->isEnd = false;
+
+    treeSeachHelper[hIdx].append( e );
+
+    int cIdx = indexOfLane( currentLane );
+    if( lanes[cIdx]->previousLanes.size() == 0 ){
+        e->isEnd = true;
+        return;
+    }
+
+    int hasPrev = false;
+    for(int i=0;i<lanes[cIdx]->previousLanes.size();++i){
+
+        int prevLane = lanes[cIdx]->previousLanes[i];
+
+        int pIdx = indexOfLane( prevLane );
+
+        bool isInRoute = false;
+        if( lanes[pIdx]->eWPInNode == lanes[pIdx]->sWPInNode ){
+
+            for(int j=0;j<route->nodeList.size();++j){
+                if( route->nodeList[j]->node == lanes[pIdx]->eWPInNode &&
+                        route->nodeList[j]->outDir == lanes[pIdx]->eWPNodeDir &&
+                        route->nodeList[j]->inDir  == lanes[pIdx]->sWPNodeDir ){
+
+                    isInRoute = true;
+                    break;
+                }
+            }
+        }
+        else{
+            isInRoute = true;
+        }
+
+        if( isInRoute == true ){
+            hasPrev = true;
+            ForwardTreeSearchForRouteLaneList( route, currentLane, prevLane, hIdx );
+        }
+    }
+
+    if( hasPrev == false ){
+        e->isEnd = true;
+        return;
+    }
 }
 

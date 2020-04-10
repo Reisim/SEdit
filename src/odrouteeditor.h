@@ -47,6 +47,8 @@ public:
 
     void SetHeaderTrafficVolumeTable();
     QList<int> destinationNodeList;
+    int GetCurrentDestinationNode();
+    int GetCurrentRouteIndex();
 
 protected:
     void resizeEvent(QResizeEvent *event);
@@ -56,6 +58,8 @@ signals:
     void ShowMessageStatusBar(QString);
     void SetNodePickMode(int,int);
     void ResetNodePickMode();
+    void UpdateGraphic();
+    void SetNodeSelected(int);
 
 public slots:
     void SetCurrentODRouteData(int oNode,bool routTableSetFlag);

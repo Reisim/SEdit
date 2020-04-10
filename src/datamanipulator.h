@@ -54,13 +54,27 @@ public:
     void MergeSelectedObject();
     void SplitSelectedLane();
 
+    int CreateNode_4(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
+    int CreateNode_3(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
+    int CreateNode_5(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
+    int CreateNode_6(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
+    int CreateStraight(float x,float y,int nLane);
+
     int CreateNode_4x1x1();
     int CreateNode_4x1x1_r();
     int CreateNode_4x2x1();
     int CreateNode_4x2x2();
     int CreateNode_4x2x1_r();
     int CreateNode_4x2x2_r();
+
     int CreateNode_3x1x1();
+    int CreateNode_3x2x1();
+    int CreateNode_3x1x1_r();
+    int CreateNode_3x1x1_tr();
+    int CreateNode_3x2x1_tr();
+    int CreateNode_3x3x1_tr();
+    int CreateNode_3x2x1_rm();
+    int CreateNode_3x2x1_r();
 
 
 signals:
@@ -69,7 +83,12 @@ signals:
 
 public slots:
     int CreateNode_4x1x1_noTS();
+    int CreateNode_4x2x1_noTS();
     int CreateNode_3x1x1_noTS();
+    int CreateNode_3x2x1_noTS();
+    int CreateNode_3x1x1_tr_noTS();
+    int CreateNode_3x2x1_tr_noTS();
+    int CreateNode_3x3x1_tr_noTS();
 
     int CreateNode_4x1x1_TS();
     int CreateNode_4x1x1_r_TS();
@@ -78,11 +97,22 @@ public slots:
     int CreateNode_4x2x2_TS();
     int CreateNode_4x2x2_r_TS();
 
+    int CreateNode_3x1x1_TS();
+    int CreateNode_3x2x1_TS();
+    int CreateNode_3x1x1_r_TS();
+    int CreateNode_3x2x1_rm_TS();
+    int CreateNode_3x2x1_r_TS();
+
     int CreateNode_2L_exist();
     int CreateNode_2L_merge();
     int CreateNode_3L_exist();
     int CreateNode_3L_merge();
 
+    int CreateNode_straight_1();
+    int CreateNode_straight_2();
+    int CreateNode_straight_3();
+
+    void CreateNode_Dialog();
 
     void StartCreatePedestPath();
     int CreatePedestPath();
@@ -119,6 +149,7 @@ public slots:
     void SearchLane();
     void SearchTrafficSignal();
     void MoveXY();
+    void SetNodePos();
     void SelectAllLanes();
 
     void ReadLineCSV();

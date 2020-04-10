@@ -90,7 +90,7 @@ int RoadInfo::CreateStopLine(int assignId, int relatedNodeID, int relatedNodeDir
             if( lidx >= 0 ){
 
                 if( lanes[lidx]->eWPInNode == relatedNodeID && lanes[lidx]->sWPInNode != relatedNodeID
-                        && lanes[lidx]->eWPNodeDir == relatedNodeDir ){
+                        && lanes[lidx]->eWPNodeDir == relatedNodeDir && lanes[lidx]->eWPBoundary == true ){
 
                     float dx = lanes[lidx]->shape.pos.last()->x() - nodeCenter.x();
                     float dy = lanes[lidx]->shape.pos.last()->y() - nodeCenter.y();

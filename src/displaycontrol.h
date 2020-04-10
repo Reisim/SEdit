@@ -55,6 +55,7 @@ public:
 
     QCheckBox *showNodes;
     QCheckBox *showNodeLaneList;
+    QCheckBox *showRouteLaneList;
     QCheckBox *showRelatedLanes;
     QCheckBox *showLanes;
     QSpinBox *laneWidth;

@@ -993,12 +993,10 @@ void DataManipulator::ImportERIS3Data(QString filename)
                                         startWP,
                                         tmpWPRelatedNode[sWPidx],
                                         tmpWPRelatedNodeDir[sWPidx],
-                                        tmpWPRelatedNode[sWPidx],
                                         (tmpWPIsWPin[sWPidx] == true || tmpWPIsWPout[sWPidx] == true ) ? true : false,
                                         endWP,
                                         tmpWPRelatedNode[eWPidx],
                                         tmpWPRelatedNodeDir[eWPidx],
-                                        tmpWPRelatedNode[eWPidx],
                                         (tmpWPIsWPin[eWPidx] == true || tmpWPIsWPout[eWPidx] == true ) ? true : false );
 
             if( lId >= 0 ){

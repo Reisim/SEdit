@@ -245,7 +245,7 @@ int RoadInfo::CreateWP(int assignID, QVector3D pos, float dir, QList<int> relate
             cId = assignID;
         }
         else{
-            qDebug() << "[CreateLane] assigned ID already exists.";
+            qDebug() << "[CreateWP] assigned ID already exists.";
             return -1;
         }
     }

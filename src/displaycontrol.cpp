@@ -51,6 +51,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
 
     showNodeLaneList = new QCheckBox("Lane Lists");
     showRelatedLanes = new QCheckBox("Related Lanes");
+    showRouteLaneList = new QCheckBox("Route Lane Lists");
 
     prevLaneList = new QPushButton();
     prevLaneList->setIcon( QIcon(":/images/back.png") );
@@ -91,6 +92,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showNodeLabels, row++, 2 );
     grid->addWidget( showNodeLaneList, row++, 2 );
     grid->addWidget( showRelatedLanes, row++, 2 );
+    grid->addWidget( showRouteLaneList, row++, 2 );
 
     QHBoxLayout *LaneListHBox = new QHBoxLayout();
     LaneListHBox->addWidget( prevLaneList );
@@ -153,6 +155,7 @@ void DisplayControl::InitSetting()
 
     showNodeLaneList->setChecked(false);
     showRelatedLanes->setChecked(false);
+    showRouteLaneList->setChecked(true);
 
     showLanes->setChecked(true);
     laneWidth->setValue(6);

@@ -65,6 +65,12 @@ void GraphicCanvas::SetRelatedLaneslVisibility(bool b)
     update();
 }
 
+void GraphicCanvas::SetRouteLaneListlVisibility(bool b)
+{
+    RouteLaneListFlag = b;
+    update();
+}
+
 void GraphicCanvas::ResetLaneListIndex()
 {
     laneListIndex = 0;

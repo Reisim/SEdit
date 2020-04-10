@@ -137,6 +137,8 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
 
 void RoadObjectProperty::CBOriginNodeChanged(bool val)
 {
+    qDebug() << "[RoadObjectProperty::CBOriginNodeChanged] val = " << val;
+
     int nodeID = nodeIDSB->value();
     int ndIdx = road->indexOfNode( nodeID );
     if( ndIdx < 0 ){
@@ -144,6 +146,13 @@ void RoadObjectProperty::CBOriginNodeChanged(bool val)
     }
 
     road->nodes[ndIdx]->isOriginNode = val;
+    if( val == true ){
+        emit OriginNodeChanged( road->nodes[ndIdx]->id, true );
+        emit ShowODRouteEdit();
+    }
+    else{
+        emit HideODRouteEdit();
+    }
 }
 
 

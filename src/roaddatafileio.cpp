@@ -815,6 +815,27 @@ bool RoadInfo::LoadRoadData(QString filename)
 
     bool ret = true;
 
+
+    // Check if the data is old format
+    for(int i=0;i<lanes.size();++i){
+        if( lanes[i]->eWPInNode < 0 && lanes[i]->connectedNode >= 0 ){
+            lanes[i]->eWPInNode = lanes[i]->connectedNode;
+        }
+        if( lanes[i]->sWPInNode < 0 ){
+            if( lanes[i]->connectedNodeOutDirect < 0 && lanes[i]->departureNode >= 0 ){
+                lanes[i]->sWPInNode  = lanes[i]->departureNode;
+                lanes[i]->sWPNodeDir = lanes[i]->departureNodeOutDirect;
+                lanes[i]->eWPNodeDir = lanes[i]->connectedNodeInDirect;
+            }
+            else if( lanes[i]->connectedNodeOutDirect >= 0 ){
+                lanes[i]->sWPInNode  = lanes[i]->eWPInNode;
+                lanes[i]->sWPNodeDir = lanes[i]->connectedNodeInDirect;
+                lanes[i]->eWPNodeDir = lanes[i]->connectedNodeOutDirect;
+            }
+        }
+    }
+
+
     // Calculate Stop Point Data
     CheckAllStopLineCrossLane();
 
@@ -1340,6 +1361,66 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                         out << "\n";
                     }
                 }
+            }
+        }
+    }
+    out << "\n";
+
+
+    out << "#-----------------------------------------------------\n";
+    out << "# Route Lanes ;  (node_1 -> node_2 -> ... -> node_M ) | \n";
+    out << "#            (lane_11 <- lane_12 <- ... <- lane_1N )    \n";
+    out << "#                    / ... /                            \n";
+    out << "#            (lane_k1 <- lane_k2 <- ... <- lane_kN )    \n";
+    out << "#-----------------------------------------------------\n";
+    for(int i=0;i<nodes.size();++i){
+
+        if( nodes[i]->isOriginNode == false ){
+            continue;
+        }
+
+        if( nodes[i]->odData.size() == 0 ){
+            continue;
+        }
+
+        for(int j=0;j<nodes[i]->odData.size();++j){
+
+            for(int k=0;k<nodes[i]->odData[j]->route.size();++k){
+
+                out << "Route Lanes ; ";
+
+                for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
+
+                    out << nodes[i]->odData[j]->route[k]->nodeList[l]->node;
+
+                    if( l < nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
+                        out << " , ";
+                    }
+                    else{
+                        out << " | ";
+                    }
+                }
+
+                for(int l=0;l<nodes[i]->odData[j]->route[k]->laneList.size();++l){
+
+                    for(int m=0;m<nodes[i]->odData[j]->route[k]->laneList[l].size();++m){
+
+                        out << nodes[i]->odData[j]->route[k]->laneList[l][m];
+
+                        if( m < nodes[i]->odData[j]->route[k]->laneList[l].size() - 1 ){
+                            out << " , ";
+                        }
+                        else{
+                            if( l < nodes[i]->odData[j]->route[k]->laneList.size() - 1 ){
+                                out << " / ";
+                            }
+
+                        }
+
+                    }
+                }
+
+                out << "\n";
             }
         }
     }

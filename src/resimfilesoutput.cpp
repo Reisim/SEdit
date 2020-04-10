@@ -132,6 +132,9 @@ void ResimFilesOutput::OutputFiles()
     qDebug() << "    filename = " << filename;
 
 
+    // Check Lane Connection
+    road->CheckLaneConnectionFull();
+
     // Calculate Stop Point Data
     road->CheckAllStopLineCrossLane();
 
@@ -147,11 +150,16 @@ void ResimFilesOutput::OutputFiles()
     // Set Lane List
     road->SetAllLaneLists();
 
+    // Set Route Lane List
+    road->SetAllRouteLaneList();
+
     // Set Turn Direction Info
     road->SetTurnDirectionInfo();
 
     // Find PedestSignal
     road->FindPedestSignalFroCrossWalk();
+
+
 
 
     // Output Files

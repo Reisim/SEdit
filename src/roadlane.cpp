@@ -21,8 +21,8 @@
 
 
 int RoadInfo::CreateLane(int assignId,
-                         QVector4D startPoint, int sWPInNode, int sWPNodeDir, int departureNode, bool sWPBoundary,
-                         QVector4D endPoint, int eWPInNode, int eWPNodeDir,int connectedNode , bool eWPBoundary)
+                         QVector4D startPoint, int sWPInNode, int sWPNodeDir, bool sWPBoundary,
+                         QVector4D endPoint,   int eWPInNode, int eWPNodeDir, bool eWPBoundary)
 {
     // Id check
     int cId = -1;
@@ -44,10 +44,6 @@ int RoadInfo::CreateLane(int assignId,
         }
     }
 
-//    qDebug() << "[CreateLane] cId = " << cId;
-//    qDebug() << "sWPInNode = " << sWPInNode << " sWPNodeDir = " << sWPNodeDir << " departureNode = " << departureNode << " isBound = " << sWPBoundary;
-//    qDebug() << "eWPInNode = " << eWPInNode << " eWPNodeDir = " << eWPNodeDir << " connectedNode = " << connectedNode << " isBound = " << eWPBoundary;
-
 
     struct LaneInfo *lane = new struct LaneInfo;
 
@@ -66,41 +62,24 @@ int RoadInfo::CreateLane(int assignId,
     lane->eWPNodeDir  = eWPNodeDir;
     lane->eWPBoundary = eWPBoundary;
 
-    lane->connectedNode = connectedNode;
-    lane->departureNode = departureNode;
-
+    lane->connectedNode = eWPInNode;
+    lane->departureNode = -1;
     lane->connectedNodeOutDirect = -1;
     lane->connectedNodeInDirect  = -1;
     lane->departureNodeOutDirect = -1;
 
-
-    // inside intersection
-    if( connectedNode == departureNode ){
-        if( sWPInNode == connectedNode && eWPInNode == connectedNode ){
-            lane->connectedNodeOutDirect = eWPNodeDir;
-            lane->connectedNodeInDirect = sWPNodeDir;
-        }
-        else if( sWPInNode == connectedNode && eWPInNode == -2 ){
-            lane->connectedNodeInDirect = sWPNodeDir;
-        }
-        else if( sWPInNode == -2 && eWPInNode == connectedNode ){
-            lane->connectedNodeOutDirect = eWPNodeDir;
-        }
+    if( eWPInNode != sWPInNode ){
+        lane->connectedNodeInDirect  = eWPNodeDir;
+        lane->departureNode          = sWPInNode;
+        lane->departureNodeOutDirect = sWPNodeDir;
+    }
+    else{
+        lane->connectedNodeOutDirect = eWPNodeDir;
+        lane->connectedNodeInDirect  = sWPNodeDir;
     }
 
-    // outside intersection
-    if( connectedNode != departureNode ){
-        if( sWPInNode == departureNode && eWPInNode == connectedNode ){
-            lane->connectedNodeInDirect = eWPNodeDir;
-            lane->departureNodeOutDirect = sWPNodeDir;
-        }
-        else if( sWPInNode == departureNode && eWPInNode == -1 ){
-            lane->departureNodeOutDirect = sWPNodeDir;
-        }
-        else if( sWPInNode == -1 && eWPInNode == connectedNode ){
-            lane->connectedNodeInDirect = eWPNodeDir;
-        }
-    }
+    lane->startWPID = -1;
+    lane->endWPID   = -1;
 
     lane->speedInfo = 60.0;
     lane->actualSpeed = 65.0;
@@ -108,13 +87,11 @@ int RoadInfo::CreateLane(int assignId,
     lane->driverErrorProb = 0.0;
     lane->automaticDrivingEnabled = false;
 
-//    qDebug() << "[CreateLane] Call CalculateShape";
 
     CalculateShape( &(lane->shape) );
 
-    lanes.append( lane );
 
-//    qDebug() << "[CreateLane] add data with id = " << cId;
+    lanes.append( lane );
 
     return cId;
 }
@@ -598,11 +575,11 @@ void RoadInfo::DivideLaneHalf(int id)
     int Np = s->pos.size() / 2;
 
     int sWPInNode  = lanes[index]->sWPInNode;
+    int sWPNodeDir = lanes[index]->sWPNodeDir;
     int eWPInNode  = lanes[index]->eWPInNode;
     int eWPNodeDir = lanes[index]->eWPNodeDir;
+    bool eWPBoundary = lanes[index]->eWPBoundary;
 
-    int departureNode = lanes[index]->departureNode;
-    int connectedNode = lanes[index]->connectedNode;
 
     QVector4D sP, eP;
 
@@ -616,15 +593,14 @@ void RoadInfo::DivideLaneHalf(int id)
     eP.setZ( s->pos.last()->z() );
     eP.setW( atan2( s->derivative.last()->y(), s->derivative.last()->x() ) );
 
-    int tWPInNode = -1;
-    if( sWPInNode == eWPInNode ){
-        tWPInNode = eWPInNode;
-    }
-    int newLaneId = CreateLane( -1, sP, tWPInNode, -1, departureNode, -1, eP, eWPInNode, eWPNodeDir, connectedNode, lanes[index]->eWPBoundary );
+    int newLaneId = CreateLane( -1, sP, sWPInNode, sWPNodeDir, false, eP, eWPInNode, eWPNodeDir, eWPBoundary );
 
     qDebug() << "New Lane ID = " << newLaneId;
-    SetNodeRelatedLane( connectedNode, newLaneId );
-    SetNodeRelatedLane( departureNode, newLaneId );
+    SetNodeRelatedLane( eWPInNode, newLaneId );
+    if( eWPInNode != sWPInNode){
+        SetNodeRelatedLane( eWPInNode, newLaneId );
+    }
+
 
     int idx = indexOfLane(newLaneId);
     lanes[idx]->nextLanes.clear();
@@ -643,8 +619,8 @@ void RoadInfo::DivideLaneHalf(int id)
     s->derivative.last()->setX( s->derivative[Np]->x() );
     s->derivative.last()->setY( s->derivative[Np]->y() );
 
-    lanes[index]->eWPInNode = tWPInNode;
-    lanes[index]->eWPNodeDir = -1;
+    lanes[index]->eWPInNode = eWPInNode;
+    lanes[index]->eWPNodeDir = eWPNodeDir;
     lanes[index]->eWPBoundary = false;
 
     CalculateShape(s);
@@ -655,7 +631,7 @@ void RoadInfo::DivideLaneAtPos(int id, QVector4D atPoint)
 {
     int index = indexOfLane(id);
     if( index < 0 ){
-        qDebug() << "[DivideLaneHalf] cannot find index of id = " << id;
+        qDebug() << "[DivideLaneAtPos] cannot find index of id = " << id;
         return;
     }
 
@@ -663,11 +639,10 @@ void RoadInfo::DivideLaneAtPos(int id, QVector4D atPoint)
     int Np = s->pos.size() / 2;
 
     int sWPInNode  = lanes[index]->sWPInNode;
+    int sWPNodeDir = lanes[index]->sWPNodeDir;
     int eWPInNode  = lanes[index]->eWPInNode;
     int eWPNodeDir = lanes[index]->eWPNodeDir;
-
-    int departureNode = lanes[index]->departureNode;
-    int connectedNode = lanes[index]->connectedNode;
+    bool eWPBoundary = lanes[index]->eWPBoundary;
 
     QVector4D eP;
 
@@ -676,12 +651,25 @@ void RoadInfo::DivideLaneAtPos(int id, QVector4D atPoint)
     eP.setZ( s->pos.last()->z() );
     eP.setW( atan2( s->derivative.last()->y(), s->derivative.last()->x() ) );
 
-    int tWPInNode = -1;
-    if( sWPInNode == eWPInNode ){
-        tWPInNode = eWPInNode;
+
+    int newLaneId = CreateLane(-1, atPoint, sWPInNode, sWPNodeDir, false, eP, eWPInNode, eWPNodeDir, eWPBoundary );
+
+    qDebug() << "New Lane ID = " << newLaneId;
+    SetNodeRelatedLane( eWPInNode, newLaneId );
+    if( eWPInNode != sWPInNode){
+        SetNodeRelatedLane( eWPInNode, newLaneId );
     }
 
-    CreateLane(-1, atPoint, tWPInNode, -1, departureNode, -1, eP, eWPInNode, eWPNodeDir, connectedNode, lanes[index]->eWPBoundary );
+    int idx = indexOfLane(newLaneId);
+    lanes[idx]->nextLanes.clear();
+    lanes[idx]->previousLanes.clear();
+    for(int i=0;i<lanes[index]->nextLanes.size();++i){
+        lanes[idx]->nextLanes.append( lanes[index]->nextLanes[i] );
+    }
+    lanes[index]->nextLanes.clear();
+    lanes[index]->nextLanes.append( newLaneId );
+    lanes[idx]->previousLanes.append( id );
+
 
     s->pos.last()->setX( atPoint.x() );
     s->pos.last()->setY( atPoint.y() );
@@ -690,8 +678,8 @@ void RoadInfo::DivideLaneAtPos(int id, QVector4D atPoint)
     s->derivative.last()->setX( cos(atPoint.w()) );
     s->derivative.last()->setY( sin(atPoint.w()) );
 
-    lanes[index]->eWPInNode = tWPInNode;
-    lanes[index]->eWPNodeDir = -1;
+    lanes[index]->eWPInNode = eWPInNode;
+    lanes[index]->eWPNodeDir = eWPNodeDir;
     lanes[index]->eWPBoundary = false;
 
     CalculateShape(s);
@@ -741,6 +729,7 @@ void RoadInfo::CheckIfTwoLanesCross(int lID1,int lID2)
     }
 
     if( lanes[i]->connectedNode != lanes[j]->connectedNode ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " by connectedNode Info";
         return;
     }
 
@@ -748,30 +737,41 @@ void RoadInfo::CheckIfTwoLanesCross(int lID1,int lID2)
         lanes[i]->shape.searchHelper.xmin > lanes[j]->shape.searchHelper.xmax ||
         lanes[i]->shape.searchHelper.ymax < lanes[j]->shape.searchHelper.ymin ||
         lanes[i]->shape.searchHelper.ymin > lanes[j]->shape.searchHelper.ymax  ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " by searchHelper Info";
         return;
     }
 
-    if( lanes[i]->sWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPNodeDir == lanes[j]->sWPNodeDir ){
+    // Reject Lanes not inside intersection
+    if( lanes[i]->sWPInNode != lanes[i]->eWPInNode || lanes[j]->sWPInNode != lanes[j]->eWPInNode ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " , not inside intersection";
         return;
     }
 
-    if( lanes[i]->sWPInNode == lanes[j]->eWPInNode && lanes[i]->eWPInNode != lanes[j]->sWPInNode ){
+    // Reject Lanes from same In-Direction
+    if( lanes[i]->sWPNodeDir == lanes[j]->sWPNodeDir ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " , same In-Direction";
         return;
     }
 
-    if( lanes[i]->eWPInNode == lanes[j]->sWPInNode && lanes[i]->sWPInNode != lanes[j]->eWPInNode ){
+    // Reject Merging Lanes
+    if( lanes[i]->eWPNodeDir == lanes[j]->eWPNodeDir && lanes[i]->eWPBoundary == true && lanes[j]->eWPBoundary == true ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " , merging by eWPNodeDir and eWPBoundary Info";
         return;
     }
 
-    if( lanes[i]->endWPID == lanes[j]->startWPID || lanes[i]->startWPID == lanes[j]->endWPID ){
+    // Reject Connected Lanes
+    if( lanes[i]->nextLanes.contains(lanes[j]->id) == true || lanes[i]->previousLanes.contains(lanes[j]->id) == true ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " , connected lanes";
         return;
     }
+
 
     // Check the lanes merge
     float dx = lanes[i]->shape.pos.last()->x() - lanes[j]->shape.pos.last()->x();
     float dy = lanes[i]->shape.pos.last()->y() - lanes[j]->shape.pos.last()->y();
     float L = dx * dx + dy * dy;
     if( L < 1.0 ){
+        //qDebug() << "Reject: Lane " << lID1 << " and Lane " << lID2 << " , merging by pos.last() Info";
         return;
     }
 
@@ -799,7 +799,7 @@ void RoadInfo::CheckIfTwoLanesCross(int lID1,int lID2)
             float mz = (z1 + z2) * 0.5;
             if( fabs(mz - cp->pos.z()) > 5.0 ){
 
-                qDebug() << "mz = " << mz << " cp.z = " << cp->pos.z();
+                //qDebug() << "mz = " << mz << " cp.z = " << cp->pos.z();
 
                 delete cp;
                 cp = NULL;
@@ -922,6 +922,8 @@ bool RoadInfo::CheckLaneCrossPoints()
 
     pd->setValue(0);
     QApplication::processEvents();
+
+    qDebug() << "[RoadInfo::CheckLaneCrossPoints]";
 
     while(1){
 
@@ -1166,6 +1168,65 @@ QString RoadInfo::GetLaneProperty(int id)
 }
 
 
+bool RoadInfo::CheckLaneConnectionOfNode(int nodeID)
+{
+    bool ret = true;
+
+    int ndIdx = indexOfNode( nodeID );
+    if( ndIdx < 0 ){
+        return false;
+    }
+
+    for(int i=0;i<nodes[ndIdx]->relatedLanes.size();++i){
+
+        int lIdx = indexOfLane( nodes[ndIdx]->relatedLanes[i] );
+        lanes[lIdx]->nextLanes.clear();
+        lanes[lIdx]->previousLanes.clear();
+
+
+        float lxe = lanes[lIdx]->shape.pos.last()->x();
+        float lye = lanes[lIdx]->shape.pos.last()->y();
+
+        float lxf = lanes[lIdx]->shape.pos.first()->x();
+        float lyf = lanes[lIdx]->shape.pos.first()->y();
+
+        for(int j=0;j<lanes.size();++j){
+
+            if( lIdx == j ){
+                continue;
+            }
+
+            float dxe = lanes[j]->shape.pos.first()->x() - lxe;
+            float dye = lanes[j]->shape.pos.first()->y() - lye;
+
+            if( fabs(dxe) < 0.5 && fabs(dye) < 0.5 ){
+                if( lanes[lIdx]->nextLanes.contains( lanes[j]->id ) == false ){
+                    lanes[lIdx]->nextLanes.append( lanes[j]->id );
+                }
+                if( lanes[j]->previousLanes.contains( lanes[lIdx]->id ) == false ){
+                    lanes[j]->previousLanes.append( lanes[lIdx]->id );
+                }
+                continue;
+            }
+
+            float dxf = lanes[j]->shape.pos.last()->x() - lxf;
+            float dyf = lanes[j]->shape.pos.last()->y() - lyf;
+
+            if( fabs(dxf) < 0.5 && fabs(dyf) < 0.5 ){
+                if( lanes[lIdx]->previousLanes.contains( lanes[j]->id ) == false ){
+                    lanes[lIdx]->previousLanes.append( lanes[j]->id );
+                }
+                if( lanes[j]->nextLanes.contains( lanes[lIdx]->id ) == false ){
+                    lanes[j]->nextLanes.append( lanes[lIdx]->id );
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+
 bool RoadInfo::CheckLaneConnection()
 {
     bool ret = true;
@@ -1257,6 +1318,30 @@ bool RoadInfo::CheckLaneConnectionFull()
                 lanes[j]->previousLanes.append( lanes[i]->id );
             }
         }
+
+
+        lanes[i]->connectedNode = lanes[i]->eWPInNode;
+
+        if( lanes[i]->eWPInNode == lanes[i]->sWPInNode ){
+            lanes[i]->connectedNodeOutDirect = lanes[i]->eWPNodeDir;
+            lanes[i]->connectedNodeInDirect  = lanes[i]->sWPNodeDir;
+
+            int ndIdx = indexOfNode( lanes[i]->eWPInNode );
+            for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->sWPNodeDir ){
+                    lanes[i]->departureNode          = nodes[ndIdx]->legInfo[j]->connectedNode;
+                    lanes[i]->departureNodeOutDirect = nodes[ndIdx]->legInfo[j]->connectedNodeOutDirect;
+                    break;
+                }
+            }
+        }
+        else{
+            lanes[i]->connectedNodeOutDirect = -1;
+            lanes[i]->connectedNodeInDirect  = lanes[i]->eWPNodeDir;
+            lanes[i]->departureNode = lanes[i]->sWPInNode;
+            lanes[i]->departureNodeOutDirect = lanes[i]->sWPNodeDir;
+        }
+
 
         pd->setValue(i+1);
         QApplication::processEvents();

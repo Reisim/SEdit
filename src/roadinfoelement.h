@@ -247,6 +247,7 @@ struct RouteData
     float selProb;
     QList<RouteElem*> nodeList;
     QList<struct TrafficVolumeData*> volume;
+    QList<QList<int>> laneList;
 };
 
 

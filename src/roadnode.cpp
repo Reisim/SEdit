@@ -53,7 +53,13 @@ int RoadInfo::CreateNode(int assignId, float x, float y, QList<int> inLanes, QLi
 
         leg->legID = i;
 
-        leg->angle = 360.0 / 4.0 * (float)i;
+        if( node->nLeg <= 4 ){
+            leg->angle = 360.0 / 4.0 * (float)i;
+        }
+        else{
+            leg->angle = 360.0 / (node->nLeg) * (float)i;
+        }
+
 
         leg->nLaneIn = inLanes[i];
         leg->nLaneOut = outLanes[i];
@@ -191,27 +197,6 @@ void RoadInfo::MoveNode(int id,float moveX,float moveY,bool moveNonEdge)
     nodes[index]->pos.setX( nodes[index]->pos.x() + moveX );
     nodes[index]->pos.setY( nodes[index]->pos.y() + moveY );
 
-    for(int i=0;i<nodes[index]->relatedLanes.size();++i){
-        int lidx = indexOfLane( nodes[index]->relatedLanes[i] );
-        if( lidx < 0 ){
-            continue;
-        }
-        bool isMoved = false;
-        if( lanes[lidx]->sWPInNode == id || (lanes[lidx]->sWPInNode < 0 && moveNonEdge == true) ){
-            lanes[lidx]->shape.pos.first()->setX( lanes[lidx]->shape.pos.first()->x() + moveX );
-            lanes[lidx]->shape.pos.first()->setY( lanes[lidx]->shape.pos.first()->y() + moveY );
-            isMoved = true;
-        }
-        if( lanes[lidx]->eWPInNode == id || (lanes[lidx]->eWPInNode < 0 && moveNonEdge == true) ){
-            lanes[lidx]->shape.pos.last()->setX( lanes[lidx]->shape.pos.last()->x() + moveX );
-            lanes[lidx]->shape.pos.last()->setY( lanes[lidx]->shape.pos.last()->y() + moveY );
-            isMoved = true;
-        }
-        if( isMoved == true ){
-            CalculateShape( &(lanes[lidx]->shape) );
-        }
-    }
-
     for(int i=0;i<nodes[index]->trafficSignals.size();++i){
         MoveTrafficSignal( nodes[index]->trafficSignals[i]->id, moveX, moveY );
     }
@@ -272,65 +257,6 @@ void RoadInfo::RotateNodeLeg(int id,int legID,float rotate)
     float cp = cos(rotate * 0.017452);
     float sp = sin(rotate * 0.017452);
 
-
-    for(int i=0;i<nodes[index]->relatedLanes.size();++i){
-        int lidx = indexOfLane( nodes[index]->relatedLanes[i] );
-        if( lidx < 0 ){
-            continue;
-        }
-        bool isRot = false;
-        if( lanes[lidx]->sWPInNode == id && lanes[lidx]->sWPNodeDir == leg ){
-            float xwp = lanes[lidx]->shape.pos.first()->x();
-            float ywp = lanes[lidx]->shape.pos.first()->y();
-
-            float dx = xwp - nodes[index]->pos.x();
-            float dy = ywp - nodes[index]->pos.y();
-
-            float rx = dx * cp + dy * (-sp);
-            float ry = dx * sp + dy * cp;
-
-            lanes[lidx]->shape.pos.first()->setX( nodes[index]->pos.x() + rx );
-            lanes[lidx]->shape.pos.first()->setY( nodes[index]->pos.y() + ry );
-
-            dx = lanes[lidx]->shape.derivative.first()->x();
-            dy = lanes[lidx]->shape.derivative.first()->y();
-
-            rx = dx * cp + dy * (-sp);
-            ry = dx * sp + dy * cp;
-
-            lanes[lidx]->shape.derivative.first()->setX( rx );
-            lanes[lidx]->shape.derivative.first()->setY( ry );
-            isRot = true;
-        }
-        if( lanes[lidx]->eWPInNode == id && lanes[lidx]->eWPNodeDir == leg ){
-            float xwp = lanes[lidx]->shape.pos.last()->x();
-            float ywp = lanes[lidx]->shape.pos.last()->y();
-
-            float dx = xwp - nodes[index]->pos.x();
-            float dy = ywp - nodes[index]->pos.y();
-
-            float rx = dx * cp + dy * (-sp);
-            float ry = dx * sp + dy * cp;
-
-            lanes[lidx]->shape.pos.last()->setX( nodes[index]->pos.x() + rx );
-            lanes[lidx]->shape.pos.last()->setY( nodes[index]->pos.y() + ry );
-
-            dx = lanes[lidx]->shape.derivative.last()->x();
-            dy = lanes[lidx]->shape.derivative.last()->y();
-
-            rx = dx * cp + dy * (-sp);
-            ry = dx * sp + dy * cp;
-
-            lanes[lidx]->shape.derivative.last()->setX( rx );
-            lanes[lidx]->shape.derivative.last()->setY( ry );
-            isRot = true;
-        }
-
-        if( isRot == true ){
-            CalculateShape( &(lanes[lidx]->shape) );
-        }
-    }
-
     for(int i=0;i<nodes[index]->trafficSignals.size();++i){
 
         if( nodes[index]->trafficSignals[i]->controlNodeDirection != legID ){
@@ -384,7 +310,6 @@ void RoadInfo::RotateNodeLeg(int id,int legID,float rotate)
             nodes[index]->stopLines[i]->rightEdge.setY( nodes[index]->pos.y() + ry );
         }
     }
-
 
     //qDebug() << "[RotateNodeLeg:node" << id << "] angle[" << leg << "] = " << nodes[index]->angles[leg];
 }

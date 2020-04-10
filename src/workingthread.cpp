@@ -90,8 +90,31 @@ void WorkingThread::run()
         }
 
     }
+    else if( mode == 4 ){
 
+        nProcessed = 0;
 
+        for(int i=0;i<params.size();++i){
+
+            if( stopFlag == true ){
+                break;
+            }
+
+            nProcessed++;
+
+            int ndIdx = params[i];
+            int origNodeID = road->nodes[ndIdx]->id;
+            for(int j=0;j<road->nodes[ndIdx]->odData.size();++j){
+                int destNodeID = road->nodes[ndIdx]->odData[j]->destinationNode;
+
+                road->GetLaneListForRoute( origNodeID, destNodeID, wtID );
+
+                if( stopFlag == true ){
+                    break;
+                }
+            }
+        }
+    }
 
     mode = -1;
     params.clear();

@@ -231,8 +231,21 @@ void ODRouteEditor::SetCurrentODRouteDataForDestination(QString dNodeStr)
 
         break;
     }
+
+    emit UpdateGraphic();
 }
 
+
+int ODRouteEditor::GetCurrentDestinationNode()
+{
+    int destNode = cbDestnation->currentText().remove("Node ").toInt();
+    return destNode;
+}
+
+int ODRouteEditor::GetCurrentRouteIndex()
+{
+    return routeTable->currentIndex().row();
+}
 
 void ODRouteEditor::ApplyData()
 {
@@ -245,7 +258,7 @@ void ODRouteEditor::ApplyData()
         return;
     }
 
-    int destNode = cbDestnation->currentText().remove("Node ").toInt();
+    int destNode = GetCurrentDestinationNode();
     qDebug() << "ApplyData : OriginNode = " << currentOriginNode << " DestinationNode = " << destNode;
 
     int odIdx = -1;
@@ -348,6 +361,17 @@ void ODRouteEditor::ApplyData()
         qDebug() << "Append route data";
 
         road->nodes[ndIdx]->odData[odIdx]->route.append( rd );
+
+        road->CheckRouteInOutDirectionGivenODNode( currentOriginNode, destNode );
+
+        for(int j=0;j<road->nodes[ndIdx]->odData[odIdx]->route.last()->nodeList.size();++j){
+            road->CheckLaneConnectionOfNode( road->nodes[ndIdx]->odData[odIdx]->route.last()->nodeList[j]->node );
+        }
+
+        road->GetLaneListForRoute( currentOriginNode, destNode, 0 );
+
+        emit SetNodeSelected( currentOriginNode );
+        qDebug() << "Object Selection : set to SEL_NODE, node = " << currentOriginNode;
     }
 
     qDebug() << "Data Applied.";

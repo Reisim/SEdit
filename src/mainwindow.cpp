@@ -80,6 +80,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->showNodes, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeVisibility(bool)) );
     connect( dispCtrl->showNodeLaneList, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeLaneListlVisibility(bool)) );
     connect( dispCtrl->showRelatedLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetRelatedLaneslVisibility(bool)) );
+    connect( dispCtrl->showRouteLaneList, SIGNAL(toggled(bool)), canvas, SLOT(SetRouteLaneListlVisibility(bool)) );
     connect( dispCtrl->prevLaneList, SIGNAL(clicked()), canvas, SLOT(ShowPrevLaneList()) );
     connect( dispCtrl->nextLaneList, SIGNAL(clicked()), canvas, SLOT(ShowNextLaneList()) );
     connect( dispCtrl->showNodeLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeLabelVisibility(bool)) );
@@ -127,6 +128,8 @@ MainWindow::MainWindow(QWidget *parent)
     odRoute->move(1010,50);
     odRoute->hide();
 
+    canvas->odRoute = odRoute;
+
     connect( roadObjProp, SIGNAL(ShowODRouteEdit()), odRoute, SLOT(show()) );
     connect( roadObjProp, SIGNAL(HideODRouteEdit()), odRoute, SLOT(hide()) );
     connect( roadObjProp, SIGNAL(DestinationNodeChanged(int,bool)), odRoute, SLOT(SetCurrentODRouteData(int,bool)) );
@@ -136,6 +139,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect( odRoute, SIGNAL(ShowMessageStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)) );
     connect( odRoute, SIGNAL(SetNodePickMode(int,int)), canvas, SLOT(SetNodePickMode(int,int)) );
     connect( odRoute, SIGNAL(ResetNodePickMode()), canvas, SLOT(ResetNodePickMode()) );
+    connect( odRoute, SIGNAL(SetNodeSelected(int)), canvas, SLOT(SetNodeSelected(int)) );
+    connect( odRoute, SIGNAL(UpdateGraphic()), canvas, SLOT(update()) );
     connect( canvas, SIGNAL(SetNodeListForRoute(QList<int>)), odRoute, SLOT(GetNodeListForRoute(QList<int>)) );
 
     //-------------------------
@@ -250,11 +255,42 @@ MainWindow::MainWindow(QWidget *parent)
     connect( createNode_4x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_NoTS );
 
+    QAction *createNode_4x2x1_NoTS = new QAction();
+    createNode_4x2x1_NoTS->setText("4-Leg 2x1 noTS");
+    connect( createNode_4x2x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_noTS()));
+    connect( createNode_4x2x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_4x2x1_NoTS );
+
     QAction *createNode_3x1x1_NoTS = new QAction();
     createNode_3x1x1_NoTS->setText("3-Leg 1x1 noTS");
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_noTS()));
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_NoTS );
+
+    QAction *createNode_3x2x1_NoTS = new QAction();
+    createNode_3x2x1_NoTS->setText("3-Leg 2x1 noTS");
+    connect( createNode_3x2x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_noTS()));
+    connect( createNode_3x2x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x2x1_NoTS );
+
+    QAction *createNode_3x1x1_tr_NoTS = new QAction();
+    createNode_3x1x1_tr_NoTS->setText("3-Leg 1x1 noTS, turn restriction");
+    connect( createNode_3x1x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_tr_noTS()));
+    connect( createNode_3x1x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x1x1_tr_NoTS );
+
+    QAction *createNode_3x2x1_tr_NoTS = new QAction();
+    createNode_3x2x1_tr_NoTS->setText("3-Leg 2x1 noTS, turn restriction");
+    connect( createNode_3x2x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_tr_noTS()));
+    connect( createNode_3x2x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x2x1_tr_NoTS );
+
+    QAction *createNode_3x3x1_tr_NoTS = new QAction();
+    createNode_3x3x1_tr_NoTS->setText("3-Leg 3x1 noTS, turn restriction");
+    connect( createNode_3x3x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x3x1_tr_noTS()));
+    connect( createNode_3x3x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x3x1_tr_NoTS );
+
 
     createObjectPopup->addSeparator();
 
@@ -294,6 +330,37 @@ MainWindow::MainWindow(QWidget *parent)
     connect( createNode_4x2x2_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x2_r_TS );
 
+    createObjectPopup->addSeparator();
+
+    QAction *createNode_3x1x1_TS = new QAction();
+    createNode_3x1x1_TS->setText("3-Leg 1x1 TS");
+    connect( createNode_3x1x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_TS()));
+    connect( createNode_3x1x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x1x1_TS );
+
+    QAction *createNode_3x1x1_r_TS = new QAction();
+    createNode_3x1x1_r_TS->setText("3-Leg 1x1 with Turn-Lane, TS");
+    connect( createNode_3x1x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_r_TS()));
+    connect( createNode_3x1x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x1x1_r_TS );
+
+    QAction *createNode_3x2x1_TS = new QAction();
+    createNode_3x2x1_TS->setText("3-Leg 2x1 TS");
+    connect( createNode_3x2x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_TS()));
+    connect( createNode_3x2x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x2x1_TS );
+
+    QAction *createNode_3x2x1_rm_TS = new QAction();
+    createNode_3x2x1_rm_TS->setText("3-Leg 2x1 with Turn-Lane for only Primary Lane, TS");
+    connect( createNode_3x2x1_rm_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_rm_TS()));
+    connect( createNode_3x2x1_rm_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x2x1_rm_TS );
+
+    QAction *createNode_3x2x1_r_TS = new QAction();
+    createNode_3x2x1_r_TS->setText("3-Leg 2x1 with Turn-Lane, TS");
+    connect( createNode_3x2x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_r_TS()));
+    connect( createNode_3x2x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_3x2x1_r_TS );
 
     createObjectPopup->addSeparator();
 
@@ -321,6 +388,32 @@ MainWindow::MainWindow(QWidget *parent)
     connect( createNode_3L_merge, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3L_merge );
 
+    createObjectPopup->addSeparator();
+
+    QAction *createNode_straightcourse_1 = new QAction();
+    createNode_straightcourse_1->setText("Straight Course, 1 Lane");
+    connect( createNode_straightcourse_1, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_1()));
+    connect( createNode_straightcourse_1, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_straightcourse_1 );
+
+    QAction *createNode_straightcourse_2 = new QAction();
+    createNode_straightcourse_2->setText("Straight Course, 2 Lanes");
+    connect( createNode_straightcourse_2, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_2()));
+    connect( createNode_straightcourse_2, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_straightcourse_2 );
+
+    QAction *createNode_straightcourse_3 = new QAction();
+    createNode_straightcourse_3->setText("Straight Course, 3 Lanes");
+    connect( createNode_straightcourse_3, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_3()));
+    connect( createNode_straightcourse_3, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createNode_straightcourse_3 );
+
+    createObjectPopup->addSeparator();
+
+    QAction *createNode_assignAll = new QAction();
+    createNode_assignAll->setText("Show Create Node Dialog");
+    connect( createNode_assignAll, SIGNAL(triggered()),dtManip,SLOT(CreateNode_Dialog()));
+    createObjectPopup->addAction( createNode_assignAll );
 
     createObjectPopup->addSeparator();
 
@@ -433,6 +526,11 @@ MainWindow::MainWindow(QWidget *parent)
     searchPopup->addAction( moveXY );
 
     searchPopup->addSeparator();
+
+    QAction *setNodePos = new QAction();
+    setNodePos->setText("Set Node Position");
+    connect( setNodePos, SIGNAL(triggered()),dtManip,SLOT(SetNodePos()));
+    searchPopup->addAction( setNodePos );
 
     QAction *selectAllLanes = new QAction();
     selectAllLanes->setText("Select All Lanes");

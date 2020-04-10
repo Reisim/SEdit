@@ -1142,8 +1142,8 @@ void DataManipulator::MergeSelectedObject()
                                 startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
                                 startPoint.setW( road->lanes[lidx]->shape.angles.last() );
 
-                                road->lanes[lidx]->eWPInNode   = -1;
-                                road->lanes[lidx]->eWPNodeDir  = -1;
+                                road->lanes[lidx]->eWPInNode   = nd2ConnectingNode;
+                                road->lanes[lidx]->eWPNodeDir  = nd2ConnectingNodeInDirect;
                                 road->lanes[lidx]->eWPBoundary = false;
 
                                 lidx = road->indexOfLane( nd2OutLane[i] );
@@ -1153,11 +1153,11 @@ void DataManipulator::MergeSelectedObject()
                                     endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
                                     endPoint.setW( road->lanes[lidx]->shape.angles.first() );
 
-                                    road->lanes[lidx]->sWPInNode   = -1;
-                                    road->lanes[lidx]->sWPNodeDir  = -1;
+                                    road->lanes[lidx]->sWPInNode   = nd1DepartureNode;
+                                    road->lanes[lidx]->sWPNodeDir  = nd1DepartureNodeOutDirect;
                                     road->lanes[lidx]->sWPBoundary = false;
 
-                                    int lId = road->CreateLane( -1, startPoint, -1, -1, nd1DepartureNode, false, endPoint, -1, -1, nd2ConnectingNode, false );
+                                    int lId = road->CreateLane( -1, startPoint, nd1DepartureNode, nd1DepartureNodeOutDirect, false, endPoint, nd2ConnectingNode, nd2ConnectingNodeInDirect, false );
                                     road->SetNodeRelatedLane( nd1DepartureNode, lId );
                                     road->SetNodeRelatedLane( nd2ConnectingNode, lId );
 
@@ -1182,8 +1182,8 @@ void DataManipulator::MergeSelectedObject()
                                 startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
                                 startPoint.setW( road->lanes[lidx]->shape.angles.last() );
 
-                                road->lanes[lidx]->eWPInNode   = -1;
-                                road->lanes[lidx]->eWPNodeDir  = -1;
+                                road->lanes[lidx]->eWPInNode   = nd1ConnectingNode;
+                                road->lanes[lidx]->eWPNodeDir  = nd1ConnectingNodeInDirect;
                                 road->lanes[lidx]->eWPBoundary = false;
 
                                 lidx = road->indexOfLane( nd1OutLane[i] );
@@ -1193,13 +1193,16 @@ void DataManipulator::MergeSelectedObject()
                                     endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
                                     endPoint.setW( road->lanes[lidx]->shape.angles.first() );
 
-                                    road->lanes[lidx]->sWPInNode   = -1;
-                                    road->lanes[lidx]->sWPNodeDir  = -1;
+                                    road->lanes[lidx]->sWPInNode   = nd2DepartureNode;
+                                    road->lanes[lidx]->sWPNodeDir  = nd2DepartureNodeOutDirect;
                                     road->lanes[lidx]->sWPBoundary = false;
 
-                                    int lId = road->CreateLane( -1, startPoint, -1, -1, nd2DepartureNode, false, endPoint, -1, -1, nd1ConnectingNode, false );
-                                    road->SetNodeRelatedLane( nd2DepartureNode, lId );
+                                    int lId = road->CreateLane( -1, startPoint, nd2DepartureNode, nd2DepartureNodeOutDirect, false, endPoint, nd1ConnectingNode, nd1ConnectingNodeInDirect, false );
                                     road->SetNodeRelatedLane( nd1ConnectingNode, lId );
+                                    if( nd1ConnectingNode != nd2DepartureNode ){
+                                        road->SetNodeRelatedLane( nd2DepartureNode, lId );
+                                    }
+
 
                                     lidx = road->indexOfLane( lId );
                                     if( lidx >= 0 ){
@@ -1255,92 +1258,106 @@ void DataManipulator::MergeSelectedObject()
         else if( canvas->selectedObj.selObjKind[0] == canvas->SEL_LANE &&
                  canvas->selectedObj.selObjKind[1] == canvas->SEL_LANE ){
 
-            int eLaneID = canvas->selectedObj.selObjID[0];
-            int sLaneID = canvas->selectedObj.selObjID[1];
+            int sLaneID = canvas->selectedObj.selObjID[0];
+            int eLaneID = canvas->selectedObj.selObjID[1];
             int elidx = road->indexOfLane( eLaneID );
             int slidx = road->indexOfLane( sLaneID );
             if( elidx >= 0 && slidx >= 0 ){
 
-                int eWPinNode = road->lanes[elidx]->eWPInNode;
-                int eWPinDir  = road->lanes[elidx]->eWPNodeDir;
-                int sWPinNode = road->lanes[slidx]->sWPInNode;
-                int sWPinDir  = road->lanes[slidx]->sWPNodeDir;
+                // Check case
+                int mergeCase = 0;
+                if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                        road->lanes[slidx]->eWPBoundary == false &&
+                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                        road->lanes[elidx]->sWPBoundary == false &&
+                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode &&
+                        road->lanes[slidx]->sWPInNode == road->lanes[elidx]->sWPInNode ){
 
-                int dNode = -1;
-                int cNode = -1;
-
-                int cN1 = road->lanes[elidx]->connectedNode;
-                int cN2 = road->lanes[slidx]->connectedNode;
-                int dN1 = road->lanes[elidx]->departureNode;
-                int dN2 = road->lanes[slidx]->departureNode;
-
-                // Case 1
-                if( dN1 != cN1 && dN1 == dN2 && cN1 && cN2 ){
-                    dNode = dN1;
-                    cNode = cN1;
+                    mergeCase = 1;
                 }
-                // Case 2
-                else if( dN1 != cN1 && cN1 == dN2 && dN2 == cN2 ){
-                    if( eWPinNode < 0 ){
-                        dNode = dN1;
-                        cNode = cN1;
+                else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                        road->lanes[slidx]->eWPBoundary == true &&
+                        road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                        road->lanes[elidx]->sWPBoundary == false &&
+                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
+
+                    mergeCase = 2;
+                }
+                else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                        road->lanes[slidx]->eWPBoundary == false &&
+                        road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                        road->lanes[elidx]->sWPBoundary == false &&
+                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
+
+                    mergeCase = 3;
+                }
+                else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                        road->lanes[slidx]->eWPBoundary == true &&
+                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                        road->lanes[elidx]->sWPBoundary == false &&
+                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode ){
+
+                    mergeCase = 4;
+                }
+                else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                        road->lanes[slidx]->eWPBoundary == true &&
+                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                        road->lanes[elidx]->sWPBoundary == true &&
+                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                        road->lanes[slidx]->sWPInNode != road->lanes[elidx]->eWPInNode){
+
+                    mergeCase = 5;
+                }
+
+
+                qDebug() << "Merge Lanes: mergeCase = " << mergeCase;
+
+                if( mergeCase > 0 ){
+
+                    int eWPinNode    = road->lanes[elidx]->eWPInNode;
+                    int eWPinDir     = road->lanes[elidx]->eWPNodeDir;
+                    bool eWPBoundary = false;
+
+                    int sWPinNode    = road->lanes[slidx]->sWPInNode;
+                    int sWPinDir     = road->lanes[slidx]->sWPNodeDir;
+                    bool sWPBoundary = false;
+
+                    if( mergeCase == 2 || mergeCase == 4 ){
+
+                        sWPinNode   = road->lanes[elidx]->sWPInNode;
+                        sWPinDir    = road->lanes[elidx]->sWPNodeDir;
+                        sWPBoundary = true;
                     }
-                    else{
-                        dNode = cN1;
-                        cNode = cN1;
+                    else if( mergeCase == 5 ){
+
+                        eWPinNode   = road->lanes[elidx]->sWPInNode;
+                        eWPinDir    = road->lanes[elidx]->sWPNodeDir;
+                        eWPBoundary = true;
+
+                        sWPinNode   = road->lanes[slidx]->eWPInNode;
+                        sWPinDir    = road->lanes[slidx]->eWPNodeDir;
+                        sWPBoundary = true;
                     }
-                }
-                // Case 3
-                else if( dN1 == cN1 && cN1 == dN2 && dN2 != cN2 ){
-                    if( eWPinNode < 0 ){
-                        dNode = cN1;
-                        cNode = cN1;
+
+                    QVector4D startPoint;
+                    QVector4D endPoint;
+
+                    endPoint.setX( road->lanes[elidx]->shape.pos.first()->x() );
+                    endPoint.setY( road->lanes[elidx]->shape.pos.first()->y() );
+                    endPoint.setZ( road->lanes[elidx]->shape.pos.first()->z() );
+                    endPoint.setW( road->lanes[elidx]->shape.angles.first() );
+
+                    startPoint.setX( road->lanes[slidx]->shape.pos.last()->x() );
+                    startPoint.setY( road->lanes[slidx]->shape.pos.last()->y() );
+                    startPoint.setZ( road->lanes[slidx]->shape.pos.last()->z() );
+                    startPoint.setW( road->lanes[slidx]->shape.angles.last() );
+
+                    int lId = road->CreateLane( -1, startPoint, sWPinNode, sWPinDir, sWPBoundary, endPoint, eWPinNode, eWPinDir, eWPBoundary );
+
+                    road->SetNodeRelatedLane( eWPinNode, lId );
+                    if( eWPinNode != sWPinNode ){
+                        road->SetNodeRelatedLane( sWPinNode, lId );
                     }
-                    else{
-                        dNode = dN2;
-                        cNode = cN2;
-                    }
-                }
-                // Case 4
-                else if( dN1 != dN2 && dN1 == cN1 && dN2 == cN2 ){
-                    dNode = dN1;
-                    cNode = cN2;
-                }
-                // Case 5
-                else if( dN1 != cN1 && cN1 == dN2 && dN2 != cN2 && dN1 != cN2 ){
-                    dNode = cN1;
-                    cNode = cN1;
-                }
-                // Case 6
-                else if( dN1 == cN1 && cN1 == dN2 && dN2 == cN2 ){
-                    dNode = dN1;
-                    cNode = cN1;
-                }
-
-
-                QVector4D startPoint;
-                QVector4D endPoint;
-
-                startPoint.setX( road->lanes[elidx]->shape.pos.last()->x() );
-                startPoint.setY( road->lanes[elidx]->shape.pos.last()->y() );
-                startPoint.setZ( road->lanes[elidx]->shape.pos.last()->z() );
-                startPoint.setW( road->lanes[elidx]->shape.angles.last() );
-
-                endPoint.setX( road->lanes[slidx]->shape.pos.first()->x() );
-                endPoint.setY( road->lanes[slidx]->shape.pos.first()->y() );
-                endPoint.setZ( road->lanes[slidx]->shape.pos.first()->z() );
-                endPoint.setW( road->lanes[slidx]->shape.angles.first() );
-
-                int lId = road->CreateLane( -1, startPoint, eWPinNode, eWPinDir, dNode, road->lanes[elidx]->eWPBoundary, endPoint, sWPinNode, sWPinDir, cNode, road->lanes[slidx]->sWPBoundary );
-
-                road->SetNodeRelatedLane( dNode, lId );
-                road->SetNodeRelatedLane( cNode, lId );
-
-                // Set Lane Info
-                int lidx = road->indexOfNode( lId );
-                if( lidx >= 0 ){
-
-                    // TO BE CODED
 
                 }
 
@@ -1590,6 +1607,38 @@ void DataManipulator::MoveXY()
 }
 
 
+void DataManipulator::SetNodePos()
+{
+    if( canvas->selectedObj.selObjKind.size() != 1 ||
+            canvas->selectedObj.selObjKind[0] != canvas->SEL_NODE ){
+        return;
+    }
+
+    int nodeID = canvas->selectedObj.selObjID[0];
+
+    QString xyTxt = QInputDialog::getText(NULL,"Enter Coordinate","X,Y");
+    QStringList xyDiv = xyTxt.split(",");
+    if( xyDiv.size() != 2 ){
+        emit UpdateStatusBar( QString("Invalid coordinate data") );
+        return;
+    }
+
+    bool isOK;
+    float x = QString(xyDiv[0]).trimmed().toFloat(&isOK);
+    if( isOK == true ){
+        float y = QString(xyDiv[1]).trimmed().toFloat(&isOK);
+        if( isOK == true ){
+
+            road->SetNodePosition( nodeID, x, y );
+
+            canvas->ResetRotate();
+            canvas->MoveTo( x, y );
+            canvas->update();
+        }
+    }
+}
+
+
 void DataManipulator::SelectAllLanes()
 {
     canvas->selectedObj.selObjKind.clear();
@@ -1735,8 +1784,19 @@ void DataManipulator::SplitSelectedLane()
 
     qDebug() << "targetLanes: " << targetLanes;
 
+    QList<int> containNodes;
     for(int i=0;i<targetLanes.size();++i){
         road->DivideLaneHalf( targetLanes[i] );
+
+        int lIdx = road->indexOfLane( targetLanes[i] );
+        int ndID = road->lanes[lIdx]->eWPInNode;
+        if( containNodes.indexOf( ndID ) < 0 ){
+            containNodes.append( ndID );
+        }
+    }
+
+    for(int i=0;i<containNodes.size();++i){
+        road->CheckLaneConnectionOfNode( containNodes[i] );
     }
 
     canvas->update();

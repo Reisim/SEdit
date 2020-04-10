@@ -181,64 +181,449 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
                 QVector2D pos_center;
 
-                bool isFirst = true;
-                for(int i=0;i<selectedObj.selObjKind.size();++i){
-                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
-                        if(i == 0){
-                            if( ret == 1 ){
-                                pos_center = road->GetNodePosition( selectedObj.selObjID[i] );
+                // Rotate Node
+                {
+                    QList<int> alreadyRot;
 
-                                float dx1 = wxMouseMove - pos_center.x();
-                                float dy1 = wyMouseMove - pos_center.y();
-                                float dx2 = x - pos_center.x();
-                                float dy2 = y - pos_center.y();
-                                if( dx2 * (-dy1) + dy2 * dx1 > 0.0 ){
-                                    rotDir = 1;
+                    for(int i=0;i<selectedObj.selObjKind.size();++i){
+                        if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
+
+                            QList<int> rotLaneBothEdge;
+                            QList<int> rotLaneStart;
+                            QList<int> rotLaneEnd;
+
+                            int nIdx = road->indexOfNode( selectedObj.selObjID[i] );
+                            for(int j=0;j<road->nodes[nIdx]->relatedLanes.size();++j){
+
+                                if( alreadyRot.indexOf( road->nodes[nIdx]->relatedLanes[j] ) >= 0 ){
+                                    continue;
+                                }
+
+                                bool checkLaneSelected = false;
+                                for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                    if( k == i ){
+                                        continue;
+                                    }
+                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_END ||
+                                            selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+
+                                        if( selectedObj.selObjID[k] == road->nodes[nIdx]->relatedLanes[j] ){
+                                            checkLaneSelected = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if( checkLaneSelected == true ){
+                                    continue;
+                                }
+
+                                int lIdx = road->indexOfLane( road->nodes[nIdx]->relatedLanes[j] );
+
+                                if( numberKeyPressed >= 0 ){
+                                    if( road->lanes[lIdx]->eWPInNode == road->lanes[lIdx]->sWPInNode ){
+
+                                        if( road->lanes[lIdx]->sWPBoundary == true && road->lanes[lIdx]->sWPNodeDir + 1 == numberKeyPressed ){
+                                            if( rotLaneStart.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                                rotLaneStart.append( road->nodes[nIdx]->relatedLanes[j] );
+                                            }
+                                            continue;
+                                        }
+                                        if( road->lanes[lIdx]->eWPBoundary == true && road->lanes[lIdx]->eWPNodeDir + 1 == numberKeyPressed ){
+                                            if( rotLaneEnd.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                                rotLaneEnd.append( road->nodes[nIdx]->relatedLanes[j] );
+                                            }
+                                            continue;
+                                        }
+
+                                        if( road->lanes[lIdx]->sWPBoundary == false || road->lanes[lIdx]->sWPNodeDir + 1 != numberKeyPressed ){
+                                            continue;
+                                        }
+
+                                        if( road->lanes[lIdx]->eWPBoundary == false || road->lanes[lIdx]->eWPNodeDir + 1 != numberKeyPressed ){
+                                            continue;
+                                        }
+                                    }
+                                    if( road->lanes[lIdx]->eWPInNode != road->lanes[lIdx]->sWPInNode ){
+                                        if( road->lanes[lIdx]->eWPInNode == selectedObj.selObjID[i] && road->lanes[lIdx]->eWPNodeDir + 1 != numberKeyPressed ){
+                                            continue;
+                                        }
+                                        if( road->lanes[lIdx]->sWPInNode == selectedObj.selObjID[i] && road->lanes[lIdx]->sWPNodeDir + 1 != numberKeyPressed ){
+                                            continue;
+                                        }
+                                    }
+                                }
+
+                                if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->sWPBoundary == true ){
+                                    bool rotBoth = false;
+                                    for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                        if( k == i ){
+                                            continue;
+                                        }
+                                        if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                            if( selectedObj.selObjID[k] == road->lanes[lIdx]->sWPInNode ){
+                                                rotBoth = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if( rotBoth == true ){
+                                        if( rotLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            rotLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                    else{
+                                        if( rotLaneEnd.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            rotLaneEnd.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                }
+                                else if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->eWPBoundary == true ){
+                                    bool rotBoth = false;
+                                    for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                        if( k == i ){
+                                            continue;
+                                        }
+                                        if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                            if( selectedObj.selObjID[k] == road->lanes[lIdx]->eWPInNode ){
+                                                rotBoth = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if( rotBoth == true ){
+                                        if( rotLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            rotLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                    else{
+                                        if( rotLaneStart.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            rotLaneStart.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
                                 }
                                 else{
-                                    rotDir = 2;
+                                    if( rotLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        rotLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
                                 }
-                                wxMouseMove = x;
-                                wyMouseMove = y;
                             }
 
-                            if( rotDir == 2 ){
-                                a *= (-1.0);
-                            }
+                            if(i == 0){
+                                if( ret == 1 ){
+                                    pos_center = road->GetNodePosition( selectedObj.selObjID[i] );
 
-                            a /= sx;
+                                    float dx1 = wxMouseMove - pos_center.x();
+                                    float dy1 = wyMouseMove - pos_center.y();
+                                    float dx2 = x - pos_center.x();
+                                    float dy2 = y - pos_center.y();
+                                    if( dx2 * (-dy1) + dy2 * dx1 > 0.0 ){
+                                        rotDir = 1;
+                                    }
+                                    else{
+                                        rotDir = 2;
+                                    }
+                                    wxMouseMove = x;
+                                    wyMouseMove = y;
+                                }
 
-                            if( numberKeyPressed < 0 ){
-                                road->RotateNode( selectedObj.selObjID[i], a );
+                                if( rotDir == 2 ){
+                                    a *= (-1.0);
+                                }
+
+                                a /= sx;
+
+                                if( numberKeyPressed < 0 ){
+                                    road->RotateNode( selectedObj.selObjID[i], a );
+                                }
+                                else{
+                                    road->RotateNodeLeg( selectedObj.selObjID[i],
+                                                         numberKeyPressed - 1,
+                                                         a );
+                                }
+
+
+                                // Rotate Lane
+                                {
+                                    float cp = cos(a * 0.017452);
+                                    float sp = sin(a * 0.017452);
+
+                                    for(int j=0;j<rotLaneBothEdge.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneBothEdge[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.first()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.first()->y();
+
+                                            float dx = xwp - road->nodes[nIdx]->pos.x();
+                                            float dy = ywp - road->nodes[nIdx]->pos.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.first()->setX( road->nodes[nIdx]->pos.x() + rx );
+                                            road->lanes[lidx]->shape.pos.first()->setY( road->nodes[nIdx]->pos.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.first()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.first()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.first()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.first()->setY( ry );
+                                        }
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.last()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.last()->y();
+
+                                            float dx = xwp - road->nodes[nIdx]->pos.x();
+                                            float dy = ywp - road->nodes[nIdx]->pos.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.last()->setX( road->nodes[nIdx]->pos.x() + rx );
+                                            road->lanes[lidx]->shape.pos.last()->setY( road->nodes[nIdx]->pos.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.last()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.last()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.last()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.last()->setY( ry );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneBothEdge[j] );
+                                    }
+
+                                    for(int j=0;j<rotLaneStart.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneStart[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.first()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.first()->y();
+
+                                            float dx = xwp - road->nodes[nIdx]->pos.x();
+                                            float dy = ywp - road->nodes[nIdx]->pos.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.first()->setX( road->nodes[nIdx]->pos.x() + rx );
+                                            road->lanes[lidx]->shape.pos.first()->setY( road->nodes[nIdx]->pos.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.first()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.first()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.first()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.first()->setY( ry );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneStart[j] );
+                                    }
+
+                                    for(int j=0;j<rotLaneEnd.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneEnd[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.last()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.last()->y();
+
+                                            float dx = xwp - road->nodes[nIdx]->pos.x();
+                                            float dy = ywp - road->nodes[nIdx]->pos.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.last()->setX( road->nodes[nIdx]->pos.x() + rx );
+                                            road->lanes[lidx]->shape.pos.last()->setY( road->nodes[nIdx]->pos.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.last()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.last()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.last()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.last()->setY( ry );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneEnd[j] );
+                                    }
+
+                                }
+
                             }
                             else{
-                                road->RotateNodeLeg( selectedObj.selObjID[i],
-                                                     numberKeyPressed - 1,
-                                                     a );
+
+                                road->RotateNode( selectedObj.selObjID[i], a );
+
+                                QVector2D pos = road->GetNodePosition( selectedObj.selObjID[i] );
+                                float dx = pos.x() - pos_center.x();
+                                float dy = pos.y() - pos_center.y();
+
+                                float cp = cos( a * 0.017452 );
+                                float sp = sin( a * 0.017452 );
+
+                                float rx = dx * cp + dy * (-sp);
+                                float ry = dx * sp + dy * cp;
+
+                                float xMove = rx - dx;
+                                float yMove = ry - dy;
+                                road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+
+                                // Rotate Lane
+                                {
+                                    float cp = cos(a * 0.017452);
+                                    float sp = sin(a * 0.017452);
+
+                                    for(int j=0;j<rotLaneBothEdge.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneBothEdge[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.first()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.first()->y();
+
+                                            float dx = xwp - pos_center.x();
+                                            float dy = ywp - pos_center.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.first()->setX( pos_center.x() + rx );
+                                            road->lanes[lidx]->shape.pos.first()->setY( pos_center.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.first()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.first()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.first()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.first()->setY( ry );
+                                        }
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.last()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.last()->y();
+
+                                            float dx = xwp - pos_center.x();
+                                            float dy = ywp - pos_center.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.last()->setX( pos_center.x() + rx );
+                                            road->lanes[lidx]->shape.pos.last()->setY( pos_center.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.last()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.last()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.last()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.last()->setY( ry );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneBothEdge[j] );
+                                    }
+
+                                    for(int j=0;j<rotLaneStart.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneStart[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.first()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.first()->y();
+
+                                            float dx = xwp - pos_center.x();
+                                            float dy = ywp - pos_center.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.first()->setX( pos_center.x() + rx );
+                                            road->lanes[lidx]->shape.pos.first()->setY( pos_center.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.first()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.first()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.first()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.first()->setY( ry  );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneStart[j] );
+                                    }
+
+                                    for(int j=0;j<rotLaneEnd.size();++j){
+                                        int lidx = road->indexOfLane( rotLaneEnd[j] );
+                                        if( lidx < 0 ){
+                                            continue;
+                                        }
+
+                                        {
+                                            float xwp = road->lanes[lidx]->shape.pos.last()->x();
+                                            float ywp = road->lanes[lidx]->shape.pos.last()->y();
+
+                                            float dx = xwp - pos_center.x();
+                                            float dy = ywp - pos_center.y();
+
+                                            float rx = dx * cp + dy * (-sp);
+                                            float ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.pos.last()->setX( pos_center.x() + rx );
+                                            road->lanes[lidx]->shape.pos.last()->setY( pos_center.y() + ry );
+
+                                            dx = road->lanes[lidx]->shape.derivative.last()->x();
+                                            dy = road->lanes[lidx]->shape.derivative.last()->y();
+
+                                            rx = dx * cp + dy * (-sp);
+                                            ry = dx * sp + dy * cp;
+
+                                            road->lanes[lidx]->shape.derivative.last()->setX( rx );
+                                            road->lanes[lidx]->shape.derivative.last()->setY( ry );
+                                        }
+
+                                        road->CalculateShape( &(road->lanes[lidx]->shape) );
+                                        alreadyRot.append( rotLaneEnd[j] );
+                                    }
+
+                                }
                             }
-
-                        }
-                        else{
-
-                            road->RotateNode( selectedObj.selObjID[i], a );
-
-                            QVector2D pos = road->GetNodePosition( selectedObj.selObjID[i] );
-                            float dx = pos.x() - pos_center.x();
-                            float dy = pos.y() - pos_center.y();
-
-                            float cp = cos( a * 0.017452 );
-                            float sp = sin( a * 0.017452 );
-
-                            float rx = dx * cp + dy * (-sp);
-                            float ry = dx * sp + dy * cp;
-
-                            float xMove = rx - dx;
-                            float yMove = ry - dy;
-                            road->MoveNode( selectedObj.selObjID[i], xMove, yMove, isFirst );
-                            isFirst = false;
                         }
                     }
-                    else if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+                }
+
+
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE_EDGE_START ){
 
                         QList<int> sMoveLane;
                         QList<int> eMoveLane;
@@ -531,12 +916,102 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
 
             // Move Node
             {
-                bool isFirst = true;
+                QList<int> moveLaneBothEdge;
+                QList<int> moveLaneStart;
+                QList<int> moveLaneEnd;
+
                 for(int i=0;i<selectedObj.selObjKind.size();++i){
                     if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
-                        road->MoveNode( selectedObj.selObjID[i], xMove, yMove, isFirst );
-                        isFirst = false;
+                        road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+
+                        int nIdx = road->indexOfNode( selectedObj.selObjID[i] );
+                        for(int j=0;j<road->nodes[nIdx]->relatedLanes.size();++j){
+
+                            bool checkLaneSelected = false;
+                            for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                if( k == i ){
+                                    continue;
+                                }
+                                if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE ||
+                                        selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_END ||
+                                        selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+
+                                    if( selectedObj.selObjID[k] == road->nodes[nIdx]->relatedLanes[j] ){
+                                        checkLaneSelected = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if( checkLaneSelected == true ){
+                                continue;
+                            }
+
+                            int lIdx = road->indexOfLane( road->nodes[nIdx]->relatedLanes[j] );
+                            if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->sWPBoundary == true ){
+                                bool moveBoth = false;
+                                for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                    if( k == i ){
+                                        continue;
+                                    }
+                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                        if( selectedObj.selObjID[k] == road->lanes[lIdx]->sWPInNode ){
+                                            moveBoth = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if( moveBoth == true ){
+                                    if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
+                                }
+                                else{
+                                    if( moveLaneEnd.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        moveLaneEnd.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
+                                }
+                            }
+                            else if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->eWPBoundary == true ){
+                                bool moveBoth = false;
+                                for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                    if( k == i ){
+                                        continue;
+                                    }
+                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                        if( selectedObj.selObjID[k] == road->lanes[lIdx]->eWPInNode ){
+                                            moveBoth = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if( moveBoth == true ){
+                                    if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
+                                }
+                                else{
+                                    if( moveLaneStart.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        moveLaneStart.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
+                                }
+                            }
+                            else{
+                                if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                    moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                }
+                            }
+                        }
                     }
+                }
+
+                for(int i=0;i<moveLaneBothEdge.size();++i){
+                    road->MoveLane( moveLaneBothEdge[i], xMove, yMove, true);
+                }
+                for(int i=0;i<moveLaneStart.size();++i){
+                    road->MoveLaneEdge( moveLaneStart[i], xMove, yMove, 0 );  // Lane Start Point
+                }
+                for(int i=0;i<moveLaneEnd.size();++i){
+                    road->MoveLaneEdge( moveLaneEnd[i], xMove, yMove, 1 );  // Lane End Point
                 }
             }
 
@@ -961,6 +1436,7 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
         update();
     }
     else{
+
         if( selectNodeFlag == true ){
             for(int i=0;i<road->nodes.size();++i){
                 float dx = road->nodes[i]->pos.x() - wxMousePress;

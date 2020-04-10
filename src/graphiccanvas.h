@@ -35,6 +35,7 @@
 #include "basemapimagemanager.h"
 #include "roadinfo.h"
 #include "objectproperty.h"
+#include "odrouteeditor.h"
 
 #include <QDebug>
 
@@ -162,6 +163,7 @@ public:
     RoadInfo *road;
     RoadObjectProperty *roadProperty;
     BaseMapImageManager *mapImageMng;
+    ODRouteEditor *odRoute;
 
 
     // Object Selection
@@ -194,6 +196,7 @@ public slots:
     void SetNodeLabelVisibility(bool);
     void SetNodeLaneListlVisibility(bool);
     void SetRelatedLaneslVisibility(bool);
+    void SetRouteLaneListlVisibility(bool);
     void ShowPrevLaneList();
     void ShowNextLaneList();
     void ResetLaneListIndex();
@@ -222,6 +225,7 @@ public slots:
     void SetPedestLanePointPickMode();
     void ResetPedestLanePointPickMode();
     void RemovePickedPedestLanePoint();
+    void SetNodeSelected(int);
 
 
 private:
@@ -315,6 +319,7 @@ private:
 
     bool LaneListFlag;
     bool RelatedLanesFlag;
+    bool RouteLaneListFlag;
     bool objectMoveFlag;
     bool nodePickModeFlag;
     bool pedestPathPointPickFlag;

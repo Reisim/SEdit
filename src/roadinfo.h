@@ -64,7 +64,7 @@ public:
 
 
     // Lane
-    int CreateLane(int assignId,QVector4D startPoint, int sWPInNode, int sWPNodeDir, int departureNode, bool sWPBoundary, QVector4D endPoint,int eWPInNode, int eWPNodeDir,int connectedNode, bool eWPBoundary);
+    int CreateLane(int assignId,QVector4D startPoint, int sWPInNode, int sWPNodeDir, bool sWPBoundary, QVector4D endPoint,int eWPInNode, int eWPNodeDir,bool eWPBoundary);
     void DeleteLane(int id);
     void MoveLane(int id,float moveX,float moveY,bool onlyThisLane);
     void MoveLaneEdge(int id,float moveX,float moveY,int edgeFlag);
@@ -73,6 +73,7 @@ public:
     void RotateLaneEdge(int id,float rotate,int edgeFlag);
     void SetLaneNumber(int id,int laneNumner);
     void CalculateShape(struct LaneShapeInfo*);
+    bool CheckLaneConnectionOfNode(int nodeID);
     bool CheckLaneConnection();
     bool CheckLaneConnectionFull();
 
@@ -133,6 +134,9 @@ public:
 
     // Route
     void CheckRouteInOutDirection();
+    void CheckRouteInOutDirectionGivenODNode(int origNodeId,int destNodeID);
+    void GetLaneListForRoute(int origNodeId,int destNodeID,int hIdx);
+    void SetAllRouteLaneList();
 
 
 
@@ -172,6 +176,8 @@ public:
     QList<struct TreeSearchElem*> treeSeachHelper[8];
     void ForwardTreeSearch(int nodeId,int nextLane,int currentLane,int);
     void ClearSearchHelper(int);
+
+    void ForwardTreeSearchForRouteLaneList(struct RouteData* route,int nextLane,int currentLane, int);
 };
 
 #endif // ROADINFO_H

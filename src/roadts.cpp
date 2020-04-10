@@ -75,14 +75,50 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
     float cp = cos( angle );
     float sp = sin( angle );
 
+    float L = 5.0;
+    float yMax = -100.0;
+    float yMin = 100.0;
+
+    int nIdx = indexOfNode( relatedNodeID );
+    if( nIdx >= 0 ){
+
+        QVector2D nodeCenter = GetNodePosition( relatedNodeID );
+
+        for(int i=0;i<nodes[nIdx]->relatedLanes.size();++i){
+            int lidx = indexOfLane( nodes[nIdx]->relatedLanes[i] );
+            if( lidx >= 0 ){
+
+                if( lanes[lidx]->eWPInNode == relatedNodeID && lanes[lidx]->sWPInNode != relatedNodeID
+                        && lanes[lidx]->eWPNodeDir == relatedNodeDir && lanes[lidx]->eWPBoundary == true ){
+
+                    float dx = lanes[lidx]->shape.pos.last()->x() - nodeCenter.x();
+                    float dy = lanes[lidx]->shape.pos.last()->y() - nodeCenter.y();
+                    float Lt = dx * cp + dy * sp;
+                    float Yt = dx * (-sp) + dy * cp;
+
+                    if( L < Lt ){
+                        L = Lt;
+                    }
+                    if( yMax < Yt ){
+                        yMax = Yt;
+                    }
+                    if( yMin > Yt ){
+                        yMin = Yt;
+                    }
+                }
+            }
+        }
+    }
+
+
     if( TSType == 0 ){  // for vehicles
 
-        float shift = -2.0 - (nLane - 1) * 3.0;
-        if( LeftOrRight == RIGHT_HAND_TRAFFIC ){
-            shift = 2.0 + (nLane - 1) * 3.0;
-        }
-        float x_TS = nodes[rndIdx]->pos.x() + 5.0 * cp - shift * sp;
-        float y_TS = nodes[rndIdx]->pos.y() + 5.0 * sp + shift * cp;
+        float shift = (yMax + yMin) / 2.0;
+
+        L -= 2.0;
+
+        float x_TS = nodes[rndIdx]->pos.x() + L * cp - shift * sp;
+        float y_TS = nodes[rndIdx]->pos.y() + L * sp + shift * cp;
 
         tsInfo->pos.setX( x_TS );
         tsInfo->pos.setY( y_TS );
@@ -109,12 +145,15 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
     }
     else if( TSType == 1 ){  // for pedestrian
 
-        float shift = -3.0- (nLane - 1) * 3.0;
-        if( LeftOrRight == RIGHT_HAND_TRAFFIC ){
-            shift = 3.0 + (nLane - 1) * 3.0;
+        float shift = yMin - 2.0;
+        if( LeftOrRight < 0.0 ){
+            shift = yMax + 2.0;
         }
-        float x_TS = nodes[rndIdx]->pos.x() + 6.0 * cp - shift * sp;
-        float y_TS = nodes[rndIdx]->pos.y() + 6.0 * sp + shift * cp;
+
+        L -= 1.0;
+
+        float x_TS = nodes[rndIdx]->pos.x() + L * cp - shift * sp;
+        float y_TS = nodes[rndIdx]->pos.y() + L * sp + shift * cp;
 
         tsInfo->pos.setX( x_TS );
         tsInfo->pos.setY( y_TS );
