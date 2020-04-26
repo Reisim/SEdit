@@ -27,7 +27,7 @@ RoadInfo::RoadInfo()
 
     LeftOrRight = LEFT_HAND_TRAFFIC;
 
-    updateCPEveryOperation = true;
+    updateCPEveryOperation = false;
 }
 
 

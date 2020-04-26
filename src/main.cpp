@@ -12,6 +12,7 @@
 
 
 #include <QApplication>
+#include <QDesktopWidget>
 #include <QtGui>
 #include <QStyleFactory>
 #include <QTextCodec>
@@ -29,11 +30,31 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    AllocConsole();
-
     qDebug() << "+--- Start Application";
 
-    qDebug() << " Avaiable styles are : " << QStyleFactory::keys();
+    QSize ScreenSize = QGuiApplication::screens().at(0)->size();
+    qDebug() << "   Secreen Size: " << ScreenSize;
+
+
+    //
+    // Show Console for Windows
+    //
+    AllocConsole();
+    SetConsoleTitleA( "S-Edit Console" );
+
+    RECT consoleRec;
+    GetClientRect( GetConsoleWindow(),  &consoleRec);
+    int consoleWidth = consoleRec.right - consoleRec.left;
+    int consoleHeight = consoleRec.bottom - consoleRec.top;
+    MoveWindow( GetConsoleWindow(), 50, ScreenSize.height() - 100 - consoleHeight, consoleWidth, consoleHeight, TRUE );
+
+
+
+    //
+    // Show Main Window
+    //
+
+    qDebug() << "   Avaiable styles are : " << QStyleFactory::keys();
 
     qDebug() << "+--- setCodecForLocale";
     QTextCodec::setCodecForLocale( QTextCodec::codecForLocale() );
@@ -41,9 +62,17 @@ int main(int argc, char *argv[])
     qDebug() << "+--- setStyle -> Fusion";
     QApplication::setStyle(QStyleFactory::create("Fusion"));
 
+    qDebug() << "+--- Create Main Window";
     MainWindow w;
     w.setWindowTitle("MDS02-Canopus | S-Edit[*]");
     w.show();
+
+
+    qDebug() << "Size of Main Window: " << w.size();
+
+    QSize moveMW = (ScreenSize - w.size()) * 0.5;
+    qDebug() << "move Main Window to : " << moveMW;
+    w.move( moveMW.width(), moveMW.height() );
 
     return a.exec();
 }

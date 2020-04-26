@@ -54,6 +54,7 @@ public slots:
     void AllChangeScale();
     void ClearAll();
     void InsertImageFromFile();
+    void ApplyChange(double);
 
 private:
     QTableWidget *mapImageList;

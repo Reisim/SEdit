@@ -62,11 +62,11 @@ BaseMapImageManager::BaseMapImageManager(QWidget *parent)
     connect(fromFileBtn,SIGNAL(clicked()),this,SLOT(InsertImageFromFile()));
 
     upButtonLayout->addWidget( addImageBtn );
-    upButtonLayout->addWidget( deleteImageBtn );
     upButtonLayout->addWidget( editImageBtn );
     upButtonLayout->addSpacing( 20 );
     upButtonLayout->addWidget( fromFileBtn );
-    upButtonLayout->addStretch();
+    upButtonLayout->addStretch( 1 );
+    upButtonLayout->addWidget( deleteImageBtn );
 
     //------
 
@@ -246,23 +246,27 @@ void BaseMapImageManager::EditMapImageProperty()
     xPos->setRange(-1.0e8, 1.0e8);
     xPos->setDecimals(4);
     xPos->setValue( baseMapImages[selRow]->x );
+    xPos->setObjectName("xPos");
 
     QDoubleSpinBox *yPos = new QDoubleSpinBox();
     yPos->setFixedWidth(150);
     yPos->setRange(-1.0e8, 1.0e8);
     yPos->setDecimals(4);
     yPos->setValue( baseMapImages[selRow]->y );
+    yPos->setObjectName("yPos");
 
     QDoubleSpinBox *scale = new QDoubleSpinBox();
     scale->setFixedWidth(150);
     scale->setDecimals(4);
     scale->setValue( baseMapImages[selRow]->scale );
+    scale->setObjectName("scale");
 
     QDoubleSpinBox *rot = new QDoubleSpinBox();
     rot->setFixedWidth(150);
     rot->setRange(-180.0, 180.0);
     rot->setDecimals(4);
     rot->setValue( baseMapImages[selRow]->rotate );
+    rot->setObjectName("rot");
 
     gLay->addWidget( xPos  , 0, 1 );
     gLay->addWidget( yPos  , 1, 1 );
@@ -270,7 +274,16 @@ void BaseMapImageManager::EditMapImageProperty()
     gLay->addWidget( rot   , 3, 1 );
 
     QPushButton *okBtn = new QPushButton("Accept");
+    okBtn->setIcon(QIcon(":/images/accept.png"));
+
     QPushButton *cancelBtn = new QPushButton("Cancel");
+    cancelBtn->setIcon(QIcon(":/images/delete.png"));
+
+    connect( xPos, SIGNAL(valueChanged(double)), this, SLOT(ApplyChange(double)));
+    connect( yPos, SIGNAL(valueChanged(double)), this, SLOT(ApplyChange(double)));
+    connect( scale, SIGNAL(valueChanged(double)), this, SLOT(ApplyChange(double)));
+    connect( rot, SIGNAL(valueChanged(double)), this, SLOT(ApplyChange(double)));
+
     connect( okBtn, SIGNAL(clicked()), dialog, SLOT(accept()));
     connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(reject()));
     connect( okBtn, SIGNAL(clicked()), dialog, SLOT(close()));
@@ -304,6 +317,32 @@ void BaseMapImageManager::EditMapImageProperty()
 
         emit UpdateGraphic();
     }
+}
+
+
+void BaseMapImageManager::ApplyChange(double val)
+{
+    int selRow = mapImageList->currentRow();
+    if( selRow < 0 || selRow >= baseMapImages.size() ){
+        return;
+    }
+
+    if( sender()->objectName() == QString("xPos") ){
+        baseMapImages[selRow]->x = val;
+    }
+    else if( sender()->objectName() == QString("yPos") ){
+        baseMapImages[selRow]->y = val;
+    }
+    else if( sender()->objectName() == QString("scale") ){
+        if( val > 0.0 ){
+            baseMapImages[selRow]->scale = val;
+        }
+    }
+    else if( sender()->objectName() == QString("rot") ){
+        baseMapImages[selRow]->rotate = val;
+    }
+
+    emit UpdateGraphic();
 }
 
 

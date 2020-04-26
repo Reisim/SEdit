@@ -44,6 +44,8 @@ public slots:
     void SaveData();
     void SelectScenarioClicked();
     void SelectLogFolderClicked();
+    void SelectRestartFileClicked();
+    void ClearRestartFileClicked();
 
 
 private:
@@ -53,10 +55,13 @@ private:
     QPushButton *saveBtn;
     QPushButton *selScenarioBtn;
     QPushButton *selLogFolderBtn;
+    QPushButton *selRestartFileBtn;
+    QPushButton *remRestartFileBtn;
 
     QLabel *configFilename;
     QLabel *selectedScenariofile;
     QLabel *logOutputFolder;
+    QLabel *restartFilename;
 
     QCheckBox *isDSMode;
     QDoubleSpinBox *calTimeStep;

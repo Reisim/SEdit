@@ -114,6 +114,10 @@ public slots:
 
     void CreateNode_Dialog();
 
+    void CreateTrafficSignalForVehicle();
+    void CreateTrafficSignalForPedestrian();
+    void CreateStopLineForInDir();
+
     void StartCreatePedestPath();
     int CreatePedestPath();
 
@@ -132,6 +136,8 @@ public slots:
     void CheckAllStopLineCrossLane();
     void CheckLaneCrossPoints();
     void CheckCrossPointsOfSelectedLane();
+    void ChangeSpeedLimitOfSelectedLanes();
+    void ChangeActualSpeedOfSelectedLanes();
 
     void InsertNode_4x1_noTS();
     void InsertNode_4x2_noTS();

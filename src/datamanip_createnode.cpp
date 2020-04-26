@@ -1953,9 +1953,13 @@ int DataManipulator::CreateNode_4x1x1_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -1983,9 +1987,13 @@ int DataManipulator::CreateNode_4x2x1_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2013,9 +2021,13 @@ int DataManipulator::CreateNode_3x1x1_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2043,9 +2055,13 @@ int DataManipulator::CreateNode_3x2x1_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2073,8 +2089,13 @@ int DataManipulator::CreateNode_3x1x1_tr_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2102,8 +2123,13 @@ int DataManipulator::CreateNode_3x2x1_tr_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2131,8 +2157,13 @@ int DataManipulator::CreateNode_3x3x1_tr_noTS()
         }
     }
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2147,19 +2178,30 @@ int DataManipulator::CreateNode_3x3x1_tr_noTS()
 int DataManipulator::CreateNode_4x1x1_TS()
 {
     int cNodeID = CreateNode_4x1x1();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
 
@@ -2175,19 +2217,13 @@ int DataManipulator::CreateNode_4x1x1_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
-
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
-
 
     if( canvas ){
         canvas->update();
@@ -2200,22 +2236,32 @@ int DataManipulator::CreateNode_4x1x1_TS()
 int DataManipulator::CreateNode_3x1x1_TS()
 {
     int cNodeID = CreateNode_3x1x1();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2228,16 +2274,12 @@ int DataManipulator::CreateNode_3x1x1_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
     if( canvas ){
@@ -2251,19 +2293,31 @@ int DataManipulator::CreateNode_3x1x1_TS()
 int DataManipulator::CreateNode_3x2x1_TS()
 {
     int cNodeID = CreateNode_3x2x1();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
 
@@ -2279,16 +2333,12 @@ int DataManipulator::CreateNode_3x2x1_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
     if( canvas ){
@@ -2302,19 +2352,31 @@ int DataManipulator::CreateNode_3x2x1_TS()
 int DataManipulator::CreateNode_3x2x1_rm_TS()
 {
     int cNodeID = CreateNode_3x2x1_rm();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
 
@@ -2330,16 +2392,12 @@ int DataManipulator::CreateNode_3x2x1_rm_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
     if( canvas ){
@@ -2353,22 +2411,32 @@ int DataManipulator::CreateNode_3x2x1_rm_TS()
 int DataManipulator::CreateNode_4x2x1_TS()
 {
     int cNodeID = CreateNode_4x2x1();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2381,19 +2449,13 @@ int DataManipulator::CreateNode_4x2x1_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
-
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
-
 
     if( canvas ){
         canvas->update();
@@ -2406,22 +2468,33 @@ int DataManipulator::CreateNode_4x2x1_TS()
 int DataManipulator::CreateNode_4x2x2_TS()
 {
     int cNodeID = CreateNode_4x2x2();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2434,19 +2507,13 @@ int DataManipulator::CreateNode_4x2x2_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
-
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
-
 
     if( canvas ){
         canvas->update();
@@ -2459,22 +2526,32 @@ int DataManipulator::CreateNode_4x2x2_TS()
 int DataManipulator::CreateNode_4x1x1_r_TS()
 {
     int cNodeID = CreateNode_4x1x1_r();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2486,18 +2563,13 @@ int DataManipulator::CreateNode_4x1x1_r_TS()
             else{
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
-        }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
+        }        
     }
 
-
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2512,22 +2584,31 @@ int DataManipulator::CreateNode_4x1x1_r_TS()
 int DataManipulator::CreateNode_3x1x1_r_TS()
 {
     int cNodeID = CreateNode_3x1x1_r();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2540,17 +2621,12 @@ int DataManipulator::CreateNode_3x1x1_r_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
-
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2565,22 +2641,32 @@ int DataManipulator::CreateNode_3x1x1_r_TS()
 int DataManipulator::CreateNode_3x2x1_r_TS()
 {
     int cNodeID = CreateNode_3x2x1_r();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2593,17 +2679,12 @@ int DataManipulator::CreateNode_3x2x1_r_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
-
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2618,22 +2699,32 @@ int DataManipulator::CreateNode_3x2x1_r_TS()
 int DataManipulator::CreateNode_4x2x1_r_TS()
 {
     int cNodeID = CreateNode_4x2x1_r();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
-
 
         // TS for Pedestrian
         int ptsId = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -2646,17 +2737,12 @@ int DataManipulator::CreateNode_4x2x1_r_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
 
-
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
 
@@ -2671,19 +2757,30 @@ int DataManipulator::CreateNode_4x2x1_r_TS()
 int DataManipulator::CreateNode_4x2x2_r_TS()
 {
     int cNodeID = CreateNode_4x2x2_r();
-    int ndIdx = road->indexOfNode( cNodeID );
 
+    road->CheckLaneConnection();
+    road->CreateWPData();
+
+    int ndIdx = road->indexOfNode( cNodeID );
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-        // TS for Vehicle
-        int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-        int vtsIdx = road->indexOfTS( vtsID, cNodeID );
-        if( vtsIdx >= 0 ){
-            if(i % 2 == 0 ){
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+        if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+            // TS for Vehicle
+            int vtsID = CreateTrafficSignal( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+            int vtsIdx = road->indexOfTS( vtsID, cNodeID );
+            if( vtsIdx >= 0 ){
+                if(i % 2 == 0 ){
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
-            else{
-                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+            // StopLine for TS
+            int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+            if( sl >= 0 ){
+                road->CheckStopLineCrossLanes( sl );
             }
         }
 
@@ -2699,19 +2796,13 @@ int DataManipulator::CreateNode_4x2x2_r_TS()
                 road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
             }
         }
-
-        // StopLine for TS
-        int sl = CreateStopLine( cNodeID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-        if( sl >= 0 ){
-            road->CheckStopLineCrossLanes( sl );
-        }
     }
-
 
     if( road->updateCPEveryOperation == true ){
-        road->CheckLaneCrossPoints();
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
-
 
     if( canvas ){
         canvas->update();
@@ -3748,25 +3839,36 @@ void DataManipulator::CreateNode_Dialog()
             }
 
             int cID = CreateNode_4( x, y, inlanes, outlanes, turnlanes, turnRestrict );
+            int ndIdx = road->indexOfNode( cID );
+
+            road->CheckLaneConnection();
+            road->CreateWPData();
 
             if( isTSIntersect->isChecked() == true ){
 
-                int ndIdx = road->indexOfNode( cID );
+
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-                    // TS for Vehicle
-                    int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-                    int vtsIdx = road->indexOfTS( vtsID, cID );
-                    if( vtsIdx >= 0 ){
-                        if(i % 2 == 0 ){
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                    if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+                        // TS for Vehicle
+                        int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+                        int vtsIdx = road->indexOfTS( vtsID, cID );
+                        if( vtsIdx >= 0 ){
+                            if(i % 2 == 0 ){
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                            }
+                            else{
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                            }
                         }
-                        else{
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+                        // StopLine for TS
+                        int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+                        if( sl >= 0 ){
+                            road->CheckStopLineCrossLanes( sl );
                         }
                     }
-
 
                     // TS for Pedestrian
                     int ptsId = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -3779,17 +3881,13 @@ void DataManipulator::CreateNode_Dialog()
                             road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
                         }
                     }
-
-                    // StopLine for TS
-                    int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-                    if( sl >= 0 ){
-                        road->CheckStopLineCrossLanes( sl );
-                    }
                 }
             }
 
             if( road->updateCPEveryOperation == true ){
-                road->CheckLaneCrossPoints();
+                QList<int> nodeList;
+                nodeList.append( ndIdx );
+                road->CheckLaneCrossPointsInsideNode( nodeList );
             }
         }
         else if( is3Leg->isChecked() == true ){
@@ -3842,25 +3940,37 @@ void DataManipulator::CreateNode_Dialog()
             }
 
             int cID = CreateNode_3( x, y, inlanes, outlanes, turnlanes, turnRestrict );
+            int ndIdx = road->indexOfNode( cID );
+
+            road->CheckLaneConnection();
+            road->CreateWPData();
 
             if( isTSIntersect->isChecked() == true ){
 
-                int ndIdx = road->indexOfNode( cID );
+
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-                    // TS for Vehicle
-                    int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-                    int vtsIdx = road->indexOfTS( vtsID, cID );
-                    if( vtsIdx >= 0 ){
-                        if(i % 2 == 0 ){
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                    if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+
+                        // TS for Vehicle
+                        int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+                        int vtsIdx = road->indexOfTS( vtsID, cID );
+                        if( vtsIdx >= 0 ){
+                            if(i % 2 == 0 ){
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                            }
+                            else{
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                            }
                         }
-                        else{
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+                        // StopLine for TS
+                        int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+                        if( sl >= 0 ){
+                            road->CheckStopLineCrossLanes( sl );
                         }
                     }
-
 
                     // TS for Pedestrian
                     int ptsId = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -3873,17 +3983,13 @@ void DataManipulator::CreateNode_Dialog()
                             road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
                         }
                     }
-
-                    // StopLine for TS
-                    int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-                    if( sl >= 0 ){
-                        road->CheckStopLineCrossLanes( sl );
-                    }
                 }
             }
 
             if( road->updateCPEveryOperation == true ){
-                road->CheckLaneCrossPoints();
+                QList<int> nodeList;
+                nodeList.append( ndIdx );
+                road->CheckLaneCrossPointsInsideNode( nodeList );
             }
         }
         else if( is5Leg->isChecked() == true ){
@@ -3936,25 +4042,36 @@ void DataManipulator::CreateNode_Dialog()
             }
 
             int cID = CreateNode_5( x, y, inlanes, outlanes, turnlanes, turnRestrict );
+            int ndIdx = road->indexOfNode( cID );
+
+            road->CheckLaneConnection();
+            road->CreateWPData();
 
             if( isTSIntersect->isChecked() == true ){
 
-                int ndIdx = road->indexOfNode( cID );
+
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-                    // TS for Vehicle
-                    int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-                    int vtsIdx = road->indexOfTS( vtsID, cID );
-                    if( vtsIdx >= 0 ){
-                        if(i % 2 == 0 ){
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                    if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+                        // TS for Vehicle
+                        int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+                        int vtsIdx = road->indexOfTS( vtsID, cID );
+                        if( vtsIdx >= 0 ){
+                            if(i % 2 == 0 ){
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                            }
+                            else{
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                            }
                         }
-                        else{
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+                        // StopLine for TS
+                        int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+                        if( sl >= 0 ){
+                            road->CheckStopLineCrossLanes( sl );
                         }
                     }
-
 
                     // TS for Pedestrian
                     int ptsId = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -3967,17 +4084,13 @@ void DataManipulator::CreateNode_Dialog()
                             road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
                         }
                     }
-
-                    // StopLine for TS
-                    int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-                    if( sl >= 0 ){
-                        road->CheckStopLineCrossLanes( sl );
-                    }
                 }
             }
 
             if( road->updateCPEveryOperation == true ){
-                road->CheckLaneCrossPoints();
+                QList<int> nodeList;
+                nodeList.append( ndIdx );
+                road->CheckLaneCrossPointsInsideNode( nodeList );
             }
         }
         else if( is6Leg->isChecked() == true ){
@@ -4030,25 +4143,36 @@ void DataManipulator::CreateNode_Dialog()
             }
 
             int cID = CreateNode_6( x, y, inlanes, outlanes, turnlanes, turnRestrict );
+            int ndIdx = road->indexOfNode( cID );
+
+            road->CheckLaneConnection();
+            road->CreateWPData();
 
             if( isTSIntersect->isChecked() == true ){
 
-                int ndIdx = road->indexOfNode( cID );
+
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
-                    // TS for Vehicle
-                    int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
-                    int vtsIdx = road->indexOfTS( vtsID, cID );
-                    if( vtsIdx >= 0 ){
-                        if(i % 2 == 0 ){
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                    if( road->nodes[ndIdx]->legInfo[i]->inWPs.size() > 0 ){
+                        // TS for Vehicle
+                        int vtsID = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 0 );
+                        int vtsIdx = road->indexOfTS( vtsID, cID );
+                        if( vtsIdx >= 0 ){
+                            if(i % 2 == 0 ){
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 0;
+                            }
+                            else{
+                                road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+                            }
                         }
-                        else{
-                            road->nodes[ndIdx]->trafficSignals[vtsIdx]->startOffset = 60;
+
+                        // StopLine for TS
+                        int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
+                        if( sl >= 0 ){
+                            road->CheckStopLineCrossLanes( sl );
                         }
                     }
-
 
                     // TS for Pedestrian
                     int ptsId = CreateTrafficSignal( cID, road->nodes[ndIdx]->legInfo[i]->legID , 1 );
@@ -4061,17 +4185,14 @@ void DataManipulator::CreateNode_Dialog()
                             road->nodes[ndIdx]->trafficSignals[ptsIdx]->startOffset = 60;
                         }
                     }
-
-                    // StopLine for TS
-                    int sl = CreateStopLine( cID, road->nodes[ndIdx]->legInfo[i]->legID, _STOPLINE_KIND::STOPLINE_SIGNAL );
-                    if( sl >= 0 ){
-                        road->CheckStopLineCrossLanes( sl );
-                    }
                 }
             }
 
+
             if( road->updateCPEveryOperation == true ){
-                road->CheckLaneCrossPoints();
+                QList<int> nodeList;
+                nodeList.append( ndIdx );
+                road->CheckLaneCrossPointsInsideNode( nodeList );
             }
         }
     }
@@ -4131,6 +4252,87 @@ int DataManipulator::CreateStopLine(int nodeID,int nodeDir,int type)
         qDebug() << " add operationHistory: " << command;
     }
     return cId;
+}
+
+
+void DataManipulator::CreateTrafficSignalForVehicle()
+{
+    if( canvas->selectedObj.selObjKind.size() != 1 ){
+        return;
+    }
+
+    if( canvas->selectedObj.selObjKind[0] != canvas->SEL_NODE ){
+        return;
+    }
+
+    int nodeID = canvas->selectedObj.selObjID[0];
+    int ndIdx = road->indexOfNode( nodeID );
+    if( ndIdx < 0 ){
+        return;
+    }
+
+    int dir = canvas->GetNumberKeyPressed() - 1;
+    if( dir < 0 || dir >= road->nodes[ndIdx]->legInfo.size() ){
+        return;
+    }
+
+    road->AddTrafficSignalToNode( nodeID, -1, 0, dir );
+
+    canvas->update();
+}
+
+
+void DataManipulator::CreateTrafficSignalForPedestrian()
+{
+    if( canvas->selectedObj.selObjKind.size() != 1 ){
+        return;
+    }
+
+    if( canvas->selectedObj.selObjKind[0] != canvas->SEL_NODE ){
+        return;
+    }
+
+    int nodeID = canvas->selectedObj.selObjID[0];
+    int ndIdx = road->indexOfNode( nodeID );
+    if( ndIdx < 0 ){
+        return;
+    }
+
+    int dir = canvas->GetNumberKeyPressed() - 1;
+    if( dir < 0 || dir >= road->nodes[ndIdx]->legInfo.size() ){
+        return;
+    }
+
+    road->AddTrafficSignalToNode( nodeID, -1, 1, dir );
+
+    canvas->update();
+}
+
+
+void DataManipulator::CreateStopLineForInDir()
+{
+    if( canvas->selectedObj.selObjKind.size() != 1 ){
+        return;
+    }
+
+    if( canvas->selectedObj.selObjKind[0] != canvas->SEL_NODE ){
+        return;
+    }
+
+    int nodeID = canvas->selectedObj.selObjID[0];
+    int ndIdx = road->indexOfNode( nodeID );
+    if( ndIdx < 0 ){
+        return;
+    }
+
+    int dir = canvas->GetNumberKeyPressed() - 1;
+    if( dir < 0 || dir >= road->nodes[ndIdx]->legInfo.size() ){
+        return;
+    }
+
+    road->AddStopLineToNode( nodeID, -1, dir );
+
+    canvas->update();
 }
 
 

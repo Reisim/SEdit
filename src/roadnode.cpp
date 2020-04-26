@@ -274,6 +274,11 @@ void RoadInfo::RotateNodeLeg(int id,int legID,float rotate)
 
         nodes[index]->trafficSignals[i]->pos.setX( nodes[index]->pos.x() + rx );
         nodes[index]->trafficSignals[i]->pos.setY( nodes[index]->pos.y() + ry );
+
+        nodes[index]->trafficSignals[i]->facingDirect = nodes[index]->legInfo[leg]->angle;
+        if( nodes[index]->trafficSignals[i]->type == 1 ){
+            nodes[index]->trafficSignals[i]->facingDirect += 90.0;
+        }
     }
 
     for(int i=0;i<nodes[index]->stopLines.size();++i){
@@ -315,7 +320,7 @@ void RoadInfo::RotateNodeLeg(int id,int legID,float rotate)
 }
 
 
-void RoadInfo::AddStopLineToNode(int nodeId,int assignStopLintId,int type,int relatedDirection)
+void RoadInfo::AddStopLineToNode(int nodeId,int assignStopLintId,int relatedDirection)
 {
     int index = indexOfNode(nodeId);
     if( index < 0 ){
@@ -323,8 +328,10 @@ void RoadInfo::AddStopLineToNode(int nodeId,int assignStopLintId,int type,int re
         return;
     }
 
-
-
+    int sl = CreateStopLine( -1, nodeId, relatedDirection, _STOPLINE_KIND::STOPLINE_SIGNAL );
+    if( sl >= 0 ){
+        CheckStopLineCrossLanes( sl );
+    }
 }
 
 
@@ -336,7 +343,32 @@ void RoadInfo::AddTrafficSignalToNode(int nodeId,int assignTSId,int type, int re
         return;
     }
 
+    if( type == 0 ){
 
+        int vtsID = CreateTrafficSignal( assignTSId, nodeId, relatedDirection , 0 );
+        int vtsIdx = indexOfTS( vtsID, nodeId );
+        if( vtsIdx >= 0 ){
+            if(relatedDirection % 2 == 0 ){
+                nodes[index]->trafficSignals[vtsIdx]->startOffset = 0;
+            }
+            else{
+                nodes[index]->trafficSignals[vtsIdx]->startOffset = 60;
+            }
+        }
+    }
+    else{
+
+        int ptsId = CreateTrafficSignal( assignTSId, nodeId, relatedDirection, 1 );
+        int ptsIdx = indexOfTS( ptsId, nodeId );
+        if( ptsIdx >= 0 ){
+            if(relatedDirection % 2 == 1 ){
+                nodes[index]->trafficSignals[ptsIdx]->startOffset = 0;
+            }
+            else{
+                nodes[index]->trafficSignals[ptsIdx]->startOffset = 60;
+            }
+        }
+    }
 }
 
 
@@ -556,12 +588,16 @@ void RoadInfo::SetODFlagOfTerminalNode()
 }
 
 
-void RoadInfo::SetTurnDirectionInfo()
+void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
 {
     qDebug() << "[RoadInfo::SetTurnDirectionInfo]";
+    if( nodeList.size() == 0 ){
+        return;
+    }
 
     // Clear Data
-    for(int i=0;i<nodes.size();++i){
+    for(int n=0;n<nodeList.size();++n){
+        int i = nodeList.at(n);
         for(int j=0;j<nodes[i]->legInfo.size();++j){
             nodes[i]->legInfo[j]->oncomingLegID = -1;
             nodes[i]->legInfo[j]->leftTurnLegID.clear();
@@ -570,7 +606,7 @@ void RoadInfo::SetTurnDirectionInfo()
     }
 
 
-    QProgressDialog *pd = new QProgressDialog("SetTurnDirectionInfo", "Cancel", 0, nodes.size(), 0);
+    QProgressDialog *pd = new QProgressDialog("SetTurnDirectionInfo", "Cancel", 0, nodeList.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
     pd->show();
@@ -580,12 +616,29 @@ void RoadInfo::SetTurnDirectionInfo()
 
 
     // Set Data
-    for(int i=0;i<nodes.size();++i){
+    int nProcessed = 0;
+    for(int n=0;n<nodeList.size();++n){
+        int i = nodeList.at(n);
 
         if( nodes[i]->hasTS == true ){
 
 
+            // Check Traffic Signal Data
+            for(int k=nodes[i]->trafficSignals.size()-1;k>=0;k--){
+                int tdID = nodes[i]->trafficSignals[k]->id;
+                if( indexOfTS( tdID, nodes[i]->id) < 0 ){
+                    delete nodes[i]->trafficSignals[k];
+                    nodes[i]->trafficSignals.removeAt(k);
+                }
+            }
+
+
             for(int j=0;j<nodes[i]->legInfo.size();++j){
+
+                if( nodes[i]->legInfo[j]->nLaneIn == 0 || nodes[i]->legInfo[j]->inWPs.size() == 0 ){
+                    continue;
+                }
+
 
                 float ct = cos( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
                 float st = sin( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
@@ -593,6 +646,9 @@ void RoadInfo::SetTurnDirectionInfo()
                 // Set oncoming Direction
                 int myTS = -1;
                 for(int k=0;k<nodes[i]->trafficSignals.size();k++){
+                    if( nodes[i]->trafficSignals[k]->type != 0 ){
+                        continue;
+                    }
                     if( nodes[i]->trafficSignals[k]->controlNodeDirection == nodes[i]->legInfo[j]->legID ){
                         myTS = k;
                         break;
@@ -631,6 +687,13 @@ void RoadInfo::SetTurnDirectionInfo()
                         }
                     }
 
+                    if( verbose == true ){
+                        qDebug() << "Node " << nodes[i]->id << " Dir=" << nodes[i]->legInfo[j]->legID;
+                        for(int k=0;k<myMoveTime.size();++k){
+                            qDebug() << "myMoveTime[" << k << "]: start=" << myMoveTime[k].startTime << " end=" << myMoveTime[k].endTime;
+                        }
+                    }
+
 
                     // Find other direction allowed to go into the intersection with my direction
                     for(int k=0;k<nodes[i]->legInfo.size();++k){
@@ -641,6 +704,9 @@ void RoadInfo::SetTurnDirectionInfo()
 
                         int cTS = -1;
                         for(int l=0;l<nodes[i]->trafficSignals.size();l++){
+                            if( nodes[i]->trafficSignals[l]->type != 0 ){
+                                continue;
+                            }
                             if( nodes[i]->trafficSignals[l]->controlNodeDirection == nodes[i]->legInfo[k]->legID ){
                                 cTS = l;
                                 break;
@@ -672,6 +738,14 @@ void RoadInfo::SetTurnDirectionInfo()
                                 }
                             }
 
+                            if( verbose == true ){
+                                qDebug() << "Node " << nodes[i]->id << " : check Dir=" << nodes[i]->legInfo[k]->legID;
+                                for(int k=0;k<cMoveTime.size();++k){
+                                    qDebug() << "cMoveTime[" << k << "]: start=" << cMoveTime[k].startTime << " end=" << cMoveTime[k].endTime;
+                                }
+                            }
+
+
                             bool enterIntersectionSameTime = false;
                             for(int m=0;m<myMoveTime.size();++m){
                                 for(int n=0;n<cMoveTime.size();++n){
@@ -692,9 +766,26 @@ void RoadInfo::SetTurnDirectionInfo()
                                     break;
                                 }
                             }
+
+                            if( verbose == true ){
+                                for(int k=0;k<cMoveTime.size();++k){
+                                    qDebug() << "enterIntersectionSameTime" << enterIntersectionSameTime;
+                                }
+                            }
+
                             if( enterIntersectionSameTime == true ){
                                 nodes[i]->legInfo[j]->oncomingLegID = nodes[i]->legInfo[k]->legID;
+
+                                if( verbose == true ){
+                                    for(int k=0;k<cMoveTime.size();++k){
+                                        qDebug() << "set oncomingLegID[" << nodes[i]->legInfo[j] << "] = " << nodes[i]->legInfo[j]->oncomingLegID;
+                                    }
+                                }
+
                                 break;
+                            }
+                            else{
+                                nodes[i]->legInfo[j]->oncomingLegID = -1;
                             }
                         }
                     }
@@ -714,12 +805,51 @@ void RoadInfo::SetTurnDirectionInfo()
                     float cp = cos( nodes[i]->legInfo[k]->angle * 0.017452 );
                     float sp = sin( nodes[i]->legInfo[k]->angle * 0.017452 );
                     float y = (-st) * cp + ct * sp;
-                    if( y > 0.0 ){
+
+                    if( verbose == true ){
+                        qDebug() << "Cross Product of Dir[" << nodes[i]->legInfo[k]->legID << "] = " << y;
+                    }
+
+                    if( y > 0.5 ){
                         nodes[i]->legInfo[j]->leftTurnLegID.append( nodes[i]->legInfo[k]->legID );
+
+                        if( verbose == true ){
+                            qDebug() << " -> Left";
+                        }
                     }
-                    else{
+                    else if( y < -0.5 ){
                         nodes[i]->legInfo[j]->rightTurnLegID.append( nodes[i]->legInfo[k]->legID );
+
+                        if( verbose == true ){
+                            qDebug() << " -> Right";
+                        }
                     }
+                }
+
+
+                if( nodes[i]->legInfo[j]->oncomingLegID == -1 ){
+
+                    for(int k=0;k<nodes[i]->relatedLanes.size();++k){
+                        int lIdx = indexOfLane( nodes[i]->relatedLanes[k] );
+                        if( lIdx >= 0 ){
+                            if( lanes[lIdx]->eWPInNode == nodes[i]->id && lanes[lIdx]->sWPInNode == nodes[i]->id ){
+                                if( lanes[lIdx]->sWPNodeDir == nodes[i]->legInfo[j]->legID ){
+                                    if( nodes[i]->legInfo[j]->leftTurnLegID.indexOf( lanes[lIdx]->eWPNodeDir ) < 0 &&
+                                            nodes[i]->legInfo[j]->rightTurnLegID.indexOf( lanes[lIdx]->eWPNodeDir ) < 0 ){
+
+                                        nodes[i]->legInfo[j]->oncomingLegID = lanes[lIdx]->eWPNodeDir;
+
+                                        if( verbose == true ){
+                                            qDebug() << " Set oncoming direction, as is not Left nor Right = " << nodes[i]->legInfo[j]->oncomingLegID;
+                                        }
+
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
         }
@@ -727,6 +857,11 @@ void RoadInfo::SetTurnDirectionInfo()
 
 
             for(int j=0;j<nodes[i]->legInfo.size();++j){
+
+                if( nodes[i]->legInfo[j]->nLaneIn == 0 || nodes[i]->legInfo[j]->inWPs.size() == 0 ){
+                    continue;
+                }
+
 
                 float ct = cos( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
                 float st = sin( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
@@ -746,14 +881,25 @@ void RoadInfo::SetTurnDirectionInfo()
                     }
                 }
                 else{
+                    int maxDir = -1;
+                    float maxIP = 0.0;
                     for(int k=0;k<nodes[i]->legInfo.size();++k){
                         if( j == k ){
                             continue;
                         }
                         if( yieldDir.indexOf(nodes[i]->legInfo[k]->legID) < 0 ){
-                            nodes[i]->legInfo[j]->oncomingLegID = nodes[i]->legInfo[k]->legID;
-                            break;
+
+                            float cp = cos( nodes[i]->legInfo[k]->angle * 0.017452 );
+                            float sp = sin( nodes[i]->legInfo[k]->angle * 0.017452 );
+                            float ip = cp * ct + sp * st;
+                            if( maxDir < 0 || maxIP < ip ){
+                                maxDir = k;
+                                maxIP = ip;
+                            }
                         }
+                    }
+                    if( maxDir >= 0 ){
+                        nodes[i]->legInfo[j]->oncomingLegID = nodes[i]->legInfo[maxDir]->legID;
                     }
                 }
 
@@ -783,7 +929,8 @@ void RoadInfo::SetTurnDirectionInfo()
             }
         }
 
-        pd->setValue(i+1);
+        nProcessed++;
+        pd->setValue(nProcessed);
         QApplication::processEvents();
 
         if( pd->wasCanceled() ){

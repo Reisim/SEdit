@@ -73,6 +73,8 @@ public slots:
     void ActualSpeedChanged(int);
     void AutomaticDrivingEnableFlagChanged(bool);
     void DriverErrorProbChanged(double);
+    void EditLaneData();
+    void CheckRelatedNode();
 
     void SetDefaultTSPattern();
     void SetTSPattern(int ndIdx,int tsIdx);
@@ -103,6 +105,8 @@ private:
     QCheckBox *laneAutomaticDrivingEnabled;
     QDoubleSpinBox *laneDriverErrorProb;
     QLabel *laneInfo;
+    QPushButton *editLaneData;
+    QPushButton *checkRelatedNode;
 
     QWidget *trafficSignalPage;
     QLabel *tsInfo;

@@ -368,11 +368,13 @@ void ODRouteEditor::ApplyData()
             road->CheckLaneConnectionOfNode( road->nodes[ndIdx]->odData[odIdx]->route.last()->nodeList[j]->node );
         }
 
-        road->GetLaneListForRoute( currentOriginNode, destNode, 0 );
-
-        emit SetNodeSelected( currentOriginNode );
-        qDebug() << "Object Selection : set to SEL_NODE, node = " << currentOriginNode;
+        road->GetLaneListForRoute( currentOriginNode, destNode, -1 );
     }
+
+    emit SetNodeSelected( currentOriginNode );
+
+    qDebug() << "Object Selection : set to SEL_NODE, node = " << currentOriginNode;
+
 
     qDebug() << "Data Applied.";
 

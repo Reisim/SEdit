@@ -43,7 +43,7 @@ public:
     void MoveNode(int id,float moveX,float moveY,bool moveNonEdge=false);
     void RotateNode(int id,float rotate);
     void RotateNodeLeg(int id,int leg,float rotate);
-    void AddStopLineToNode(int nodeId,int assignStopLintId,int type,int relatedDirection);
+    void AddStopLineToNode(int nodeId,int assignStopLintId,int relatedDirection);
     void AddTrafficSignalToNode(int nodeId,int assignTSId,int type, int relatedDirection);
     void SetNodeConnectInfo(int id, int leg, int connectInfo, QString type);
     void SetNodeRelatedLane(int id, int laneID);
@@ -58,7 +58,7 @@ public:
     void SetAllLaneLists();
     void SetLaneLists(int id,int hIdx,bool showConsoleOutput=false);
     void SetODFlagOfTerminalNode();
-    void SetTurnDirectionInfo();
+    void SetTurnDirectionInfo(QList<int> nodeList, bool verbose=false);
 
     void ClearNodes();
 
@@ -76,15 +76,17 @@ public:
     bool CheckLaneConnectionOfNode(int nodeID);
     bool CheckLaneConnection();
     bool CheckLaneConnectionFull();
+    void CheckLaneRelatedNode(int laneID);
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);
 
     int GetNearestLane(QVector2D pos);
     int GetDistanceLaneFromPoint(int id,QVector2D pos,float &dist,int &isEdge);
-    void CheckIfTwoLanesCross(int lID1,int lID2);
+    void CheckIfTwoLanesCross(int lID1,int lID2,bool verbose=false);
     void CheckLaneCrossWithPedestLane(int lID,int pedestID);
     bool CheckLaneCrossPoints();
+    void CheckLaneCrossPointsInsideNode(QList<int> nodeList);
     struct CrossPointInfo* CheckLaneCrossPoint(int id,QPointF p1,QPointF p2, bool debugFlag=false);
     QString GetLaneProperty(int id);
 
@@ -121,6 +123,7 @@ public:
     int CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNodeDir, int TSType);
     int GetNearestTrafficSignal(QVector2D pos,float &dist);
     void MoveTrafficSignal(int id,float moveX,float moveY);
+    void DeleteTrafficSignal(int id);
 
 
 
@@ -129,7 +132,9 @@ public:
     int GetNearestStopLine(QVector2D pos,float &dist);
     void CheckStopLineCrossLanes(int id);
     void MoveStopLine(int id,float moveX,float moveY);
+    void ChangeStopLineLength(int id,float fact);
     void CheckAllStopLineCrossLane();
+    void DeleteStopLine(int id);
 
 
     // Route

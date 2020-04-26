@@ -94,6 +94,20 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneDriverErrorProb->setFixedWidth(120);
     connect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
 
+    editLaneData = new QPushButton("Edit");
+    editLaneData->setIcon(QIcon(":/images/edit.png"));
+    editLaneData->setFixedSize( editLaneData->sizeHint() );
+    connect( editLaneData, SIGNAL(clicked()), this, SLOT(EditLaneData()) );
+
+    checkRelatedNode = new QPushButton("Check Related Node");
+    checkRelatedNode->setIcon(QIcon(":/images/refresh.png"));
+    checkRelatedNode->setFixedSize( checkRelatedNode->sizeHint() );
+    connect( checkRelatedNode, SIGNAL(clicked()), this, SLOT(CheckRelatedNode()) );
+
+    QHBoxLayout *laneButtonsLayout = new QHBoxLayout();
+    laneButtonsLayout->addWidget( editLaneData );
+    laneButtonsLayout->addWidget( checkRelatedNode );
+    laneButtonsLayout->addStretch( 1 );
 
     laneInfo = new QLabel();
     laneInfo->setMinimumSize( infoAreaSizeLane );
@@ -109,8 +123,9 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneGrid->addWidget( laneAutomaticDrivingEnabled, 3, 1 );
     laneGrid->addWidget( new QLabel("Driver Error:"), 4, 0 );
     laneGrid->addWidget( laneDriverErrorProb, 4, 1 );
-    laneGrid->addWidget( laneInfo, 5, 1 );
-    laneGrid->setColumnStretch(4,1);
+    laneGrid->addLayout( laneButtonsLayout, 5, 1 );
+    laneGrid->addWidget( laneInfo, 6, 1 );
+    laneGrid->setColumnStretch(6,1);
 
     lanePage->setLayout( laneGrid );
 
@@ -118,6 +133,8 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     tsIDSB = new QSpinBox();
     tsIDSB->setMinimum(0);
     tsIDSB->setFixedWidth(80);
+    tsIDSB->setMaximum(10000);
+
     tsInfo = new QLabel();
     tsInfo->setFixedSize( infoAreaSizeTS );
 
@@ -182,6 +199,8 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     slIDSB = new QSpinBox();
     slIDSB->setMinimum(0);
     slIDSB->setFixedWidth(80);
+    slIDSB->setMaximum(10000);
+
     slInfo = new QLabel();
     slInfo->setMinimumSize( infoAreaSizeSL );
 

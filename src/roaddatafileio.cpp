@@ -55,6 +55,7 @@ bool RoadInfo::SaveRoadData(QString filename)
             out << "TS Position        : " << nodes[i]->trafficSignals[j]->pos.x() << " , " << nodes[i]->trafficSignals[j]->pos.y() << " , " << nodes[i]->trafficSignals[j]->pos.z() << "\n";
             out << "Facing Dir[deg]    : " << nodes[i]->trafficSignals[j]->facingDirect << "\n";
             out << "TS Node Info       : " << nodes[i]->trafficSignals[j]->relatedNode << " , " << nodes[i]->trafficSignals[j]->controlNodeDirection << " , " << nodes[i]->trafficSignals[j]->controlNodeLane << "\n";
+            out << "TS Crosswalk Info  : " << nodes[i]->trafficSignals[j]->controlCrossWalk << "\n";
             for(int k=0;k<nodes[i]->trafficSignals[j]->sigPattern.size();++k){
                 out << "TS Display Pattern : " << nodes[i]->trafficSignals[j]->sigPattern[k]->signal << " , " << nodes[i]->trafficSignals[j]->sigPattern[k]->duration << "\n";
             }
@@ -71,10 +72,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                 if( k < nodes[i]->stopLines[j]->crossLanes.size() - 1 ){
                     out << " , ";
                 }
-                else{
-                    out << "\n";
-                }
             }
+            out << "\n";
             out << "SL Node Info : " << nodes[i]->stopLines[j]->relatedNode << " , " << nodes[i]->stopLines[j]->relatedNodeDir << "\n";
         }
         if( nodes[i]->relatedLanes.size() > 0 ){
@@ -84,10 +83,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                 if( j < nodes[i]->relatedLanes.size() - 1 ){
                     out << ",";
                 }
-                else{
-                    out << "\n";
-                }
             }
+            out << "\n";
         }
 
         if( nodes[i]->isOriginNode == true ){
@@ -101,10 +98,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                         if( l < nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
                             out << " , ";
                         }
-                        else{
-                            out << "\n";
-                        }
                     }
+                    out << "\n";
                     out << "Traffic Volume Data : ";
                     for(int l=0;l<nodes[i]->odData[j]->route[k]->volume.size();++l){
                         out << "(" << nodes[i]->odData[j]->route[k]->volume[l]->vehicleKind << "/"
@@ -112,10 +107,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                         if( l < nodes[i]->odData[j]->route[k]->volume.size() - 1 ){
                             out << " , ";
                         }
-                        else{
-                            out << "\n";
-                        }
                     }
+                    out << "\n";
                 }
             }
         }
@@ -138,10 +131,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                 if( j < lanes[i]->nextLanes.size() - 1 ){
                     out << " , ";
                 }
-                else{
-                    out << "\n";
-                }
             }
+            out << "\n";
         }
         if( lanes[i]->previousLanes.size() > 0 ){
             out << "Prev Lanes   : ";
@@ -150,10 +141,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                 if( j < lanes[i]->previousLanes.size() - 1 ){
                     out << " , ";
                 }
-                else{
-                    out << "\n";
-                }
             }
+            out << "\n";
         }
 
         out << "LN Boundary : " << (lanes[i]->sWPBoundary == true ? 1 : 0) << " , " << (lanes[i]->eWPBoundary == true ? 1 : 0) << "\n";
@@ -196,10 +185,8 @@ bool RoadInfo::SaveRoadData(QString filename)
             if( j < pedestLanes[i]->trafficVolume.size() - 1 ){
                 out << " , ";
             }
-            else{
-                out << "\n";
-            }
         }
+        out << "\n";
         out << "\n";
     }
     out << "\n";
@@ -408,6 +395,7 @@ bool RoadInfo::LoadRoadData(QString filename)
         else if( tagStr.contains("Facing Dir[deg]") == true ){
 
             nodes.last()->trafficSignals.last()->facingDirect = dataStr.toFloat();
+
         }
         else if( tagStr.contains("TS Node Info") == true ){
 
@@ -416,6 +404,20 @@ bool RoadInfo::LoadRoadData(QString filename)
             nodes.last()->trafficSignals.last()->relatedNode = QString(divDataStr[0]).trimmed().toInt();
             nodes.last()->trafficSignals.last()->controlNodeDirection = QString(divDataStr[1]).trimmed().toInt();
             nodes.last()->trafficSignals.last()->controlNodeLane = QString(divDataStr[2]).trimmed().toInt();
+
+            nodes.last()->trafficSignals.last()->controlCrossWalk = -1;
+
+            for(int k=0;k<nodes.last()->legInfo.size();++k){
+                if( nodes.last()->legInfo[k]->legID == nodes.last()->trafficSignals.last()->controlNodeDirection ){
+                    nodes.last()->trafficSignals.last()->facingDirect = nodes.last()->legInfo[k]->angle;
+                    break;
+                }
+            }
+        }
+        else if( tagStr.contains("TS Crosswalk Info") == true ){
+
+            nodes.last()->trafficSignals.last()->controlCrossWalk = dataStr.trimmed().toInt();
+
         }
         else if( tagStr.contains("TS Display Pattern") == true ){
 
@@ -836,6 +838,35 @@ bool RoadInfo::LoadRoadData(QString filename)
     }
 
 
+    // Check Validity of sWPInNode
+    for(int i=0;i<lanes.size();++i){
+
+        if( lanes[i]->eWPInNode == lanes[i]->sWPInNode ){
+            continue;
+        }
+
+        int ndIdx = indexOfNode( lanes[i]->eWPInNode );
+        if( ndIdx >= 0 ){
+            int connectedNode = -1;
+            for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->eWPNodeDir ){
+                    connectedNode = nodes[ndIdx]->legInfo[j]->connectedNode;
+                    break;
+                }
+            }
+            if( connectedNode >= 0 && lanes[i]->sWPInNode != connectedNode ){
+                lanes[i]->sWPInNode = connectedNode;
+            }
+
+            CheckLaneRelatedNode( lanes[i]->id );
+        }
+    }
+
+
+    // Check Lane Connection
+    CheckLaneConnectionFull();
+
+
     // Calculate Stop Point Data
     CheckAllStopLineCrossLane();
 
@@ -859,11 +890,21 @@ bool RoadInfo::LoadRoadData(QString filename)
 
 
     // Set Turn Direction Info
-    SetTurnDirectionInfo();
+    {
+        QList<int> nodeList;
+        for(int i=0;i<nodes.size();++i){
+            nodeList.append( i );
+        }
+        SetTurnDirectionInfo(nodeList);
+    }
 
 
     // Find PedestSignal
     FindPedestSignalFroCrossWalk();
+
+
+    // Set Route Lane List
+    SetAllRouteLaneList();
 
 
 

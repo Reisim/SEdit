@@ -154,7 +154,14 @@ void ResimFilesOutput::OutputFiles()
     road->SetAllRouteLaneList();
 
     // Set Turn Direction Info
-    road->SetTurnDirectionInfo();
+    {
+        QList<int> nodeList;
+        for(int i=0;i<road->nodes.size();++i){
+            nodeList.append( i );
+        }
+        road->SetTurnDirectionInfo(nodeList);
+    }
+
 
     // Find PedestSignal
     road->FindPedestSignalFroCrossWalk();

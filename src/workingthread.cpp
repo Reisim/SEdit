@@ -48,13 +48,23 @@ void WorkingThread::run()
 
                 nProcessed++;
 
+                int lIdx = road->indexOfLane( road->nodes[ndIdx]->relatedLanes.at(j) );
+                if( road->lanes[lIdx]->sWPInNode != road->lanes[lIdx]->eWPInNode ){
+                    continue;
+                }
+
                 for(int k=0;k<road->nodes[ndIdx]->relatedLanes.size();++k){
 
                     if( j == k ){
                         continue;
                     }
 
-                    road->CheckIfTwoLanesCross( road->nodes[ndIdx]->relatedLanes[j], road->nodes[ndIdx]->relatedLanes[k] );
+                    int clIdx = road->indexOfLane( road->nodes[ndIdx]->relatedLanes.at(k) );
+                    if( road->lanes[clIdx]->sWPInNode != road->lanes[clIdx]->eWPInNode ){
+                        continue;
+                    }
+
+                    road->CheckIfTwoLanesCross( lIdx, clIdx );
                 }
 
                 for(int k=0;k<road->pedestLanes.size();++k){
@@ -63,7 +73,6 @@ void WorkingThread::run()
 
                 }
             }
-
         }
 
     }
@@ -107,11 +116,63 @@ void WorkingThread::run()
             for(int j=0;j<road->nodes[ndIdx]->odData.size();++j){
                 int destNodeID = road->nodes[ndIdx]->odData[j]->destinationNode;
 
+                road->CheckRouteInOutDirectionGivenODNode( origNodeID, destNodeID );
+
                 road->GetLaneListForRoute( origNodeID, destNodeID, wtID );
 
                 if( stopFlag == true ){
                     break;
                 }
+            }
+        }
+    }
+    else if( mode == 5 ){
+
+        nProcessed = 0;
+        int ndIdx = -1;
+        QList<int> checkLanesList;
+
+        for(int i=0;i<params.size();++i){
+
+            if( stopFlag == true ){
+                break;
+            }
+
+            int lIdx = params[i];
+
+            if( i == 0 ){
+                ndIdx = road->indexOfNode( road->lanes[lIdx]->eWPInNode );
+                if( ndIdx >= 0 ){
+                    for(int j=0;j<road->nodes[ndIdx]->relatedLanes.size();++j){
+                        int clIdx = road->indexOfLane( road->nodes[ndIdx]->relatedLanes[j] );
+                        if( clIdx >= 0 ){
+                            if( road->lanes[clIdx]->sWPInNode != road->lanes[clIdx]->eWPInNode ){
+                                continue;
+                            }
+                            if( checkLanesList.indexOf( clIdx ) < 0 ){
+                                checkLanesList.append( clIdx );
+                            }
+                        }
+                    }
+                }
+            }
+
+            nProcessed++;
+
+            for(int j=0;j<checkLanesList.size();++j){
+
+                int tlIdx = checkLanesList.at(j);
+                if( lIdx == tlIdx ){
+                    continue;
+                }
+
+                road->CheckIfTwoLanesCross( lIdx, tlIdx );
+            }
+
+            for(int k=0;k<road->pedestLanes.size();++k){
+
+                road->CheckLaneCrossWithPedestLane( road->lanes[lIdx]->id, road->pedestLanes[k]->id );
+
             }
         }
     }

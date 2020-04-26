@@ -55,7 +55,7 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
     infoStr += QString("Center Position: (%1,%2)\n").arg( road->nodes[ndIdx]->pos.x(), 0, 'g', 5 ).arg( road->nodes[ndIdx]->pos.y(), 0, 'g', 5 );
     infoStr += QString("\n");
     for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
-        infoStr += QString("[Leg %1]\n").arg( road->nodes[ndIdx]->legInfo[i]->legID );
+        infoStr += QString("[Leg %1](Index=%2)\n").arg( road->nodes[ndIdx]->legInfo[i]->legID ).arg(i);
         infoStr += QString("  Connected from   : Node %1 ,Leg %2\n").arg( road->nodes[ndIdx]->legInfo[i]->connectedNode ).arg( road->nodes[ndIdx]->legInfo[i]->connectedNodeOutDirect );
         infoStr += QString("  Connecting to    : Node %1 ,Leg %2\n").arg( road->nodes[ndIdx]->legInfo[i]->connectingNode ).arg( road->nodes[ndIdx]->legInfo[i]->connectingNodeInDirect );
         infoStr += QString("  Number WPin  : %1\n").arg( road->nodes[ndIdx]->legInfo[i]->inWPs.size() );
@@ -73,6 +73,14 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
         infoStr += QString("\n");
     }
     infoStr += QString("\n");
+
+    infoStr += QString("Traffic Signals:\n");
+    for(int i=0;i<road->nodes[ndIdx]->trafficSignals.size();++i){
+        infoStr += QString("  TS%1[%2] : Dir=%3\n")
+                .arg( road->nodes[ndIdx]->trafficSignals[i]->id )
+                .arg( road->nodes[ndIdx]->trafficSignals[i]->type )
+                .arg( road->nodes[ndIdx]->trafficSignals[i]->controlNodeDirection );
+    }
 
     infoStr += QString("Lane List:\n");
     for(int i=0;i<road->nodes[ndIdx]->nLeg;++i){

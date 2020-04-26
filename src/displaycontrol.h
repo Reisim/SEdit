@@ -59,6 +59,8 @@ public:
     QCheckBox *showRelatedLanes;
     QCheckBox *showLanes;
     QSpinBox *laneWidth;
+    QCheckBox *colorMapOfLaneSpeedLimit;
+    QCheckBox *colorMapOfLaneActualSpeed;
     QCheckBox *showTrafficSignals;
     QCheckBox *showStopLines;
     QCheckBox *showPedestLanes;

@@ -1202,7 +1202,13 @@ void DataManipulator::ImportERIS3Data(QString filename)
 
 
     // Set Turn Direction Info
-    road->SetTurnDirectionInfo();
+    {
+        QList<int> nodeList;
+        for(int i=0;i<road->nodes.size();++i){
+            nodeList.append( i );
+        }
+        road->SetTurnDirectionInfo(nodeList);
+    }
 
 
     float xmean = (maxDataX + minDataX) / 2;

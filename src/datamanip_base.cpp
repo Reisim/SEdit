@@ -393,6 +393,8 @@ void DataManipulator::UndoOperation()
             }
         }
 
+        road->CheckLaneConnection();
+        road->CreateWPData();
 
         if( road->updateCPEveryOperation == true ){
             road->CheckLaneCrossPoints();
@@ -416,6 +418,7 @@ void DataManipulator::UndoOperation()
 
     }
     else if( canvas->undoInfo.operationType == canvas->ROTATE_OBJECT ){
+
         float rotAngle = 0.0;
         bool isRotAngleSet = false;
         QVector2D pos_center;
@@ -625,8 +628,27 @@ void DataManipulator::UndoOperation()
                     }
                 }
             }
+            else if( canvas->undoInfo.selObjKind[i] == canvas->SEL_STOPLINE  ){
+
+                int rNd = road->indexOfSL(canvas->undoInfo.selObjID[i],-1);
+                if( rNd >= 0 ){
+                    int idx = road->indexOfSL(canvas->undoInfo.selObjID[i],rNd);
+                    if( idx >= 0 ){
+                        int ndIdx = road->indexOfNode(rNd);
+                        if( ndIdx >= 0 ){
+                            road->nodes[ndIdx]->stopLines[idx]->leftEdge.setX( canvas->undoInfo.data[0] );
+                            road->nodes[ndIdx]->stopLines[idx]->leftEdge.setY( canvas->undoInfo.data[1] );
+                            road->nodes[ndIdx]->stopLines[idx]->rightEdge.setX( canvas->undoInfo.data[2] );
+                            road->nodes[ndIdx]->stopLines[idx]->rightEdge.setY( canvas->undoInfo.data[3] );
+                        }
+                    }
+                }
+
+            }
         }
 
+        road->CheckLaneConnection();
+        road->CreateWPData();
 
         if( road->updateCPEveryOperation == true ){
             road->CheckLaneCrossPoints();
@@ -884,6 +906,21 @@ void DataManipulator::DeleteSelectedObject()
             }
 
         }
+        else if( canvas->selectedObj.selObjKind[i] == canvas->SEL_STOPLINE ){
+
+            int delSLID = canvas->selectedObj.selObjID[i];
+
+            road->DeleteStopLine( delSLID );
+
+        }
+        else if( canvas->selectedObj.selObjKind[i] == canvas->SEL_TRAFFIC_SIGNAL ){
+
+            int delTSID = canvas->selectedObj.selObjID[i];
+
+            road->DeleteTrafficSignal( delTSID );
+
+        }
+
     }
 
     canvas->selectedObj.selObjKind.clear();
@@ -897,474 +934,587 @@ void DataManipulator::DeleteSelectedObject()
 
 void DataManipulator::MergeSelectedObject()
 {
-    if( canvas->selectedObj.selObjKind.size() == 0 ){
+    if( canvas->selectedObj.selObjKind.size() != 2 ){
+        qDebug() << "Number of Selected Object is not 2; selectedObj.selObjKind.size() = " << canvas->selectedObj.selObjKind.size();
         return;
     }
 
-    if( canvas->selectedObj.selObjKind.size() == 2 ){
-        if( canvas->selectedObj.selObjKind[0] == canvas->SEL_NODE && canvas->selectedObj.selObjKind[1] == canvas->SEL_NODE ){
-            int nd1 = canvas->selectedObj.selObjID[0];
-            int nd2 = canvas->selectedObj.selObjID[1];
-            if( road->GetNodeNumLeg(nd1) == 1 && road->GetNodeNumLeg(nd2) == 1 ){
 
-                int nd1Idx = road->indexOfNode( nd1 );
-                int nd2Idx = road->indexOfNode( nd2 );
-                if( nd1Idx >= 0 && nd2Idx >= 0){
+    if( canvas->selectedObj.selObjKind[0] == canvas->SEL_NODE && canvas->selectedObj.selObjKind[1] == canvas->SEL_NODE ){
 
-                    // Check Lane numbers
-                    int nLane1In  = road->nodes[nd1Idx]->legInfo[0]->nLaneIn;
-                    int nLane1Out = road->nodes[nd1Idx]->legInfo[0]->nLaneOut;
+        int nd1 = canvas->selectedObj.selObjID[0];
+        int nd2 = canvas->selectedObj.selObjID[1];
+        if( road->GetNodeNumLeg(nd1) == 1 && road->GetNodeNumLeg(nd2) == 1 ){
 
-                    int nLane2In  = road->nodes[nd2Idx]->legInfo[0]->nLaneIn;
-                    int nLane2Out = road->nodes[nd2Idx]->legInfo[0]->nLaneOut;
+            qDebug() << "Merge Terminal Nodes; Nd1 = " << nd1 << " Nd2 = " << nd2;
 
-                    if( nLane1Out >= nLane2In && nLane2Out >= nLane1In ){
+            int nd1Idx = road->indexOfNode( nd1 );
+            int nd2Idx = road->indexOfNode( nd2 );
+            if( nd1Idx >= 0 && nd2Idx >= 0){
 
-                        QList<int> nd1OutLane;
-                        QList<int> nd1InLane;
-                        // Determine Lanes to connect
-                        for(int i=0;i<road->nodes[nd1Idx]->relatedLanes.size();++i){
-                            int lidx = road->indexOfLane( road->nodes[nd1Idx]->relatedLanes[i] );
-                            if( lidx >= 0 ){
-                                if( road->lanes[lidx]->sWPInNode == nd1 && road->lanes[lidx]->sWPNodeDir == 0 && road->lanes[lidx]->sWPBoundary == true ){
-                                    nd1OutLane.append( road->nodes[nd1Idx]->relatedLanes[i] );
-                                }
-                                else if( road->lanes[lidx]->eWPInNode == nd1 && road->lanes[lidx]->eWPNodeDir == 0 && road->lanes[lidx]->eWPBoundary == true ){
-                                    nd1InLane.append( road->nodes[nd1Idx]->relatedLanes[i] );
-                                }
+                // Check Lane numbers
+                int nLane1In  = road->nodes[nd1Idx]->legInfo[0]->nLaneIn;
+                int nLane1Out = road->nodes[nd1Idx]->legInfo[0]->nLaneOut;
+
+                int nLane2In  = road->nodes[nd2Idx]->legInfo[0]->nLaneIn;
+                int nLane2Out = road->nodes[nd2Idx]->legInfo[0]->nLaneOut;
+
+                qDebug() << "nLane1In = " << nLane1In << " nLane1Out = " << nLane1Out;
+                qDebug() << "nLane2In = " << nLane2In << " nLane2Out = " << nLane2Out;
+
+                if( nLane1Out >= nLane2In && nLane2Out >= nLane1In ){
+
+                    QList<int> nd1OutLane;
+                    QList<int> nd1InLane;
+                    // Determine Lanes to connect
+                    for(int i=0;i<road->nodes[nd1Idx]->relatedLanes.size();++i){
+                        int lidx = road->indexOfLane( road->nodes[nd1Idx]->relatedLanes[i] );
+                        if( lidx >= 0 ){
+                            if( road->lanes[lidx]->sWPInNode == nd1 && road->lanes[lidx]->sWPNodeDir == 0 && road->lanes[lidx]->sWPBoundary == true ){
+                                nd1OutLane.append( road->nodes[nd1Idx]->relatedLanes[i] );
+                            }
+                            else if( road->lanes[lidx]->eWPInNode == nd1 && road->lanes[lidx]->eWPNodeDir == 0 && road->lanes[lidx]->eWPBoundary == true ){
+                                nd1InLane.append( road->nodes[nd1Idx]->relatedLanes[i] );
                             }
                         }
+                    }
 
-                        QList<int> nd2OutLane;
-                        QList<int> nd2InLane;
-                        for(int i=0;i<road->nodes[nd2Idx]->relatedLanes.size();++i){
-                            int lidx = road->indexOfLane( road->nodes[nd2Idx]->relatedLanes[i] );
-                            if( lidx >= 0 ){
-                                if( road->lanes[lidx]->sWPInNode == nd2 && road->lanes[lidx]->sWPNodeDir == 0 && road->lanes[lidx]->sWPBoundary == true ){
-                                    nd2OutLane.append( road->nodes[nd2Idx]->relatedLanes[i] );
-                                }
-                                else if( road->lanes[lidx]->eWPInNode == nd2 && road->lanes[lidx]->eWPNodeDir == 0 && road->lanes[lidx]->eWPBoundary == true ){
-                                    nd2InLane.append( road->nodes[nd2Idx]->relatedLanes[i] );
-                                }
+                    QList<int> nd2OutLane;
+                    QList<int> nd2InLane;
+                    for(int i=0;i<road->nodes[nd2Idx]->relatedLanes.size();++i){
+                        int lidx = road->indexOfLane( road->nodes[nd2Idx]->relatedLanes[i] );
+                        if( lidx >= 0 ){
+                            if( road->lanes[lidx]->sWPInNode == nd2 && road->lanes[lidx]->sWPNodeDir == 0 && road->lanes[lidx]->sWPBoundary == true ){
+                                nd2OutLane.append( road->nodes[nd2Idx]->relatedLanes[i] );
+                            }
+                            else if( road->lanes[lidx]->eWPInNode == nd2 && road->lanes[lidx]->eWPNodeDir == 0 && road->lanes[lidx]->eWPBoundary == true ){
+                                nd2InLane.append( road->nodes[nd2Idx]->relatedLanes[i] );
                             }
                         }
+                    }
 
-                        // Sort
-                        if( nd1OutLane.size() > 0 ){
-                            QList<float> dist;
-                            dist.append( 0.0 );
-                            int lidx = road->indexOfLane( nd1OutLane[0] );
-                            if(lidx >= 0){
-                                float xt = road->lanes[lidx]->shape.pos.first()->x();
-                                float yt = road->lanes[lidx]->shape.pos.first()->y();
-                                float ct = road->lanes[lidx]->shape.derivative.first()->x();
-                                float st = road->lanes[lidx]->shape.derivative.first()->y();
+                    // Sort
+                    if( nd1OutLane.size() > 0 ){
+                        QList<float> dist;
+                        dist.append( 0.0 );
+                        int lidx = road->indexOfLane( nd1OutLane[0] );
+                        if(lidx >= 0){
+                            float xt = road->lanes[lidx]->shape.pos.first()->x();
+                            float yt = road->lanes[lidx]->shape.pos.first()->y();
+                            float ct = road->lanes[lidx]->shape.derivative.first()->x();
+                            float st = road->lanes[lidx]->shape.derivative.first()->y();
 
-                                for(int i=1;i<nd1OutLane.size();++i){
-                                    lidx = road->indexOfLane( nd1OutLane[i] );
-                                    if(lidx >= 0){
-                                        float rx = road->lanes[lidx]->shape.pos.first()->x() - xt;
-                                        float ry = road->lanes[lidx]->shape.pos.first()->y() - yt;
-                                        float e = rx * (-st) + ry * ct;
-                                        dist.append( e );
-                                    }
-                                }
-
-                                QList<int> tmpLanes = nd1OutLane;
-                                nd1OutLane.clear();
-                                while( dist.size() > 0 ){
-                                    int minIdx = 0;
-                                    float minDist = dist[0];
-                                    for(int i=1;i<dist.size();++i){
-                                        if( dist[i] < minDist ){
-                                            minIdx = i;
-                                            minDist = dist[i];
-                                        }
-                                    }
-                                    nd1OutLane.append( tmpLanes[minIdx] );
-                                    tmpLanes.removeAt(minIdx);
-                                    dist.removeAt(minIdx);
-                                };
-                            }
-                        }
-
-                        if( nd2OutLane.size() > 0 ){
-                            QList<float> dist;
-                            dist.append( 0.0 );
-                            int lidx = road->indexOfLane( nd2OutLane[0] );
-                            if(lidx >= 0){
-                                float xt = road->lanes[lidx]->shape.pos.first()->x();
-                                float yt = road->lanes[lidx]->shape.pos.first()->y();
-                                float ct = road->lanes[lidx]->shape.derivative.first()->x();
-                                float st = road->lanes[lidx]->shape.derivative.first()->y();
-
-                                for(int i=1;i<nd2OutLane.size();++i){
-                                    lidx = road->indexOfLane( nd2OutLane[i] );
-                                    if(lidx >= 0){
-                                        float rx = road->lanes[lidx]->shape.pos.first()->x() - xt;
-                                        float ry = road->lanes[lidx]->shape.pos.first()->y() - yt;
-                                        float e = rx * (-st) + ry * ct;
-                                        dist.append( e );
-                                    }
-                                }
-
-                                QList<int> tmpLanes = nd2OutLane;
-                                nd2OutLane.clear();
-                                while( dist.size() > 0 ){
-                                    int minIdx = 0;
-                                    float minDist = dist[0];
-                                    for(int i=1;i<dist.size();++i){
-                                        if( dist[i] < minDist ){
-                                            minIdx = i;
-                                            minDist = dist[i];
-                                        }
-                                    }
-                                    nd2OutLane.append( tmpLanes[minIdx] );
-                                    tmpLanes.removeAt(minIdx);
-                                    dist.removeAt(minIdx);
-                                };
-                            }
-                        }
-
-                        if( nd1InLane.size() > 0 ){
-                            QList<float> dist;
-                            dist.append( 0.0 );
-                            int lidx = road->indexOfLane( nd1InLane[0] );
-                            if(lidx >= 0){
-                                float xt = road->lanes[lidx]->shape.pos.last()->x();
-                                float yt = road->lanes[lidx]->shape.pos.last()->y();
-                                float ct = road->lanes[lidx]->shape.derivative.last()->x();
-                                float st = road->lanes[lidx]->shape.derivative.last()->y();
-
-                                for(int i=1;i<nd1InLane.size();++i){
-                                    lidx = road->indexOfLane( nd1InLane[i] );
-                                    if(lidx >= 0){
-                                        float rx = road->lanes[lidx]->shape.pos.last()->x() - xt;
-                                        float ry = road->lanes[lidx]->shape.pos.last()->y() - yt;
-                                        float e = rx * (-st) + ry * ct;
-                                        dist.append( e );
-                                    }
-                                }
-
-                                QList<int> tmpLanes = nd1InLane;
-                                nd1InLane.clear();
-                                while( dist.size() > 0 ){
-                                    int minIdx = 0;
-                                    float minDist = dist[0];
-                                    for(int i=1;i<dist.size();++i){
-                                        if( dist[i] < minDist ){
-                                            minIdx = i;
-                                            minDist = dist[i];
-                                        }
-                                    }
-                                    nd1InLane.append( tmpLanes[minIdx] );
-                                    tmpLanes.removeAt(minIdx);
-                                    dist.removeAt(minIdx);
-                                };
-                            }
-                        }
-
-                        if( nd2InLane.size() > 0 ){
-                            QList<float> dist;
-                            dist.append( 0.0 );
-                            int lidx = road->indexOfLane( nd2InLane[0] );
-                            if(lidx >= 0){
-                                float xt = road->lanes[lidx]->shape.pos.last()->x();
-                                float yt = road->lanes[lidx]->shape.pos.last()->y();
-                                float ct = road->lanes[lidx]->shape.derivative.last()->x();
-                                float st = road->lanes[lidx]->shape.derivative.last()->y();
-
-                                for(int i=1;i<nd2InLane.size();++i){
-                                    lidx = road->indexOfLane( nd2InLane[i] );
-                                    if(lidx >= 0){
-                                        float rx = road->lanes[lidx]->shape.pos.last()->x() - xt;
-                                        float ry = road->lanes[lidx]->shape.pos.last()->y() - yt;
-                                        float e = rx * (-st) + ry * ct;
-                                        dist.append( e );
-                                    }
-                                }
-
-                                QList<int> tmpLanes = nd2InLane;
-                                nd2InLane.clear();
-                                while( dist.size() > 0 ){
-                                    int minIdx = 0;
-                                    float minDist = dist[0];
-                                    for(int i=1;i<dist.size();++i){
-                                        if( dist[i] < minDist ){
-                                            minIdx = i;
-                                            minDist = dist[i];
-                                        }
-                                    }
-                                    nd2InLane.append( tmpLanes[minIdx] );
-                                    tmpLanes.removeAt(minIdx);
-                                    dist.removeAt(minIdx);
-                                };
-                            }
-                        }
-
-
-                        // Get Current Node connection info
-                        int nd1DepartureNode = road->nodes[nd1Idx]->legInfo[0]->connectedNode;
-                        int nd1DepartureNodeOutDirect = road->nodes[nd1Idx]->legInfo[0]->connectedNodeOutDirect;
-
-                        int nd2ConnectingNode = road->nodes[nd2Idx]->legInfo[0]->connectingNode;
-                        int nd2ConnectingNodeInDirect = road->nodes[nd2Idx]->legInfo[0]->connectingNodeInDirect;
-
-                        int nd2DepartureNode = road->nodes[nd2Idx]->legInfo[0]->connectedNode;
-                        int nd2DepartureNodeOutDirect = road->nodes[nd2Idx]->legInfo[0]->connectedNodeOutDirect;
-
-                        int nd1ConnectingNode = road->nodes[nd1Idx]->legInfo[0]->connectingNode;
-                        int nd1ConnectingNodeInDirect = road->nodes[nd1Idx]->legInfo[0]->connectingNodeInDirect;
-
-
-                        // Update Node Connection Info
-                        road->SetNodeConnectInfo( nd1DepartureNode, nd1DepartureNodeOutDirect, nd2ConnectingNode, QString("OutNode") );
-                        road->SetNodeConnectInfo( nd1DepartureNode, nd1DepartureNodeOutDirect, nd2ConnectingNodeInDirect, QString("OutNodeInDirect") );
-                        road->SetNodeConnectInfo( nd1ConnectingNode, nd1ConnectingNodeInDirect, nd2DepartureNode, QString("InNode") );
-                        road->SetNodeConnectInfo( nd1ConnectingNode, nd1ConnectingNodeInDirect, nd2DepartureNodeOutDirect, QString("InNodeOutDirect") );
-
-                        road->SetNodeConnectInfo( nd2DepartureNode, nd2DepartureNodeOutDirect, nd1ConnectingNode, QString("OutNode") );
-                        road->SetNodeConnectInfo( nd2DepartureNode, nd2DepartureNodeOutDirect, nd1ConnectingNodeInDirect, QString("OutNodeInDirect") );
-                        road->SetNodeConnectInfo( nd2ConnectingNode, nd2ConnectingNodeInDirect, nd1DepartureNode, QString("InNode") );
-                        road->SetNodeConnectInfo( nd2ConnectingNode, nd2ConnectingNodeInDirect, nd1DepartureNodeOutDirect, QString("InNodeOutDirect") );
-
-
-                        // Create Lanes
-                        for(int i=0;i<nd1InLane.size();++i){
-
-                            QVector4D startPoint;
-                            QVector4D endPoint;
-
-                            int lidx = road->indexOfLane( nd1InLane[i] );
-                            if( lidx >= 0 ){
-                                startPoint.setX( road->lanes[lidx]->shape.pos.last()->x() );
-                                startPoint.setY( road->lanes[lidx]->shape.pos.last()->y() );
-                                startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
-                                startPoint.setW( road->lanes[lidx]->shape.angles.last() );
-
-                                road->lanes[lidx]->eWPInNode   = nd2ConnectingNode;
-                                road->lanes[lidx]->eWPNodeDir  = nd2ConnectingNodeInDirect;
-                                road->lanes[lidx]->eWPBoundary = false;
-
-                                lidx = road->indexOfLane( nd2OutLane[i] );
-                                if( lidx >= 0 ){
-                                    endPoint.setX( road->lanes[lidx]->shape.pos.first()->x() );
-                                    endPoint.setY( road->lanes[lidx]->shape.pos.first()->y() );
-                                    endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
-                                    endPoint.setW( road->lanes[lidx]->shape.angles.first() );
-
-                                    road->lanes[lidx]->sWPInNode   = nd1DepartureNode;
-                                    road->lanes[lidx]->sWPNodeDir  = nd1DepartureNodeOutDirect;
-                                    road->lanes[lidx]->sWPBoundary = false;
-
-                                    int lId = road->CreateLane( -1, startPoint, nd1DepartureNode, nd1DepartureNodeOutDirect, false, endPoint, nd2ConnectingNode, nd2ConnectingNodeInDirect, false );
-                                    road->SetNodeRelatedLane( nd1DepartureNode, lId );
-                                    road->SetNodeRelatedLane( nd2ConnectingNode, lId );
-
-                                    lidx = road->indexOfLane( lId );
-                                    if( lidx >= 0 ){
-                                        road->lanes[lidx]->connectedNodeInDirect = nd2ConnectingNodeInDirect;
-                                        road->lanes[lidx]->departureNodeOutDirect = nd1DepartureNodeOutDirect;
-                                    }
-                                }
-                            }
-                        }
-
-                        for(int i=0;i<nd2InLane.size();++i){
-
-                            QVector4D startPoint;
-                            QVector4D endPoint;
-
-                            int lidx = road->indexOfLane( nd2InLane[i] );
-                            if( lidx >= 0 ){
-                                startPoint.setX( road->lanes[lidx]->shape.pos.last()->x() );
-                                startPoint.setY( road->lanes[lidx]->shape.pos.last()->y() );
-                                startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
-                                startPoint.setW( road->lanes[lidx]->shape.angles.last() );
-
-                                road->lanes[lidx]->eWPInNode   = nd1ConnectingNode;
-                                road->lanes[lidx]->eWPNodeDir  = nd1ConnectingNodeInDirect;
-                                road->lanes[lidx]->eWPBoundary = false;
-
+                            for(int i=1;i<nd1OutLane.size();++i){
                                 lidx = road->indexOfLane( nd1OutLane[i] );
+                                if(lidx >= 0){
+                                    float rx = road->lanes[lidx]->shape.pos.first()->x() - xt;
+                                    float ry = road->lanes[lidx]->shape.pos.first()->y() - yt;
+                                    float e = rx * (-st) + ry * ct;
+                                    dist.append( e );
+                                }
+                            }
+
+                            QList<int> tmpLanes = nd1OutLane;
+                            nd1OutLane.clear();
+                            while( dist.size() > 0 ){
+                                int minIdx = 0;
+                                float minDist = dist[0];
+                                for(int i=1;i<dist.size();++i){
+                                    if( dist[i] < minDist ){
+                                        minIdx = i;
+                                        minDist = dist[i];
+                                    }
+                                }
+                                nd1OutLane.append( tmpLanes[minIdx] );
+                                tmpLanes.removeAt(minIdx);
+                                dist.removeAt(minIdx);
+                            };
+                        }
+                    }
+
+                    if( nd2OutLane.size() > 0 ){
+                        QList<float> dist;
+                        dist.append( 0.0 );
+                        int lidx = road->indexOfLane( nd2OutLane[0] );
+                        if(lidx >= 0){
+                            float xt = road->lanes[lidx]->shape.pos.first()->x();
+                            float yt = road->lanes[lidx]->shape.pos.first()->y();
+                            float ct = road->lanes[lidx]->shape.derivative.first()->x();
+                            float st = road->lanes[lidx]->shape.derivative.first()->y();
+
+                            for(int i=1;i<nd2OutLane.size();++i){
+                                lidx = road->indexOfLane( nd2OutLane[i] );
+                                if(lidx >= 0){
+                                    float rx = road->lanes[lidx]->shape.pos.first()->x() - xt;
+                                    float ry = road->lanes[lidx]->shape.pos.first()->y() - yt;
+                                    float e = rx * (-st) + ry * ct;
+                                    dist.append( e );
+                                }
+                            }
+
+                            QList<int> tmpLanes = nd2OutLane;
+                            nd2OutLane.clear();
+                            while( dist.size() > 0 ){
+                                int minIdx = 0;
+                                float minDist = dist[0];
+                                for(int i=1;i<dist.size();++i){
+                                    if( dist[i] < minDist ){
+                                        minIdx = i;
+                                        minDist = dist[i];
+                                    }
+                                }
+                                nd2OutLane.append( tmpLanes[minIdx] );
+                                tmpLanes.removeAt(minIdx);
+                                dist.removeAt(minIdx);
+                            };
+                        }
+                    }
+
+                    if( nd1InLane.size() > 0 ){
+                        QList<float> dist;
+                        dist.append( 0.0 );
+                        int lidx = road->indexOfLane( nd1InLane[0] );
+                        if(lidx >= 0){
+                            float xt = road->lanes[lidx]->shape.pos.last()->x();
+                            float yt = road->lanes[lidx]->shape.pos.last()->y();
+                            float ct = road->lanes[lidx]->shape.derivative.last()->x();
+                            float st = road->lanes[lidx]->shape.derivative.last()->y();
+
+                            for(int i=1;i<nd1InLane.size();++i){
+                                lidx = road->indexOfLane( nd1InLane[i] );
+                                if(lidx >= 0){
+                                    float rx = road->lanes[lidx]->shape.pos.last()->x() - xt;
+                                    float ry = road->lanes[lidx]->shape.pos.last()->y() - yt;
+                                    float e = rx * (-st) + ry * ct;
+                                    dist.append( e );
+                                }
+                            }
+
+                            QList<int> tmpLanes = nd1InLane;
+                            nd1InLane.clear();
+                            while( dist.size() > 0 ){
+                                int minIdx = 0;
+                                float minDist = dist[0];
+                                for(int i=1;i<dist.size();++i){
+                                    if( dist[i] < minDist ){
+                                        minIdx = i;
+                                        minDist = dist[i];
+                                    }
+                                }
+                                nd1InLane.append( tmpLanes[minIdx] );
+                                tmpLanes.removeAt(minIdx);
+                                dist.removeAt(minIdx);
+                            };
+                        }
+                    }
+
+                    if( nd2InLane.size() > 0 ){
+                        QList<float> dist;
+                        dist.append( 0.0 );
+                        int lidx = road->indexOfLane( nd2InLane[0] );
+                        if(lidx >= 0){
+                            float xt = road->lanes[lidx]->shape.pos.last()->x();
+                            float yt = road->lanes[lidx]->shape.pos.last()->y();
+                            float ct = road->lanes[lidx]->shape.derivative.last()->x();
+                            float st = road->lanes[lidx]->shape.derivative.last()->y();
+
+                            for(int i=1;i<nd2InLane.size();++i){
+                                lidx = road->indexOfLane( nd2InLane[i] );
+                                if(lidx >= 0){
+                                    float rx = road->lanes[lidx]->shape.pos.last()->x() - xt;
+                                    float ry = road->lanes[lidx]->shape.pos.last()->y() - yt;
+                                    float e = rx * (-st) + ry * ct;
+                                    dist.append( e );
+                                }
+                            }
+
+                            QList<int> tmpLanes = nd2InLane;
+                            nd2InLane.clear();
+                            while( dist.size() > 0 ){
+                                int minIdx = 0;
+                                float minDist = dist[0];
+                                for(int i=1;i<dist.size();++i){
+                                    if( dist[i] < minDist ){
+                                        minIdx = i;
+                                        minDist = dist[i];
+                                    }
+                                }
+                                nd2InLane.append( tmpLanes[minIdx] );
+                                tmpLanes.removeAt(minIdx);
+                                dist.removeAt(minIdx);
+                            };
+                        }
+                    }
+
+
+                    // Get Current Node connection info
+                    int nd1DepartureNode = road->nodes[nd1Idx]->legInfo[0]->connectedNode;
+                    int nd1DepartureNodeOutDirect = road->nodes[nd1Idx]->legInfo[0]->connectedNodeOutDirect;
+
+                    int nd2ConnectingNode = road->nodes[nd2Idx]->legInfo[0]->connectingNode;
+                    int nd2ConnectingNodeInDirect = road->nodes[nd2Idx]->legInfo[0]->connectingNodeInDirect;
+
+                    int nd2DepartureNode = road->nodes[nd2Idx]->legInfo[0]->connectedNode;
+                    int nd2DepartureNodeOutDirect = road->nodes[nd2Idx]->legInfo[0]->connectedNodeOutDirect;
+
+                    int nd1ConnectingNode = road->nodes[nd1Idx]->legInfo[0]->connectingNode;
+                    int nd1ConnectingNodeInDirect = road->nodes[nd1Idx]->legInfo[0]->connectingNodeInDirect;
+
+
+                    // Update Node Connection Info
+                    road->SetNodeConnectInfo( nd1DepartureNode, nd1DepartureNodeOutDirect, nd2ConnectingNode, QString("OutNode") );
+                    road->SetNodeConnectInfo( nd1DepartureNode, nd1DepartureNodeOutDirect, nd2ConnectingNodeInDirect, QString("OutNodeInDirect") );
+                    road->SetNodeConnectInfo( nd1ConnectingNode, nd1ConnectingNodeInDirect, nd2DepartureNode, QString("InNode") );
+                    road->SetNodeConnectInfo( nd1ConnectingNode, nd1ConnectingNodeInDirect, nd2DepartureNodeOutDirect, QString("InNodeOutDirect") );
+
+                    road->SetNodeConnectInfo( nd2DepartureNode, nd2DepartureNodeOutDirect, nd1ConnectingNode, QString("OutNode") );
+                    road->SetNodeConnectInfo( nd2DepartureNode, nd2DepartureNodeOutDirect, nd1ConnectingNodeInDirect, QString("OutNodeInDirect") );
+                    road->SetNodeConnectInfo( nd2ConnectingNode, nd2ConnectingNodeInDirect, nd1DepartureNode, QString("InNode") );
+                    road->SetNodeConnectInfo( nd2ConnectingNode, nd2ConnectingNodeInDirect, nd1DepartureNodeOutDirect, QString("InNodeOutDirect") );
+
+
+                    // Create Lanes
+                    for(int i=0;i<nd1InLane.size();++i){
+
+                        QVector4D startPoint;
+                        QVector4D endPoint;
+
+                        int lidx = road->indexOfLane( nd1InLane[i] );
+                        if( lidx >= 0 ){
+                            startPoint.setX( road->lanes[lidx]->shape.pos.last()->x() );
+                            startPoint.setY( road->lanes[lidx]->shape.pos.last()->y() );
+                            startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
+                            startPoint.setW( road->lanes[lidx]->shape.angles.last() );
+
+                            road->lanes[lidx]->eWPInNode   = nd2ConnectingNode;
+                            road->lanes[lidx]->eWPNodeDir  = nd2ConnectingNodeInDirect;
+                            road->lanes[lidx]->eWPBoundary = false;
+
+                            lidx = road->indexOfLane( nd2OutLane[i] );
+                            if( lidx >= 0 ){
+                                endPoint.setX( road->lanes[lidx]->shape.pos.first()->x() );
+                                endPoint.setY( road->lanes[lidx]->shape.pos.first()->y() );
+                                endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
+                                endPoint.setW( road->lanes[lidx]->shape.angles.first() );
+
+                                road->lanes[lidx]->sWPInNode   = nd1DepartureNode;
+                                road->lanes[lidx]->sWPNodeDir  = nd1DepartureNodeOutDirect;
+                                road->lanes[lidx]->sWPBoundary = false;
+
+                                int lId = road->CreateLane( -1, startPoint, nd1DepartureNode, nd1DepartureNodeOutDirect, false, endPoint, nd2ConnectingNode, nd2ConnectingNodeInDirect, false );
+                                road->SetNodeRelatedLane( nd1DepartureNode, lId );
+                                road->SetNodeRelatedLane( nd2ConnectingNode, lId );
+
+                                lidx = road->indexOfLane( lId );
                                 if( lidx >= 0 ){
-                                    endPoint.setX( road->lanes[lidx]->shape.pos.first()->x() );
-                                    endPoint.setY( road->lanes[lidx]->shape.pos.first()->y() );
-                                    endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
-                                    endPoint.setW( road->lanes[lidx]->shape.angles.first() );
-
-                                    road->lanes[lidx]->sWPInNode   = nd2DepartureNode;
-                                    road->lanes[lidx]->sWPNodeDir  = nd2DepartureNodeOutDirect;
-                                    road->lanes[lidx]->sWPBoundary = false;
-
-                                    int lId = road->CreateLane( -1, startPoint, nd2DepartureNode, nd2DepartureNodeOutDirect, false, endPoint, nd1ConnectingNode, nd1ConnectingNodeInDirect, false );
-                                    road->SetNodeRelatedLane( nd1ConnectingNode, lId );
-                                    if( nd1ConnectingNode != nd2DepartureNode ){
-                                        road->SetNodeRelatedLane( nd2DepartureNode, lId );
-                                    }
-
-
-                                    lidx = road->indexOfLane( lId );
-                                    if( lidx >= 0 ){
-                                        road->lanes[lidx]->connectedNodeInDirect = nd1ConnectingNodeInDirect;
-                                        road->lanes[lidx]->departureNodeOutDirect = nd2DepartureNodeOutDirect;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Update existing Lane connection data
-                        for(int i=0;i<road->nodes[nd1Idx]->relatedLanes.size();++i){
-                            int lidx = road->indexOfLane( road->nodes[nd1Idx]->relatedLanes[i] );
-                            if( lidx >= 0 ){
-                                if( road->lanes[lidx]->connectedNode == nd1  ){
-                                    road->SetNodeRelatedLane( nd2ConnectingNode, road->nodes[nd1Idx]->relatedLanes[i] );
-                                    road->lanes[lidx]->connectedNode = nd2ConnectingNode;
                                     road->lanes[lidx]->connectedNodeInDirect = nd2ConnectingNodeInDirect;
-                                    road->lanes[lidx]->connectedNodeOutDirect = -1;
-                                }
-                                else if( road->lanes[lidx]->departureNode == nd1 ){
-                                    road->SetNodeRelatedLane( nd2DepartureNode, road->nodes[nd1Idx]->relatedLanes[i] );
-                                    road->lanes[lidx]->departureNode = nd2DepartureNode;
-                                    road->lanes[lidx]->departureNodeOutDirect = nd2DepartureNodeOutDirect;
-                                }
-                            }
-                        }
-
-                        for(int i=0;i<road->nodes[nd2Idx]->relatedLanes.size();++i){
-                            int lidx = road->indexOfLane( road->nodes[nd2Idx]->relatedLanes[i] );
-                            if( lidx >= 0 ){
-                                if( road->lanes[lidx]->connectedNode == nd2 ){
-                                    road->SetNodeRelatedLane( nd1ConnectingNode, road->nodes[nd2Idx]->relatedLanes[i] );
-                                    road->lanes[lidx]->connectedNode = nd1ConnectingNode;
-                                    road->lanes[lidx]->connectedNodeInDirect = nd1ConnectingNodeInDirect;
-                                    road->lanes[lidx]->connectedNodeOutDirect = -1;
-                                }
-                                if( road->lanes[lidx]->departureNode == nd2 ){
-                                    road->SetNodeRelatedLane( nd1DepartureNode, road->nodes[nd2Idx]->relatedLanes[i] );
-                                    road->lanes[lidx]->departureNode = nd1DepartureNode;
                                     road->lanes[lidx]->departureNodeOutDirect = nd1DepartureNodeOutDirect;
                                 }
                             }
                         }
-
-                        // Delete Terminal Nodes
-                        road->DeleteNode( nd1 );
-                        road->DeleteNode( nd2 );
                     }
+
+                    for(int i=0;i<nd2InLane.size();++i){
+
+                        QVector4D startPoint;
+                        QVector4D endPoint;
+
+                        int lidx = road->indexOfLane( nd2InLane[i] );
+                        if( lidx >= 0 ){
+                            startPoint.setX( road->lanes[lidx]->shape.pos.last()->x() );
+                            startPoint.setY( road->lanes[lidx]->shape.pos.last()->y() );
+                            startPoint.setZ( road->lanes[lidx]->shape.pos.last()->z() );
+                            startPoint.setW( road->lanes[lidx]->shape.angles.last() );
+
+                            road->lanes[lidx]->eWPInNode   = nd1ConnectingNode;
+                            road->lanes[lidx]->eWPNodeDir  = nd1ConnectingNodeInDirect;
+                            road->lanes[lidx]->eWPBoundary = false;
+
+                            lidx = road->indexOfLane( nd1OutLane[i] );
+                            if( lidx >= 0 ){
+                                endPoint.setX( road->lanes[lidx]->shape.pos.first()->x() );
+                                endPoint.setY( road->lanes[lidx]->shape.pos.first()->y() );
+                                endPoint.setZ( road->lanes[lidx]->shape.pos.first()->z() );
+                                endPoint.setW( road->lanes[lidx]->shape.angles.first() );
+
+                                road->lanes[lidx]->sWPInNode   = nd2DepartureNode;
+                                road->lanes[lidx]->sWPNodeDir  = nd2DepartureNodeOutDirect;
+                                road->lanes[lidx]->sWPBoundary = false;
+
+                                int lId = road->CreateLane( -1, startPoint, nd2DepartureNode, nd2DepartureNodeOutDirect, false, endPoint, nd1ConnectingNode, nd1ConnectingNodeInDirect, false );
+                                road->SetNodeRelatedLane( nd1ConnectingNode, lId );
+                                if( nd1ConnectingNode != nd2DepartureNode ){
+                                    road->SetNodeRelatedLane( nd2DepartureNode, lId );
+                                }
+
+
+                                lidx = road->indexOfLane( lId );
+                                if( lidx >= 0 ){
+                                    road->lanes[lidx]->connectedNodeInDirect = nd1ConnectingNodeInDirect;
+                                    road->lanes[lidx]->departureNodeOutDirect = nd2DepartureNodeOutDirect;
+                                }
+                            }
+                        }
+                    }
+
+                    // Update existing Lane connection data
+                    for(int i=0;i<road->nodes[nd1Idx]->relatedLanes.size();++i){
+                        int lidx = road->indexOfLane( road->nodes[nd1Idx]->relatedLanes[i] );
+                        if( lidx >= 0 ){
+                            if( road->lanes[lidx]->connectedNode == nd1  ){
+                                road->SetNodeRelatedLane( nd2ConnectingNode, road->nodes[nd1Idx]->relatedLanes[i] );
+                                road->lanes[lidx]->connectedNode = nd2ConnectingNode;
+                                road->lanes[lidx]->connectedNodeInDirect = nd2ConnectingNodeInDirect;
+                                road->lanes[lidx]->connectedNodeOutDirect = -1;
+
+                                road->lanes[lidx]->eWPInNode  = nd2ConnectingNode;
+                                road->lanes[lidx]->eWPNodeDir = nd2ConnectingNodeInDirect;
+                            }
+                            else if( road->lanes[lidx]->departureNode == nd1 ){
+                                road->SetNodeRelatedLane( nd2DepartureNode, road->nodes[nd1Idx]->relatedLanes[i] );
+                                road->lanes[lidx]->departureNode = nd2DepartureNode;
+                                road->lanes[lidx]->departureNodeOutDirect = nd2DepartureNodeOutDirect;
+
+                                road->lanes[lidx]->sWPInNode  = nd2DepartureNode;
+                                road->lanes[lidx]->sWPNodeDir = nd2DepartureNodeOutDirect;
+                            }
+                        }
+                    }
+
+                    for(int i=0;i<road->nodes[nd2Idx]->relatedLanes.size();++i){
+                        int lidx = road->indexOfLane( road->nodes[nd2Idx]->relatedLanes[i] );
+                        if( lidx >= 0 ){
+                            if( road->lanes[lidx]->connectedNode == nd2 ){
+                                road->SetNodeRelatedLane( nd1ConnectingNode, road->nodes[nd2Idx]->relatedLanes[i] );
+                                road->lanes[lidx]->connectedNode = nd1ConnectingNode;
+                                road->lanes[lidx]->connectedNodeInDirect = nd1ConnectingNodeInDirect;
+                                road->lanes[lidx]->connectedNodeOutDirect = -1;
+
+                                road->lanes[lidx]->eWPInNode  = nd1ConnectingNode;
+                                road->lanes[lidx]->eWPNodeDir = nd1ConnectingNodeInDirect;
+                            }
+                            if( road->lanes[lidx]->departureNode == nd2 ){
+                                road->SetNodeRelatedLane( nd1DepartureNode, road->nodes[nd2Idx]->relatedLanes[i] );
+                                road->lanes[lidx]->departureNode = nd1DepartureNode;
+                                road->lanes[lidx]->departureNodeOutDirect = nd1DepartureNodeOutDirect;
+
+                                road->lanes[lidx]->sWPInNode  = nd1DepartureNode;
+                                road->lanes[lidx]->sWPNodeDir = nd1DepartureNodeOutDirect;
+                            }
+                        }
+                    }
+
+                    // Delete Terminal Nodes
+                    road->DeleteNode( nd1 );
+                    road->DeleteNode( nd2 );
+
+                    road->CheckLaneConnectionFull();
                 }
             }
         }
-        else if( canvas->selectedObj.selObjKind[0] == canvas->SEL_LANE &&
-                 canvas->selectedObj.selObjKind[1] == canvas->SEL_LANE ){
+    }
+    else if( canvas->selectedObj.selObjKind[0] == canvas->SEL_LANE &&
+             canvas->selectedObj.selObjKind[1] == canvas->SEL_LANE ){
 
-            int sLaneID = canvas->selectedObj.selObjID[0];
-            int eLaneID = canvas->selectedObj.selObjID[1];
-            int elidx = road->indexOfLane( eLaneID );
-            int slidx = road->indexOfLane( sLaneID );
-            if( elidx >= 0 && slidx >= 0 ){
+        int sLaneID = canvas->selectedObj.selObjID[0];
+        int eLaneID = canvas->selectedObj.selObjID[1];
+        int elidx = road->indexOfLane( eLaneID );
+        int slidx = road->indexOfLane( sLaneID );
+        if( elidx >= 0 && slidx >= 0 ){
 
-                // Check case
-                int mergeCase = 0;
-                if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
-                        road->lanes[slidx]->eWPBoundary == false &&
-                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
-                        road->lanes[elidx]->sWPBoundary == false &&
-                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode &&
-                        road->lanes[slidx]->sWPInNode == road->lanes[elidx]->sWPInNode ){
+            // Check case
+            int mergeCase = 0;
 
-                    mergeCase = 1;
-                }
-                else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
-                        road->lanes[slidx]->eWPBoundary == true &&
-                        road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
-                        road->lanes[elidx]->sWPBoundary == false &&
-                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
+            if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == false &&
+                    road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == false &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode &&
+                    road->lanes[slidx]->sWPInNode == road->lanes[elidx]->sWPInNode ){
 
-                    mergeCase = 2;
-                }
-                else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
-                        road->lanes[slidx]->eWPBoundary == false &&
-                        road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
-                        road->lanes[elidx]->sWPBoundary == false &&
-                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
+                mergeCase = 1;
+            }
+            else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == true &&
+                    road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == false &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
 
-                    mergeCase = 3;
-                }
-                else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
-                        road->lanes[slidx]->eWPBoundary == true &&
-                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
-                        road->lanes[elidx]->sWPBoundary == false &&
-                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode ){
+                mergeCase = 2;
+            }
+            else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == false &&
+                    road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == false &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->eWPInNode ){
 
-                    mergeCase = 4;
-                }
-                else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
-                        road->lanes[slidx]->eWPBoundary == true &&
-                        road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
-                        road->lanes[elidx]->sWPBoundary == true &&
-                        road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
-                        road->lanes[slidx]->sWPInNode != road->lanes[elidx]->eWPInNode){
+                mergeCase = 3;
+            }
+            else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == true &&
+                    road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == false &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode ){
 
-                    mergeCase = 5;
-                }
+                mergeCase = 4;
+            }
+            else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == true &&
+                    road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == true &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                    road->lanes[slidx]->sWPInNode != road->lanes[elidx]->eWPInNode){
 
+                mergeCase = 5;
+            }
+            else if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == false &&
+                    road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == true &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                    road->lanes[slidx]->sWPInNode != road->lanes[elidx]->eWPInNode){
 
-                qDebug() << "Merge Lanes: mergeCase = " << mergeCase;
+                mergeCase = 6;
+            }
+            else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                    road->lanes[slidx]->eWPBoundary == false &&
+                    road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                    road->lanes[elidx]->sWPBoundary == true &&
+                    road->lanes[slidx]->eWPInNode == road->lanes[elidx]->sWPInNode ){
 
-                if( mergeCase > 0 ){
-
-                    int eWPinNode    = road->lanes[elidx]->eWPInNode;
-                    int eWPinDir     = road->lanes[elidx]->eWPNodeDir;
-                    bool eWPBoundary = false;
-
-                    int sWPinNode    = road->lanes[slidx]->sWPInNode;
-                    int sWPinDir     = road->lanes[slidx]->sWPNodeDir;
-                    bool sWPBoundary = false;
-
-                    if( mergeCase == 2 || mergeCase == 4 ){
-
-                        sWPinNode   = road->lanes[elidx]->sWPInNode;
-                        sWPinDir    = road->lanes[elidx]->sWPNodeDir;
-                        sWPBoundary = true;
-                    }
-                    else if( mergeCase == 5 ){
-
-                        eWPinNode   = road->lanes[elidx]->sWPInNode;
-                        eWPinDir    = road->lanes[elidx]->sWPNodeDir;
-                        eWPBoundary = true;
-
-                        sWPinNode   = road->lanes[slidx]->eWPInNode;
-                        sWPinDir    = road->lanes[slidx]->eWPNodeDir;
-                        sWPBoundary = true;
-                    }
-
-                    QVector4D startPoint;
-                    QVector4D endPoint;
-
-                    endPoint.setX( road->lanes[elidx]->shape.pos.first()->x() );
-                    endPoint.setY( road->lanes[elidx]->shape.pos.first()->y() );
-                    endPoint.setZ( road->lanes[elidx]->shape.pos.first()->z() );
-                    endPoint.setW( road->lanes[elidx]->shape.angles.first() );
-
-                    startPoint.setX( road->lanes[slidx]->shape.pos.last()->x() );
-                    startPoint.setY( road->lanes[slidx]->shape.pos.last()->y() );
-                    startPoint.setZ( road->lanes[slidx]->shape.pos.last()->z() );
-                    startPoint.setW( road->lanes[slidx]->shape.angles.last() );
-
-                    int lId = road->CreateLane( -1, startPoint, sWPinNode, sWPinDir, sWPBoundary, endPoint, eWPinNode, eWPinDir, eWPBoundary );
-
-                    road->SetNodeRelatedLane( eWPinNode, lId );
-                    if( eWPinNode != sWPinNode ){
-                        road->SetNodeRelatedLane( sWPinNode, lId );
-                    }
-
-                }
-
+                mergeCase = 8;
             }
 
-        }
 
+            if( road->lanes[slidx]->eWPInNode != road->lanes[slidx]->sWPInNode &&
+                     road->lanes[elidx]->eWPInNode != road->lanes[elidx]->sWPInNode &&
+                     road->lanes[slidx]->nextLanes.indexOf( eLaneID ) >= 0 &&
+                     road->lanes[elidx]->previousLanes.size() == 1 &&
+                     road->lanes[elidx]->previousLanes.indexOf( sLaneID ) == 0 ){
+
+                mergeCase = 7;
+            }
+            else if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                     road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                     road->lanes[slidx]->nextLanes.indexOf( eLaneID ) >= 0 &&
+                     road->lanes[elidx]->previousLanes.size() == 1 &&
+                     road->lanes[elidx]->previousLanes.indexOf( sLaneID ) == 0 ){
+
+                mergeCase = 7;
+            }
+
+            qDebug() << "Merge Lanes: mergeCase = " << mergeCase;
+
+            if( mergeCase == 7 ){
+
+                int eWPinNode    = road->lanes[elidx]->eWPInNode;
+                int eWPinDir     = road->lanes[elidx]->eWPNodeDir;
+                bool eWPBoundary = road->lanes[elidx]->eWPBoundary;
+                int sWPinNode    = road->lanes[elidx]->sWPInNode;
+
+                road->lanes[slidx]->shape.pos.last()->setX( road->lanes[elidx]->shape.pos.last()->x() );
+                road->lanes[slidx]->shape.pos.last()->setY( road->lanes[elidx]->shape.pos.last()->y() );
+                road->lanes[slidx]->shape.pos.last()->setZ( road->lanes[elidx]->shape.pos.last()->z() );
+
+                road->lanes[slidx]->shape.angles.last() = road->lanes[elidx]->shape.angles.last();
+
+                road->CalculateShape( &(road->lanes[slidx]->shape) );
+
+                road->lanes[slidx]->eWPInNode = eWPinNode;
+                road->lanes[slidx]->eWPNodeDir = eWPinDir;
+                road->lanes[slidx]->eWPBoundary = eWPBoundary;
+
+                int eNdIdx = road->indexOfNode( eWPinNode );
+                if( eNdIdx >= 0 ){
+                    int idx = road->nodes[eNdIdx]->relatedLanes.indexOf( eLaneID );
+                    if( idx >= 0 ){
+                        road->nodes[eNdIdx]->relatedLanes.removeAt( idx );
+                    }
+                }
+                if( eWPinNode != sWPinNode ){
+                    int sNdIdx = road->indexOfNode( sWPinNode );
+                    if( sNdIdx >= 0 ){
+                        int idx = road->nodes[sNdIdx]->relatedLanes.indexOf( eLaneID );
+                        if( idx >= 0 ){
+                            road->nodes[sNdIdx]->relatedLanes.removeAt( idx );
+                        }
+                    }
+                }
+
+                road->lanes[slidx]->nextLanes.clear();
+
+                for(int i=0;i<road->lanes[elidx]->nextLanes.size();++i){
+                    int nlIdx = road->indexOfLane( road->lanes[elidx]->nextLanes[i] );
+                    if( nlIdx >= 0 ){
+                        int idx = road->lanes[nlIdx]->previousLanes.indexOf( eLaneID );
+                        if( idx >= 0 ){
+                            road->lanes[nlIdx]->previousLanes[idx] = sLaneID;
+                        }
+                    }
+                    road->lanes[slidx]->nextLanes.append( road->lanes[elidx]->nextLanes[i] );
+                }
+
+                road->DeleteLane( eLaneID );
+
+                road->CheckLaneConnectionFull();
+
+            }
+            else if( (mergeCase > 0 && mergeCase < 7) || mergeCase == 8 ){
+
+                int eWPinNode    = road->lanes[elidx]->eWPInNode;
+                int eWPinDir     = road->lanes[elidx]->eWPNodeDir;
+                bool eWPBoundary = false;
+
+                int sWPinNode    = road->lanes[slidx]->sWPInNode;
+                int sWPinDir     = road->lanes[slidx]->sWPNodeDir;
+                bool sWPBoundary = false;
+
+                if( mergeCase == 2 || mergeCase == 4 ){
+
+                    sWPinNode   = road->lanes[elidx]->sWPInNode;
+                    sWPinDir    = road->lanes[elidx]->sWPNodeDir;
+                    sWPBoundary = true;
+                }
+                else if( mergeCase == 5 ){
+
+                    eWPinNode   = road->lanes[elidx]->sWPInNode;
+                    eWPinDir    = road->lanes[elidx]->sWPNodeDir;
+                    eWPBoundary = true;
+
+                    sWPinNode   = road->lanes[slidx]->eWPInNode;
+                    sWPinDir    = road->lanes[slidx]->eWPNodeDir;
+                    sWPBoundary = true;
+                }
+                else if( mergeCase == 6 || mergeCase == 8 ){
+
+                    eWPinNode   = road->lanes[elidx]->sWPInNode;
+                    eWPinDir    = road->lanes[elidx]->sWPNodeDir;
+                    eWPBoundary = true;
+                }
+
+                QVector4D startPoint;
+                QVector4D endPoint;
+
+                endPoint.setX( road->lanes[elidx]->shape.pos.first()->x() );
+                endPoint.setY( road->lanes[elidx]->shape.pos.first()->y() );
+                endPoint.setZ( road->lanes[elidx]->shape.pos.first()->z() );
+                endPoint.setW( road->lanes[elidx]->shape.angles.first() );
+
+                startPoint.setX( road->lanes[slidx]->shape.pos.last()->x() );
+                startPoint.setY( road->lanes[slidx]->shape.pos.last()->y() );
+                startPoint.setZ( road->lanes[slidx]->shape.pos.last()->z() );
+                startPoint.setW( road->lanes[slidx]->shape.angles.last() );
+
+                int lId = road->CreateLane( -1, startPoint, sWPinNode, sWPinDir, sWPBoundary, endPoint, eWPinNode, eWPinDir, eWPBoundary );
+
+                road->SetNodeRelatedLane( eWPinNode, lId );
+                if( eWPinNode != sWPinNode ){
+                    road->SetNodeRelatedLane( sWPinNode, lId );
+                }
+
+                road->CheckLaneConnectionFull();
+            }
+        }
     }
 
     canvas->selectedObj.selObjKind.clear();
@@ -1415,7 +1565,16 @@ void DataManipulator::SetSelectedNodeLaneLists()
 
 void DataManipulator::SetTurnDirectionInfo()
 {
-    road->SetTurnDirectionInfo();
+    QList<int> nodeList;
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_NODE ){
+            int ndIdx = road->indexOfNode( canvas->selectedObj.selObjID[i] );
+            if( ndIdx >= 0 ){
+                nodeList.append( ndIdx );
+            }
+        }
+    }
+    road->SetTurnDirectionInfo(nodeList,true);
 }
 
 
@@ -1433,67 +1592,118 @@ void DataManipulator::CheckLaneCrossPoints()
 
 void DataManipulator::CheckCrossPointsOfSelectedLane()
 {
-    if( canvas->selectedObj.selObjKind.first() != canvas->SEL_LANE ){
+    qDebug() << "[DataManipulator::CheckCrossPointsOfSelectedLane]";
+
+    if( canvas->selectedObj.selObjKind.size() == 0 || canvas->selectedObj.selObjKind.first() != canvas->SEL_LANE ){
+        return;
+    }
+
+
+    if( canvas->selectedObj.selObjKind.size() == 2 &&
+            canvas->selectedObj.selObjKind[0] == canvas->SEL_LANE &&
+            canvas->selectedObj.selObjKind[1] == canvas->SEL_LANE ){
+
+        // This  is for debug purpose
+
+        int lIdx = road->indexOfLane( canvas->selectedObj.selObjID[0] );
+        int clIdx = road->indexOfLane( canvas->selectedObj.selObjID[1] );
+
+        qDebug() << "Check CP of Lane " << road->lanes[lIdx]->id << " and Lane " << road->lanes[clIdx]->id;
+
+        road->CheckIfTwoLanesCross( lIdx, clIdx, true );
+
+        canvas->update();
         return;
     }
 
     int selLaneID = canvas->selectedObj.selObjID.first();
     int lIdx = road->indexOfLane( selLaneID );
+    if( lIdx >= 0 ){
+        int ndIdx = road->indexOfNode( road->lanes[lIdx]->eWPInNode );
 
-    {
-        int i = lIdx;
+        QList<int> nodeList;
+        nodeList.append( ndIdx );
 
-        for(int j=0;j<road->lanes[i]->crossPoints.size();++j){
-            delete road->lanes[i]->crossPoints[j];
-        }
-        road->lanes[i]->crossPoints.clear();
-
-        for(int j=0;j<road->lanes[i]->pedestCrossPoints.size();++j){
-            delete road->lanes[i]->pedestCrossPoints[j];
-        }
-        road->lanes[i]->pedestCrossPoints.clear();
-
-        for(int j=0;j<road->lanes.size();++j){
-            if( j == i ){
-                continue;
-            }
-            if( road->lanes[j]->crossPoints.size() == 0 ){
-                continue;
-            }
-            QList<int> delCPInfo;
-            for(int k=0;k<road->lanes[j]->crossPoints.size();++k){
-                if( road->lanes[j]->crossPoints[k]->crossLaneID == selLaneID ){
-                    delCPInfo.prepend( k );
-                }
-            }
-            if( delCPInfo.size() == 0 ){
-                continue;
-            }
-            for(int k=0;k<delCPInfo.size();++k){
-                delete road->lanes[j]->crossPoints[ delCPInfo[k] ];
-                road->lanes[j]->crossPoints.removeAt( delCPInfo[k] );
-            }
-        }
-    }
-
-    for(int j=0;j<road->lanes.size();++j){
-        if( lIdx == j ){
-            continue;
-        }
-
-        //qDebug() << "Checking lane " << road->lanes[j]->id;
-
-        road->CheckIfTwoLanesCross( road->lanes[lIdx]->id, road->lanes[j]->id );
-    }
-
-    for(int j=0;j<road->pedestLanes.size();++j){
-
-        //qDebug() << "Checking pedestLane " << road->pedestLanes[j]->id;
-
-        road->CheckLaneCrossWithPedestLane( road->lanes[lIdx]->id, road->pedestLanes[j]->id );
+        road->CheckLaneCrossPointsInsideNode( nodeList );
     }
 
     UpdateStatusBar(QString("Cross Point Checked."));
+    canvas->update();
+}
+
+
+void DataManipulator::ChangeSpeedLimitOfSelectedLanes()
+{
+    bool hasLanesSelected = false;
+    int firstLaneID = -1;
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i ){
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_LANE ){
+            hasLanesSelected = true;
+            firstLaneID = canvas->selectedObj.selObjID[i];
+            break;
+        }
+    }
+    if( hasLanesSelected == false ){
+        return;
+    }
+
+    double newSpeed = QInputDialog::getDouble(NULL,"Change Speed Limit of Lanes","New Speed Limit[km/h]",0,0,300);
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i ){
+
+        if( canvas->selectedObj.selObjKind[i] != canvas->SEL_LANE ){
+            continue;
+        }
+
+        int lIdx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lIdx < 0 ){
+            continue;
+        }
+
+        road->lanes[lIdx]->speedInfo = newSpeed;
+    }
+
+    roadObjProp->ChangeTabPage(1);
+    roadObjProp->ChangeLaneInfo(firstLaneID);
+
+    canvas->update();
+}
+
+
+void DataManipulator::ChangeActualSpeedOfSelectedLanes()
+{
+    bool hasLanesSelected = false;
+    int firstLaneID = -1;
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i ){
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_LANE ){
+            hasLanesSelected = true;
+            firstLaneID = canvas->selectedObj.selObjID[i];
+            break;
+        }
+    }
+    if( hasLanesSelected == false ){
+        return;
+    }
+
+    double newSpeed = QInputDialog::getDouble(NULL,"Change Actual Speed of Lanes","New Actual Speed[km/h]",0,0,300);
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i ){
+
+        if( canvas->selectedObj.selObjKind[i] != canvas->SEL_LANE ){
+            continue;
+        }
+
+        int lIdx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lIdx < 0 ){
+            continue;
+        }
+
+        road->lanes[lIdx]->actualSpeed = newSpeed;
+    }
+
+    roadObjProp->ChangeTabPage(1);
+    roadObjProp->ChangeLaneInfo(firstLaneID);
+
     canvas->update();
 }
 

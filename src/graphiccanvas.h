@@ -37,6 +37,9 @@
 #include "objectproperty.h"
 #include "odrouteeditor.h"
 
+#include <QAction>
+#include <QMenu>
+
 #include <QDebug>
 
 
@@ -142,6 +145,7 @@ public:
     QVector2D GetMouseClickPosition(){ return mousePressPosition; }
 
     void SetNumberKeyPressed(int key);
+    int GetNumberKeyPressed(){ return numberKeyPressed; }
 
 
     void SelectObject(bool shiftModifier);
@@ -164,6 +168,12 @@ public:
     RoadObjectProperty *roadProperty;
     BaseMapImageManager *mapImageMng;
     ODRouteEditor *odRoute;
+
+
+    QMenu *addObjToNodePopup;
+    QAction *createVTS;
+    QAction *createPTS;
+    QAction *createSL;
 
 
     // Object Selection
@@ -226,6 +236,8 @@ public slots:
     void ResetPedestLanePointPickMode();
     void RemovePickedPedestLanePoint();
     void SetNodeSelected(int);
+    void SetLaneColorBySpeedLimitFlag(bool);
+    void SetLaneColorByActualSpeedFlag(bool);
 
 
 private:
@@ -323,6 +335,9 @@ private:
     bool objectMoveFlag;
     bool nodePickModeFlag;
     bool pedestPathPointPickFlag;
+
+    bool colorLaneBySpeedLimitFlag;
+    bool colorLaneByActualSpeedFlag;
 
     int laneListIndex;
 

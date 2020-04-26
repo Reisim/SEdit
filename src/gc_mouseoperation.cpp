@@ -93,11 +93,42 @@ void GraphicCanvas::mouseReleaseEvent(QMouseEvent *e)
 {
     mousePressed = false;
 
+
+    if( selectedObj.selObjKind.size() == 1 && selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE && numberKeyPressed > 0 ){
+        if( e->button() & Qt::MidButton ){
+            addObjToNodePopup->exec( QCursor::pos() );
+        }
+    }
+
+
     if( selectedObj.selObjKind.size() > 0 && objectMoveFlag == true ){
 
 
         if( road->updateCPEveryOperation == true ){
-            road->CheckLaneCrossPoints();
+            QList<int> relevantNodes;
+            for(int i=0;i<selectedObj.selObjKind.size();++i){
+                if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
+                    int ndIdx = road->indexOfNode( selectedObj.selObjID[i] );
+                    if( relevantNodes.indexOf( ndIdx ) < 0 ){
+                        relevantNodes.append( ndIdx );
+                    }
+                }
+                else if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE ||
+                         selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE_EDGE_END ||
+                         selectedObj.selObjKind[i] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+
+                    int lIdx = road->indexOfLane( selectedObj.selObjID[i] );
+                    if( lIdx >= 0 ){
+                        int ndIdx = road->indexOfNode( road->lanes[lIdx]->eWPInNode );
+                        if( ndIdx >= 0 ){
+                            if( relevantNodes.indexOf( ndIdx ) < 0 ){
+                                relevantNodes.append( ndIdx );
+                            }
+                        }
+                    }
+                }
+            }
+            road->CheckLaneCrossPointsInsideNode( relevantNodes );
         }
 
 
@@ -161,6 +192,21 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                         if( lidx >= 0 ){
                             undoInfo.data.append( road->lanes[lidx]->shape.derivative.last()->x() );
                             undoInfo.data.append( road->lanes[lidx]->shape.derivative.last()->y() );
+                        }
+                    }
+                    else if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_STOPLINE ){
+                        int rNd = road->indexOfSL(selectedObj.selObjID[i],-1);
+                        if( rNd >= 0 ){
+                            int idx = road->indexOfSL(selectedObj.selObjID[i],rNd);
+                            if( idx >= 0 ){
+                                int ndIdx = road->indexOfNode(rNd);
+                                if( ndIdx >= 0 ){
+                                    undoInfo.data.append( road->nodes[ndIdx]->stopLines[idx]->leftEdge.x() );
+                                    undoInfo.data.append( road->nodes[ndIdx]->stopLines[idx]->leftEdge.y() );
+                                    undoInfo.data.append( road->nodes[ndIdx]->stopLines[idx]->rightEdge.x() );
+                                    undoInfo.data.append( road->nodes[ndIdx]->stopLines[idx]->rightEdge.y() );
+                                }
+                            }
                         }
                     }
                 }
@@ -809,6 +855,53 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                     }
                 }
 
+
+                if( selectedObj.selObjKind.size() == 1 && selectedObj.selObjKind[0] == _SEL_OBJ::SEL_STOPLINE ){
+
+                    int rNd = road->indexOfSL(selectedObj.selObjID[0],-1);
+                    if( rNd >= 0 ){
+                        int idx = road->indexOfSL(selectedObj.selObjID[0],rNd);
+                        if( idx >= 0 ){
+                            int ndIdx = road->indexOfNode(rNd);
+                            if( ndIdx >= 0 ){
+
+                                pos_center = ( road->nodes[ndIdx]->stopLines[idx]->leftEdge + road->nodes[ndIdx]->stopLines[idx]->rightEdge ) / 2.0;
+
+                                float dx1 = wxMouseMove - pos_center.x();
+                                float dy1 = wyMouseMove - pos_center.y();
+                                float dx2 = x - pos_center.x();
+                                float dy2 = y - pos_center.y();
+                                if( dx2 * (-dy1) + dy2 * dx1 > 0.0 ){
+                                    rotDir = 1;
+                                }
+                                else{
+                                    rotDir = 2;
+                                }
+
+                                wxMouseMove = x;
+                                wyMouseMove = y;
+
+                                if( rotDir == 2 ){
+                                    a *= (-1.0);
+                                }
+
+                                a *= 57.3;
+
+                                if( a > 0.5 ){
+                                    a = 0.5;
+                                }
+                                else if( a < -0.5 ){
+                                    a = -0.5;
+                                }
+
+                                float fact = 1.0 + a;
+
+                                road->ChangeStopLineLength( selectedObj.selObjID[0], fact );
+                            }
+                        }
+                    }
+                }
+
                 objectMoveFlag = true;
             }
         }
@@ -914,106 +1007,219 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
             xMove = xMy;
             yMove = yMy;
 
-            // Move Node
-            {
-                QList<int> moveLaneBothEdge;
-                QList<int> moveLaneStart;
-                QList<int> moveLaneEnd;
 
-                for(int i=0;i<selectedObj.selObjKind.size();++i){
-                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
-                        road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+            bool isTermNodeSel = false;
+            if( selectedObj.selObjKind.size() == 1 && selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE ){
+                int nIdx = road->indexOfNode( selectedObj.selObjID[0] );
+                if( road->nodes[nIdx]->legInfo.size() == 1 ){
+                    isTermNodeSel = true;
+                }
+            }
 
-                        int nIdx = road->indexOfNode( selectedObj.selObjID[i] );
-                        for(int j=0;j<road->nodes[nIdx]->relatedLanes.size();++j){
+            if( isTermNodeSel == true ){
 
-                            bool checkLaneSelected = false;
-                            for(int k=0;k<selectedObj.selObjKind.size();++k){
-                                if( k == i ){
-                                    continue;
-                                }
-                                if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE ||
-                                        selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_END ||
-                                        selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+                int nIdx = road->indexOfNode( selectedObj.selObjID[0] );
+                int cNode = road->nodes[nIdx]->legInfo[0]->connectedNode;
+                if( cNode < 0 ){
+                    cNode = road->nodes[nIdx]->legInfo[0]->connectingNode;
+                }
 
-                                    if( selectedObj.selObjID[k] == road->nodes[nIdx]->relatedLanes[j] ){
-                                        checkLaneSelected = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if( checkLaneSelected == true ){
+                float xBefore = road->nodes[nIdx]->pos.x();
+                float yBefore = road->nodes[nIdx]->pos.y();
+
+                road->MoveNode( selectedObj.selObjID[0], xMove, yMove );
+
+                if( cNode >= 0 ){
+
+                    int cIdx = road->indexOfNode( cNode );
+                    float xCN = road->nodes[cIdx]->pos.x();
+                    float yCN = road->nodes[cIdx]->pos.y();
+
+                    float DX = xCN - xBefore;
+                    float DY = yCN - yBefore;
+                    float D = sqrt(DX * DX + DY * DY);
+
+                    for(int j=0;j<road->nodes[nIdx]->relatedLanes.size();++j){
+
+                        int lIdx = road->indexOfLane( road->nodes[nIdx]->relatedLanes[j] );
+                        if( road->lanes[lIdx]->sWPInNode == selectedObj.selObjID[0] && road->lanes[lIdx]->sWPBoundary == true ){
+
+                            // Move Start Point
+                            road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove, yMove, 0 );
+
+                            if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[0] && road->lanes[lIdx]->eWPBoundary == true ){
                                 continue;
                             }
-
-                            int lIdx = road->indexOfLane( road->nodes[nIdx]->relatedLanes[j] );
-                            if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->sWPBoundary == true ){
-                                bool moveBoth = false;
-                                for(int k=0;k<selectedObj.selObjKind.size();++k){
-                                    if( k == i ){
-                                        continue;
-                                    }
-                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
-                                        if( selectedObj.selObjID[k] == road->lanes[lIdx]->sWPInNode ){
-                                            moveBoth = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if( moveBoth == true ){
-                                    if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
-                                        moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
-                                    }
-                                }
-                                else{
-                                    if( moveLaneEnd.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
-                                        moveLaneEnd.append( road->nodes[nIdx]->relatedLanes[j] );
-                                    }
+                            else{
+                                // Move End Point
+                                float dx = xCN - road->lanes[lIdx]->shape.pos.last()->x();
+                                float dy = yCN - road->lanes[lIdx]->shape.pos.last()->y();
+                                float d = sqrt(dx * dx + dy * dy);
+                                if( D > 0.001 ){
+                                    d /= D;
+                                    road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove * d, yMove * d, 1 );
                                 }
                             }
-                            else if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->eWPBoundary == true ){
-                                bool moveBoth = false;
-                                for(int k=0;k<selectedObj.selObjKind.size();++k){
-                                    if( k == i ){
-                                        continue;
-                                    }
-                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
-                                        if( selectedObj.selObjID[k] == road->lanes[lIdx]->eWPInNode ){
-                                            moveBoth = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if( moveBoth == true ){
-                                    if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
-                                        moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
-                                    }
-                                }
-                                else{
-                                    if( moveLaneStart.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
-                                        moveLaneStart.append( road->nodes[nIdx]->relatedLanes[j] );
-                                    }
-                                }
+
+                        }
+                        else if( road->lanes[lIdx]->eWPInNode == selectedObj.selObjID[0] && road->lanes[lIdx]->eWPBoundary == true ){
+
+                            // Move End Point
+                            road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove, yMove, 1 );
+
+                            if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[0] && road->lanes[lIdx]->sWPBoundary == true ){
+                                continue;
                             }
                             else{
-                                if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
-                                    moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                // Move Start Point
+                                float dx = xCN - road->lanes[lIdx]->shape.pos.first()->x();
+                                float dy = yCN - road->lanes[lIdx]->shape.pos.first()->y();
+                                float d = sqrt(dx * dx + dy * dy);
+                                if( D > 0.001 ){
+                                    d /= D;
+                                    road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove * d, yMove * d, 0 );
+                                }
+                            }
+
+                        }
+                        else{
+
+                            // Move Start Point
+                            if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[0] && road->lanes[lIdx]->sWPBoundary == true ){
+                                continue;
+                            }
+                            else {
+                                float dx = xCN - road->lanes[lIdx]->shape.pos.first()->x();
+                                float dy = yCN - road->lanes[lIdx]->shape.pos.first()->y();
+                                float d = sqrt(dx * dx + dy * dy);
+                                if( D > 0.001 ){
+                                    d /= D;
+                                    road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove * d, yMove * d, 0 );
+                                }
+                            }
+
+                            // Move End Point
+                            if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[0] && road->lanes[lIdx]->eWPBoundary == true ){
+                                continue;
+                            }
+                            else {
+                                float dx = xCN - road->lanes[lIdx]->shape.pos.last()->x();
+                                float dy = yCN - road->lanes[lIdx]->shape.pos.last()->y();
+                                float d = sqrt(dx * dx + dy * dy);
+                                if( D > 0.001 ){
+                                    d /= D;
+                                    road->MoveLaneEdge( road->nodes[nIdx]->relatedLanes[j], xMove * d, yMove * d, 1 );
                                 }
                             }
                         }
                     }
                 }
+            }
+            else{
 
-                for(int i=0;i<moveLaneBothEdge.size();++i){
-                    road->MoveLane( moveLaneBothEdge[i], xMove, yMove, true);
-                }
-                for(int i=0;i<moveLaneStart.size();++i){
-                    road->MoveLaneEdge( moveLaneStart[i], xMove, yMove, 0 );  // Lane Start Point
-                }
-                for(int i=0;i<moveLaneEnd.size();++i){
-                    road->MoveLaneEdge( moveLaneEnd[i], xMove, yMove, 1 );  // Lane End Point
+                // Move Node
+                {
+                    QList<int> moveLaneBothEdge;
+                    QList<int> moveLaneStart;
+                    QList<int> moveLaneEnd;
+
+                    for(int i=0;i<selectedObj.selObjKind.size();++i){
+                        if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
+
+                            road->MoveNode( selectedObj.selObjID[i], xMove, yMove );
+
+                            int nIdx = road->indexOfNode( selectedObj.selObjID[i] );
+                            for(int j=0;j<road->nodes[nIdx]->relatedLanes.size();++j){
+
+                                bool checkLaneSelected = false;
+                                for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                    if( k == i ){
+                                        continue;
+                                    }
+                                    if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE ||
+                                            selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_END ||
+                                            selectedObj.selObjKind[k] == _SEL_OBJ::SEL_LANE_EDGE_START ){
+
+                                        if( selectedObj.selObjID[k] == road->nodes[nIdx]->relatedLanes[j] ){
+                                            checkLaneSelected = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if( checkLaneSelected == true ){
+                                    continue;
+                                }
+
+                                int lIdx = road->indexOfLane( road->nodes[nIdx]->relatedLanes[j] );
+                                if( road->lanes[lIdx]->sWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->sWPBoundary == true ){
+                                    bool moveBoth = false;
+                                    for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                        if( k == i ){
+                                            continue;
+                                        }
+                                        if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                            if( selectedObj.selObjID[k] == road->lanes[lIdx]->sWPInNode ){
+                                                moveBoth = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if( moveBoth == true ){
+                                        if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                    else{
+                                        if( moveLaneEnd.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            moveLaneEnd.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                }
+                                else if( road->lanes[lIdx]->eWPInNode != selectedObj.selObjID[i] && road->lanes[lIdx]->eWPBoundary == true ){
+                                    bool moveBoth = false;
+                                    for(int k=0;k<selectedObj.selObjKind.size();++k){
+                                        if( k == i ){
+                                            continue;
+                                        }
+                                        if( selectedObj.selObjKind[k] == _SEL_OBJ::SEL_NODE ){
+                                            if( selectedObj.selObjID[k] == road->lanes[lIdx]->eWPInNode ){
+                                                moveBoth = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if( moveBoth == true ){
+                                        if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                    else{
+                                        if( moveLaneStart.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                            moveLaneStart.append( road->nodes[nIdx]->relatedLanes[j] );
+                                        }
+                                    }
+                                }
+                                else{
+                                    if( moveLaneBothEdge.indexOf( road->nodes[nIdx]->relatedLanes[j] ) < 0 ){
+                                        moveLaneBothEdge.append( road->nodes[nIdx]->relatedLanes[j] );
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    for(int i=0;i<moveLaneBothEdge.size();++i){
+                        road->MoveLane( moveLaneBothEdge[i], xMove, yMove, true);
+                    }
+                    for(int i=0;i<moveLaneStart.size();++i){
+                        road->MoveLaneEdge( moveLaneStart[i], xMove, yMove, 0 );  // Lane Start Point
+                    }
+                    for(int i=0;i<moveLaneEnd.size();++i){
+                        road->MoveLaneEdge( moveLaneEnd[i], xMove, yMove, 1 );  // Lane End Point
+                    }
                 }
             }
+
 
 
             // Move Lane
@@ -1285,7 +1491,7 @@ void GraphicCanvas::wheelEvent(QWheelEvent *e)
 
         float s = 1.1;
         if( e->modifiers() & Qt::ShiftModifier ){
-            s *= 5.0;
+            s *= 2.5;
         }
 
         if( e->delta() < 0.0 ){
@@ -1306,7 +1512,7 @@ void GraphicCanvas::wheelEvent(QWheelEvent *e)
 
         float s = 1.1;
         if( e->modifiers() & Qt::ShiftModifier ){
-            s *= 4.0;
+            s *= 2.5;
         }
 
         if( e->delta() > 0.0 ){
@@ -1408,7 +1614,7 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
             float dx = road->nodes[i]->pos.x() - wxMousePress;
             float dy = road->nodes[i]->pos.y() - wyMousePress;
             float D = dx * dx + dy * dy;
-            if( D > 25.0 ){
+            if( D > 50.0 ){
                 continue;
             }
             if( selID < 0 || Dmin > D ){
@@ -1417,11 +1623,15 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                 kind = _SEL_OBJ::SEL_NODE_ROUTE_PICK;
             }
         }
+        if( selID < 0 ){
+            return;
+        }
 
-        for(int i=1;i<selectedObj.selObjID.size()-1;i++){
-            if( selectedObj.selObjID[i] == selID ){
-                selectedObj.selObjID.removeAt(i);
-                selectedObj.selObjKind.removeAt(i);
+        if( selectedObj.selObjKind.size() > 1 && selectedObj.selObjKind.last() == _SEL_OBJ::SEL_NODE_ROUTE_PICK ){
+            int cIdx = selectedObj.selObjID.size() - 2;
+            if( selectedObj.selObjID.at(cIdx) == selID ){
+                selectedObj.selObjID.removeAt( cIdx );
+                selectedObj.selObjKind.removeAt( cIdx );
                 return;
             }
         }
@@ -1596,11 +1806,11 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                     }
                 }
 
-                QString propStr = road->GetNodeProperty( selID );
-                QStringList divPropStr = propStr.split("\n");
-                for(int i=0;i<divPropStr.size();++i){
-                    qDebug() << QString( divPropStr[i] );
-                }
+//                QString propStr = road->GetNodeProperty( selID );
+//                QStringList divPropStr = propStr.split("\n");
+//                for(int i=0;i<divPropStr.size();++i){
+//                    qDebug() << QString( divPropStr[i] );
+//                }
             }
             else if( kind == _SEL_OBJ::SEL_LANE ){
                 bool alreadySelected = false;

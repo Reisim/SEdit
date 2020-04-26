@@ -122,10 +122,29 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
     RelatedLanesFlag       = false;
     RouteLaneListFlag      = true;
 
+    colorLaneBySpeedLimitFlag  = false;
+    colorLaneByActualSpeedFlag = false;
+
     nodePickModeFlag = false;
     pedestPathPointPickFlag = false;
 
     mousePressed = false;
+
+
+    addObjToNodePopup = new QMenu();
+
+    createVTS = new QAction();
+    createVTS->setText("Traffic Signal for Vehicle");
+    addObjToNodePopup->addAction( createVTS );
+
+    createPTS = new QAction();
+    createPTS->setText("Traffic Signal for Pedestrian");
+    addObjToNodePopup->addAction( createPTS );
+
+    createSL = new QAction();
+    createSL->setText("Stop Line");
+    addObjToNodePopup->addAction( createSL );
+
 
     setMouseTracking(true);
 }
@@ -782,9 +801,65 @@ void GraphicCanvas::paintGL()
                     program->setUniformValue( u_vColor, QVector4D( 1.0, 0.92, 0.66, 1.0 ) );
                 }
                 else{
-                    program->setUniformValue( u_useTex, 0 );
-                    glLineWidth( laneDrawWidth );
-                    program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
+
+                    if( colorLaneByActualSpeedFlag == true ){
+
+                        float r = 1.0;
+                        float g = 1.0;
+                        float b = 1.0;
+
+                        float h = (road->lanes[i]->actualSpeed / 150.0) * 6.0;
+                        if( h > 6.0 ){
+                            h = 6.0;
+                        }
+                        int cIdx = (int)h;
+                        float f = h - (float)cIdx;
+                        switch ( cIdx ) {
+                        default:
+                        case 0: g *= f;       b = 0.0;      break;
+                        case 1: r *= 1.0 - f; b = 0.0;      break;
+                        case 2: r = 0.0;      b *= f;       break;
+                        case 3: r = 0.0;      g *= 1.0 - f; break;
+                        case 4: r *= f;       g = 0.0;      break;
+                        case 5: g = 0.0;      b *= 1.0 - f; break;
+                        }
+
+                        program->setUniformValue( u_useTex, 2 );
+                        glLineWidth( laneDrawWidth );
+                        program->setUniformValue( u_vColor, QVector4D( r, g, b, 1.0 ) );
+                    }
+                    else if( colorLaneBySpeedLimitFlag == true ){
+
+                        float r = 1.0;
+                        float g = 1.0;
+                        float b = 1.0;
+
+                        float h = (road->lanes[i]->speedInfo / 150.0) * 6.0;
+                        if( h > 6.0 ){
+                            h = 6.0;
+                        }
+                        int cIdx = (int)h;
+                        float f = h - (float)cIdx;
+                        switch ( cIdx ) {
+                        default:
+                        case 0: g *= f;       b = 0.0;      break;
+                        case 1: r *= 1.0 - f; b = 0.0;      break;
+                        case 2: r = 0.0;      b *= f;       break;
+                        case 3: r = 0.0;      g *= 1.0 - f; break;
+                        case 4: r *= f;       g = 0.0;      break;
+                        case 5: g = 0.0;      b *= 1.0 - f; break;
+                        }
+
+                        program->setUniformValue( u_useTex, 2 );
+                        glLineWidth( laneDrawWidth );
+                        program->setUniformValue( u_vColor, QVector4D( r, g, b, 1.0 ) );
+                    }
+                    else{
+                        program->setUniformValue( u_useTex, 0 );
+                        glLineWidth( laneDrawWidth );
+                        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 0.0, 0.0 ) );
+                    }
+
                 }
 
             }
@@ -1080,6 +1155,57 @@ void GraphicCanvas::paintGL()
                 else{
                     glLineWidth(3.0);
                 }
+                glDrawArrays(GL_LINE_LOOP, 0, NODE_CIRCLE_DIV );
+                glLineWidth(1.0);
+
+                circlePoly.array.release();
+            }
+
+            if( road->nodes[i]->isOriginNode == true && circlePoly.isValid == true ){
+
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( road->nodes[i]->pos.x(),
+                                                       road->nodes[i]->pos.y(),
+                                                       0.0) );
+
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(7.5, 7.5, 7.5) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.0, 0.0, 1.0 ) );
+
+                glLineWidth(6.0);
+
+                glDrawArrays(GL_LINE_LOOP, 0, NODE_CIRCLE_DIV );
+                glLineWidth(1.0);
+
+                circlePoly.array.release();
+            }
+
+            if( road->nodes[i]->isDestinationNode == true && circlePoly.isValid == true ){
+
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( road->nodes[i]->pos.x(),
+                                                       road->nodes[i]->pos.y(),
+                                                       0.0) );
+
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(10.0, 10.0, 10.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+
+                glLineWidth(6.0);
+
                 glDrawArrays(GL_LINE_LOOP, 0, NODE_CIRCLE_DIV );
                 glLineWidth(1.0);
 
@@ -2216,15 +2342,15 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
     while( wi2 <= wi )
         wi2 *= 2;
 
-    if( wi2 > 1024 )
-        wi2 = 1024;
+    if( wi2 > 2048 )
+        wi2 = 2048;
 
     int hi2 = 2;
     while( hi2 <= hi )
             hi2 *= 2;
 
-    if( hi2 > 1024 )
-        hi2 = 1024;
+    if( hi2 > 2048 )
+        hi2 = 2048;
 
     GLubyte *bits;
     int tsz = wi2 * hi2 * 4;

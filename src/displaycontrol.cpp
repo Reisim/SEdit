@@ -17,6 +17,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
 {
     QGridLayout *grid = new QGridLayout();
 
+    road = NULL;
+
     resetRotate = new QPushButton("Reset Rotate");
 
     moveTo = new QPushButton("Move");
@@ -64,13 +66,18 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showLanes      = new QCheckBox("Lanes");
     showLaneLabels = new QCheckBox("Labels");
 
+    colorMapOfLaneSpeedLimit = new QCheckBox("Colored by Speed Limit");
+    colorMapOfLaneActualSpeed = new QCheckBox("Colored by Actual Speed");
+
     laneWidth = new QSpinBox();
     laneWidth->setMinimum(1);
     laneWidth->setMaximum(10); 
     laneWidth->setFixedSize( laneWidth->sizeHint() );
 
     manualUpdateOfCP = new QCheckBox("Manual Update of CP");
+    manualUpdateOfCP->setChecked( true );
     connect( manualUpdateOfCP,SIGNAL(toggled(bool)),this,SLOT(SetManualUpdateCPFlag(bool)) );
+
 
     showTrafficSignals      = new QCheckBox("Traffic Signals");
     showTrafficSignalLabels = new QCheckBox("Label");
@@ -105,6 +112,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( new QLabel("Width:"), row, 1, 1, 1, Qt::AlignRight );
     grid->addWidget( laneWidth, row++, 2 );
     grid->addWidget( manualUpdateOfCP, row++, 2 );
+    grid->addWidget( colorMapOfLaneSpeedLimit, row++, 2 );
+    grid->addWidget( colorMapOfLaneActualSpeed, row++, 2 );
 
     grid->addWidget( showTrafficSignals, row, 1 );
     grid->addWidget( showTrafficSignalLabels, row++, 2 );
@@ -159,8 +168,10 @@ void DisplayControl::InitSetting()
 
     showLanes->setChecked(true);
     laneWidth->setValue(6);
-    manualUpdateOfCP->setChecked(false);
+    manualUpdateOfCP->setChecked(true);
     showLaneLabels->setChecked(true);
+    colorMapOfLaneSpeedLimit->setChecked(false);
+    colorMapOfLaneActualSpeed->setChecked(false);
 
     showTrafficSignals->setChecked(true);
     showTrafficSignalLabels->setChecked(true);

@@ -58,16 +58,23 @@ ConfigFileManager::ConfigFileManager(QWidget *parent) : QWidget(parent)
     title->setFixedSize( title->sizeHint() );
     infoLayout->addWidget( title, 8, 0 );
 
+    title = new QLabel("Restart File");
+    title->setFixedSize( title->sizeHint() );
+    infoLayout->addWidget( title, 9, 0 );
+
 
     configFilename = new QLabel();
     configFilename->setText("");
     configFilename->setMinimumWidth(800);
+    configFilename->setWordWrap(true);
+
 
     infoLayout->addWidget( configFilename, 0, 1, 1, 1, Qt::AlignLeft );
 
     selectedScenariofile = new QLabel();
     selectedScenariofile->setText("");
     selectedScenariofile->setMinimumWidth(800);
+    selectedScenariofile->setWordWrap(true);
 
     selScenarioBtn = new QPushButton("");
     selScenarioBtn->setIcon( QIcon(":/images/Select.png") );
@@ -114,6 +121,25 @@ ConfigFileManager::ConfigFileManager(QWidget *parent) : QWidget(parent)
     logOutputInterval->setMinimum(0);
     logOutputInterval->setFixedWidth(90);
     infoLayout->addWidget( logOutputInterval, 8, 1, 1, 1, Qt::AlignLeft );
+
+    restartFilename = new QLabel("");
+    restartFilename->setFixedWidth( 800 );
+    restartFilename->setWordWrap(true);
+
+    selRestartFileBtn = new QPushButton("");
+    selRestartFileBtn->setIcon( QIcon(":/images/Select.png") );
+    selRestartFileBtn->setFixedSize( selRestartFileBtn->sizeHint() );
+    connect( selRestartFileBtn, SIGNAL(clicked()), this, SLOT(SelectRestartFileClicked()) );
+
+    remRestartFileBtn = new QPushButton("");
+    remRestartFileBtn->setIcon( QIcon(":/images/delete.png") );
+    remRestartFileBtn->setFixedSize( selRestartFileBtn->sizeHint() );
+    connect( remRestartFileBtn, SIGNAL(clicked()), this, SLOT(ClearRestartFileClicked()) );
+
+
+    infoLayout->addWidget( restartFilename, 9, 1, 1, 1, Qt::AlignLeft );
+    infoLayout->addWidget( selRestartFileBtn, 9, 2 );
+    infoLayout->addWidget( remRestartFileBtn, 9, 3 );
 
 
     clearBtn = new QPushButton("Clear");
@@ -316,6 +342,11 @@ void ConfigFileManager::SaveData()
             }
             out << "Log Output Interval ; " << logOutputInterval->value() << "\n";
 
+            if( restartFilename->text().isNull() == false && restartFilename->text().isEmpty() == false ){
+                out << "\n";
+                out << "Restart File ; " << restartFilename->text() << "\n";
+            }
+
             rcfile.close();
 
             configFilename->setText( fileName );
@@ -345,5 +376,27 @@ void ConfigFileManager::SelectLogFolderClicked()
     }
 
     logOutputFolder->setText( foldername );
+}
+
+
+void ConfigFileManager::SelectRestartFileClicked()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Choose Restart File"),
+                                                    ".",
+                                                    tr("re:sim snapshot file(*.ss.txt)"));
+
+    if( fileName.isNull() == true || fileName.isEmpty() == true ){
+        qDebug() << "[ConfigFileManager::SelectRestartFileClicked] canceled.";
+        return;
+    }
+
+    restartFilename->setText( fileName );
+}
+
+
+void ConfigFileManager::ClearRestartFileClicked()
+{
+    restartFilename->setText("");
 }
 

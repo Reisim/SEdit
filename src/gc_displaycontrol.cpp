@@ -224,3 +224,14 @@ void GraphicCanvas::SetPedestLaneSelection(bool b)
     selectPedestLaneFlag = b;
 }
 
+void GraphicCanvas::SetLaneColorBySpeedLimitFlag(bool b)
+{
+    colorLaneBySpeedLimitFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetLaneColorByActualSpeedFlag(bool b)
+{
+    colorLaneByActualSpeedFlag = b;
+    update();
+}

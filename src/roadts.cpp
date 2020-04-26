@@ -195,7 +195,7 @@ int RoadInfo::GetNearestTrafficSignal(QVector2D pos,float &dist)
         float dx = nodes[i]->pos.x() - pos.x();
         float dy = nodes[i]->pos.y() - pos.y();
         float D = dx * dx + dy * dy;
-        if( D > 400.0 ){
+        if( D > 40000.0 ){
             continue;
         }
 
@@ -242,3 +242,30 @@ void RoadInfo::MoveTrafficSignal(int id, float moveX, float moveY)
 }
 
 
+void RoadInfo::DeleteTrafficSignal(int id)
+{
+    int rNd = indexOfTS(id,-1);
+    if( rNd < 0 ){
+        qDebug() << "[MoveTrafficSignal] cannot find node contain TS id = " << id;
+        return;
+    }
+    int idx = indexOfTS(id,rNd);
+    if( idx < 0 ){
+        qDebug() << "[MoveTrafficSignal] cannot find index of TS id = " << id;
+        return;
+    }
+    int ndIdx = indexOfNode(rNd);
+    if( ndIdx < 0 ){
+        qDebug() << "[MoveTrafficSignal] cannot find index of Node id = " << rNd;
+        return;
+    }
+
+    for(int i=0;i<nodes[ndIdx]->trafficSignals[idx]->sigPattern.size();++i){
+        delete nodes[ndIdx]->trafficSignals[idx]->sigPattern[i];
+    }
+    nodes[ndIdx]->trafficSignals[idx]->sigPattern.clear();
+
+    delete nodes[ndIdx]->trafficSignals[idx];
+
+    nodes[ndIdx]->trafficSignals.removeAt( idx );
+}

@@ -12,6 +12,8 @@
 
 
 #include "objectproperty.h"
+#include <QDebug>
+#include <QDialog>
 
 
 void RoadObjectProperty::ChangeLaneInfo(int id)
@@ -169,3 +171,123 @@ void RoadObjectProperty::DriverErrorProbChanged(double v)
 
     road->lanes[lIdx]->driverErrorProb = v;
 }
+
+
+void RoadObjectProperty::EditLaneData()
+{
+    qDebug() << "[RoadObjectProperty::EditLaneData]";
+
+    QDialog *dialog = new QDialog();
+
+    QGridLayout *gLay = new QGridLayout();
+    gLay->addWidget( new QLabel("eWPInNode")   , 0, 0 );
+    gLay->addWidget( new QLabel("eWPNodeDir")  , 1, 0 );
+    gLay->addWidget( new QLabel("eWPBoundary") , 2, 0 );
+    gLay->addWidget( new QLabel("sWPInNode")   , 3, 0 );
+    gLay->addWidget( new QLabel("sWPNodeDir")  , 4, 0 );
+    gLay->addWidget( new QLabel("sWPBoundary") , 5, 0 );
+
+    QSpinBox *eWPInNodeSB = new QSpinBox();
+    eWPInNodeSB->setMinimum(0);
+    eWPInNodeSB->setMaximum(60000);
+
+    QSpinBox *eWPNodeDirSB = new QSpinBox();
+    eWPNodeDirSB->setMinimum(0);
+    eWPNodeDirSB->setMaximum(10);
+
+    QCheckBox *eWPBoundaryCB = new QCheckBox("Boundary");
+
+    QSpinBox *sWPInNodeSB = new QSpinBox();
+    sWPInNodeSB->setMinimum(0);
+    sWPInNodeSB->setMaximum(60000);
+
+    QSpinBox *sWPNodeDirSB = new QSpinBox();
+    sWPNodeDirSB->setMinimum(0);
+    sWPNodeDirSB->setMaximum(10);
+
+    QCheckBox *sWPBoundaryCB = new QCheckBox("Boundary");
+
+    gLay->addWidget( eWPInNodeSB   , 0, 1 );
+    gLay->addWidget( eWPNodeDirSB  , 1, 1 );
+    gLay->addWidget( eWPBoundaryCB , 2, 1 );
+    gLay->addWidget( sWPInNodeSB   , 3, 1 );
+    gLay->addWidget( sWPNodeDirSB  , 4, 1 );
+    gLay->addWidget( sWPBoundaryCB , 5, 1 );
+
+
+    QPushButton *okBtn = new QPushButton("Accept");
+    okBtn->setIcon(QIcon(":/images/accept.png"));
+    QPushButton *cancelBtn = new QPushButton("Cancel");
+    cancelBtn->setIcon(QIcon(":/images/delete.png"));
+
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(accept()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(reject()));
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+
+    QHBoxLayout *btnLay = new QHBoxLayout();
+    btnLay->addStretch(1);
+    btnLay->addWidget( okBtn );
+    btnLay->addSpacing(50);
+    btnLay->addWidget( cancelBtn );
+    btnLay->addStretch(1);
+
+    QVBoxLayout *mLay = new QVBoxLayout();
+    mLay->addLayout( gLay );
+    mLay->addLayout( btnLay );
+
+    dialog->setLayout( mLay );
+    dialog->setFixedSize( dialog->sizeHint() );
+
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx >= 0 ){
+
+        eWPInNodeSB->setValue( road->lanes[lIdx]->eWPInNode );
+        eWPNodeDirSB->setValue( road->lanes[lIdx]->eWPNodeDir );
+        if( road->lanes[lIdx]->eWPBoundary == true ){
+            eWPBoundaryCB->setChecked( true );
+        }
+        else{
+            eWPBoundaryCB->setChecked( false );
+        }
+
+        sWPInNodeSB->setValue( road->lanes[lIdx]->sWPInNode );
+        sWPNodeDirSB->setValue( road->lanes[lIdx]->sWPNodeDir );
+        if( road->lanes[lIdx]->sWPBoundary == true ){
+            sWPBoundaryCB->setChecked( true );
+        }
+        else{
+            sWPBoundaryCB->setChecked( false );
+        }
+    }
+
+
+    dialog->exec();
+
+    if( dialog->result() == QDialog::Accepted ){
+
+        if( lIdx >= 0 ){
+
+            road->lanes[lIdx]->eWPInNode   = eWPInNodeSB->value();
+            road->lanes[lIdx]->eWPNodeDir  = eWPNodeDirSB->value();
+            road->lanes[lIdx]->eWPBoundary = eWPBoundaryCB->isChecked();
+
+            road->lanes[lIdx]->sWPInNode   = sWPInNodeSB->value();
+            road->lanes[lIdx]->sWPNodeDir  = sWPNodeDirSB->value();
+            road->lanes[lIdx]->sWPBoundary = sWPBoundaryCB->isChecked();
+
+            ChangeLaneInfo( laneID );
+        }
+    }
+}
+
+void RoadObjectProperty::CheckRelatedNode()
+{
+    qDebug() << "[RoadObjectProperty::CheckRelatedNode]";
+
+    int laneID = laneIDSB->value();
+    road->CheckLaneRelatedNode( laneID );
+}
+
+

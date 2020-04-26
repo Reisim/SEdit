@@ -30,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //-------------------------
     canvas = new GraphicCanvas();
-    canvas->setMinimumSize(800,600);
+    canvas->setMinimumSize(1600,1200);
     canvas->road = road;
     connect( canvas, SIGNAL(UpdateStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)));
 
@@ -94,6 +94,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->showPedestLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneVisibility(bool)) );
     connect( dispCtrl->showPedestLaneLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneLabelVisibility(bool)) );
     connect( dispCtrl->showLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetLabelVisibility(bool)) );
+    connect( dispCtrl->colorMapOfLaneSpeedLimit, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorBySpeedLimitFlag(bool)) );
+    connect( dispCtrl->colorMapOfLaneActualSpeed, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorByActualSpeedFlag(bool)) );
 
     connect( dispCtrl->selectNode, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeSelection(bool)) );
     connect( dispCtrl->selectLane, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneSelection(bool)) );
@@ -112,7 +114,7 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp = new RoadObjectProperty();
     roadObjProp->road = road;
 
-    roadObjProp->move(450,50);
+    roadObjProp->move(50 + dispCtrl->size().width() + 10 ,50);
     roadObjProp->show();
 
     roadObjProp->setDlg  = setDlg;
@@ -125,7 +127,7 @@ MainWindow::MainWindow(QWidget *parent)
     odRoute->propRO = roadObjProp;
     odRoute->setDlg = setDlg;
     odRoute->SetHeaderTrafficVolumeTable();
-    odRoute->move(1010,50);
+    odRoute->move(50 + dispCtrl->size().width() + roadObjProp->size().width() + 10, 50);
     odRoute->hide();
 
     canvas->odRoute = odRoute;
@@ -417,7 +419,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     createObjectPopup->addSeparator();
 
-
     QAction *createPedestLane = new QAction();
     createPedestLane->setText("Pedest Lane");
     connect( createPedestLane, SIGNAL(triggered()),dtManip,SLOT(StartCreatePedestPath()));
@@ -485,6 +486,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect( checkCPOfSelectedLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( checkCPOfSelectedLane );
 
+    QAction *changeSpeedLimitOfSelectedLanes = new QAction();
+    changeSpeedLimitOfSelectedLanes->setText("Change Speed Limit of Selected Lane");
+    connect( changeSpeedLimitOfSelectedLanes, SIGNAL(triggered()),dtManip,SLOT(ChangeSpeedLimitOfSelectedLanes()));
+    connect( changeSpeedLimitOfSelectedLanes, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( changeSpeedLimitOfSelectedLanes );
+
+    QAction *changeActualSpeedOfSelectedLanes = new QAction();
+    changeActualSpeedOfSelectedLanes->setText("Change Actual Speed of Selected Lane");
+    connect( changeActualSpeedOfSelectedLanes, SIGNAL(triggered()),dtManip,SLOT(ChangeActualSpeedOfSelectedLanes()));
+    connect( changeActualSpeedOfSelectedLanes, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( changeActualSpeedOfSelectedLanes );
+
     utilityPopup->addSeparator();
 
     QAction *readLineCSV = new QAction();
@@ -537,6 +550,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect( selectAllLanes, SIGNAL(triggered()),dtManip,SLOT(SelectAllLanes()));
     searchPopup->addAction( selectAllLanes );
 
+    //
+    connect( canvas->createVTS, SIGNAL(triggered()),dtManip,SLOT(CreateTrafficSignalForVehicle()));
+    connect( canvas->createVTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    connect( canvas->createPTS, SIGNAL(triggered()),dtManip,SLOT(CreateTrafficSignalForPedestrian()));
+    connect( canvas->createPTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    connect( canvas->createSL, SIGNAL(triggered()),dtManip,SLOT(CreateStopLineForInDir()));
+    connect( canvas->createSL, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
 }
 
 

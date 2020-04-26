@@ -138,7 +138,7 @@ int RoadInfo::GetNearestStopLine(QVector2D pos, float &dist)
         float dx = nodes[i]->pos.x() - pos.x();
         float dy = nodes[i]->pos.y() - pos.y();
         float D = dx * dx + dy * dy;
-        if( D > 400.0 ){
+        if( D > 40000.0 ){
             continue;
         }
 
@@ -181,6 +181,18 @@ void RoadInfo::CheckAllStopLineCrossLane()
     }
     if( SLList.size() == 0 ){
         return;
+    }
+
+
+    // Clear stopline info of Lanes
+    for(int i=0;i<lanes.size();++i){
+        if( lanes[i]->stopPoints.size() == 0 ){
+            continue;
+        }
+        for(int j=0;j<lanes[i]->stopPoints.size();++j){
+            delete lanes[i]->stopPoints[j];
+        }
+        lanes[i]->stopPoints.clear();
     }
 
 
@@ -327,17 +339,17 @@ void RoadInfo::MoveStopLine(int id, float moveX, float moveY)
 {
     int rNd = indexOfSL(id,-1);
     if( rNd < 0 ){
-        qDebug() << "[MoveStopLine] cannot find node contain TS id = " << id;
+        qDebug() << "[RoadInfo::MoveStopLine] cannot find node contain SL id = " << id;
         return;
     }
     int idx = indexOfSL(id,rNd);
     if( idx < 0 ){
-        qDebug() << "[MoveStopLine] cannot find index of TS id = " << id;
+        qDebug() << "[RoadInfo::MoveStopLine] cannot find index of SL id = " << id;
         return;
     }
     int ndIdx = indexOfNode(rNd);
     if( ndIdx < 0 ){
-        qDebug() << "[MoveStopLine] cannot find index of Node id = " << rNd;
+        qDebug() << "[RoadInfo::MoveStopLine] cannot find index of Node id = " << rNd;
         return;
     }
 
@@ -348,3 +360,53 @@ void RoadInfo::MoveStopLine(int id, float moveX, float moveY)
     nodes[ndIdx]->stopLines[idx]->rightEdge.setY( nodes[ndIdx]->stopLines[idx]->rightEdge.y() + moveY );
 }
 
+
+void RoadInfo::ChangeStopLineLength(int id,float fact)
+{
+    int rNd = indexOfSL(id,-1);
+    if( rNd < 0 ){
+        qDebug() << "[RoadInfo::ChangeStopLineLength] cannot find node contain SL id = " << id;
+        return;
+    }
+    int idx = indexOfSL(id,rNd);
+    if( idx < 0 ){
+        qDebug() << "[RoadInfo::ChangeStopLineLength] cannot find index of SL id = " << id;
+        return;
+    }
+    int ndIdx = indexOfNode(rNd);
+    if( ndIdx < 0 ){
+        qDebug() << "[RoadInfo::ChangeStopLineLength] cannot find index of Node id = " << rNd;
+        return;
+    }
+
+    QVector2D center = (nodes[ndIdx]->stopLines[idx]->leftEdge + nodes[ndIdx]->stopLines[idx]->rightEdge) / 2.0;
+
+    nodes[ndIdx]->stopLines[idx]->leftEdge  = (nodes[ndIdx]->stopLines[idx]->leftEdge - center) * fact + center;
+    nodes[ndIdx]->stopLines[idx]->rightEdge = (nodes[ndIdx]->stopLines[idx]->rightEdge - center) * fact + center;
+}
+
+
+void RoadInfo::DeleteStopLine(int id)
+{
+    int rNd = indexOfSL(id,-1);
+    if( rNd < 0 ){
+        qDebug() << "[RoadInfo::DeleteStopLine] cannot find node contain SL id = " << id;
+        return;
+    }
+    int idx = indexOfSL(id,rNd);
+    if( idx < 0 ){
+        qDebug() << "[RoadInfo::DeleteStopLine] cannot find index of SL id = " << id;
+        return;
+    }
+    int ndIdx = indexOfNode(rNd);
+    if( ndIdx < 0 ){
+        qDebug() << "[RoadInfo::DeleteStopLine] cannot find index of Node id = " << rNd;
+        return;
+    }
+
+    nodes[ndIdx]->stopLines[idx]->crossLanes.clear();
+
+    delete nodes[ndIdx]->stopLines[idx];
+
+    nodes[ndIdx]->stopLines.removeAt(idx);
+}

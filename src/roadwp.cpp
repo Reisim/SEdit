@@ -32,6 +32,10 @@ void RoadInfo::CreateWPData()
 {
     ClearWPs();
 
+    if( lanes.size() == 0 ){
+        return;
+    }
+
     for(int i=0;i<lanes.size();++i){
         lanes[i]->startWPID = -1;
         lanes[i]->endWPID = -1;
@@ -58,7 +62,7 @@ void RoadInfo::CreateWPData()
                 w->pos.setX( lanes[i]->shape.pos.first()->x() );
                 w->pos.setY( lanes[i]->shape.pos.first()->y() );
                 w->pos.setZ( lanes[i]->shape.pos.first()->z() );
-                w->angle = lanes[i]->shape.angles.first();  // [rad]
+                w->angle = atan2( lanes[i]->shape.derivative.first()->y(), lanes[i]->shape.derivative.first()->x() );  // [rad]
 
                 w->relatedLanes.append( lanes[i]->id );
 
@@ -73,6 +77,14 @@ void RoadInfo::CreateWPData()
 
                         lanes[lidx]->endWPID = w->id;
 
+                        lanes[lidx]->shape.pos.last()->setX( lanes[i]->shape.pos.first()->x() );
+                        lanes[lidx]->shape.pos.last()->setY( lanes[i]->shape.pos.first()->y() );
+                        lanes[lidx]->shape.pos.last()->setZ( lanes[i]->shape.pos.first()->z() );
+
+                        lanes[lidx]->shape.derivative.last()->setX( lanes[i]->shape.derivative.first()->x() );
+                        lanes[lidx]->shape.derivative.last()->setY( lanes[i]->shape.derivative.first()->y() );
+
+
                         for(int k=0;k<lanes[lidx]->nextLanes.size();++k){
                             if( lanes[lidx]->nextLanes[k] == lanes[i]->id ){
                                 continue;
@@ -83,6 +95,13 @@ void RoadInfo::CreateWPData()
                             int nlidx = indexOfLane( lanes[lidx]->nextLanes[k] );
                             if(nlidx >= 0){
                                 lanes[nlidx]->startWPID = w->id;
+
+                                lanes[nlidx]->shape.pos.first()->setX( lanes[i]->shape.pos.first()->x() );
+                                lanes[nlidx]->shape.pos.first()->setY( lanes[i]->shape.pos.first()->y() );
+                                lanes[nlidx]->shape.pos.first()->setZ( lanes[i]->shape.pos.first()->z() );
+
+                                lanes[nlidx]->shape.derivative.first()->setX( lanes[i]->shape.derivative.first()->x() );
+                                lanes[nlidx]->shape.derivative.first()->setY( lanes[i]->shape.derivative.first()->y() );
                             }
                         }
                     }
@@ -99,7 +118,7 @@ void RoadInfo::CreateWPData()
                 w->pos.setX( lanes[i]->shape.pos.last()->x() );
                 w->pos.setY( lanes[i]->shape.pos.last()->y() );
                 w->pos.setZ( lanes[i]->shape.pos.last()->z() );
-                w->angle = lanes[i]->shape.angles.last();  // [rad]
+                w->angle = atan2( lanes[i]->shape.derivative.last()->y(), lanes[i]->shape.derivative.last()->x() );  // [rad]
 
                 w->relatedLanes.append( lanes[i]->id );
 
@@ -113,6 +132,14 @@ void RoadInfo::CreateWPData()
                     if(lidx >= 0){
                         lanes[lidx]->startWPID = w->id;
 
+                        lanes[lidx]->shape.pos.first()->setX( lanes[i]->shape.pos.last()->x() );
+                        lanes[lidx]->shape.pos.first()->setY( lanes[i]->shape.pos.last()->y() );
+                        lanes[lidx]->shape.pos.first()->setZ( lanes[i]->shape.pos.last()->z() );
+
+                        lanes[lidx]->shape.derivative.first()->setX( lanes[i]->shape.derivative.last()->x() );
+                        lanes[lidx]->shape.derivative.first()->setY( lanes[i]->shape.derivative.last()->y() );
+
+
                         for(int k=0;k<lanes[lidx]->previousLanes.size();++k){
                             if( lanes[lidx]->previousLanes[k] == lanes[i]->id ){
                                 continue;
@@ -123,6 +150,13 @@ void RoadInfo::CreateWPData()
                             int plidx = indexOfLane( lanes[lidx]->previousLanes[k] );
                             if(plidx >= 0){
                                 lanes[plidx]->endWPID = w->id;
+
+                                lanes[plidx]->shape.pos.last()->setX( lanes[i]->shape.pos.last()->x() );
+                                lanes[plidx]->shape.pos.last()->setY( lanes[i]->shape.pos.last()->y() );
+                                lanes[plidx]->shape.pos.last()->setZ( lanes[i]->shape.pos.last()->z() );
+
+                                lanes[plidx]->shape.derivative.last()->setX( lanes[i]->shape.derivative.last()->x() );
+                                lanes[plidx]->shape.derivative.last()->setY( lanes[i]->shape.derivative.last()->y() );
                             }
                         }
                     }
@@ -166,6 +200,8 @@ void RoadInfo::CreateWPData()
 
         for(int i=0;i<lanes.size();++i){
 
+            CalculateShape( &(lanes[i]->shape) );
+
             if( lanes[i]->sWPInNode >= 0 && lanes[i]->sWPNodeDir >= 0 && lanes[i]->sWPBoundary == true && lanes[i]->sWPInNode != lanes[i]->eWPInNode ){
 
                 int ndIdx = indexOfNode( lanes[i]->sWPInNode );
@@ -207,13 +243,13 @@ void RoadInfo::CreateWPData()
     }
 
 
-//    for(int i=0;i<nodes.size();++i){
+    for(int i=0;i<nodes.size();++i){
 //        qDebug() << "Node " << nodes[i]->id << " :";
-//        for(int j=0;j<nodes[i]->legInfo.size();++j){
+        for(int j=0;j<nodes[i]->legInfo.size();++j){
 //            qDebug() << "  Leg " << nodes[i]->legInfo[j]->legID << " :";
 
-//            nodes[i]->legInfo[j]->nLaneIn  = nodes[i]->legInfo[j]->inWPs.size();
-//            nodes[i]->legInfo[j]->nLaneOut = nodes[i]->legInfo[j]->outWPs.size();
+            nodes[i]->legInfo[j]->nLaneIn  = nodes[i]->legInfo[j]->inWPs.size();
+            nodes[i]->legInfo[j]->nLaneOut = nodes[i]->legInfo[j]->outWPs.size();
 
 //            qDebug() << "    nLaneIn: " << nodes[i]->legInfo[j]->nLaneIn;
 //            for(int k=0;k<nodes[i]->legInfo[j]->inWPs.size();++k){
@@ -223,8 +259,8 @@ void RoadInfo::CreateWPData()
 //            for(int k=0;k<nodes[i]->legInfo[j]->outWPs.size();++k){
 //                qDebug() << "         wp " << nodes[i]->legInfo[j]->outWPs[k];
 //            }
-//        }
-//    }
+        }
+    }
 }
 
 
