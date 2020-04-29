@@ -85,12 +85,22 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
     infoStr += QString("[Shape]\n");
     infoStr += QString("  Length: %1 [m]\n").arg( road->lanes[lIdx]->shape.pathLength);
 
+    infoStr += QString("  Curvature:\n");
+
     float maxCurv = 0.0;
+    float meanCurv = 0.0;
     for(int i=0;i<road->lanes[lIdx]->shape.curvature.size();++i){
-        if( fabs(road->lanes[lIdx]->shape.curvature[i]) > maxCurv ){
+
+        infoStr += QString("  [%1] %2\n").arg(i).arg( road->lanes[lIdx]->shape.curvature[i] );
+
+        if( fabs(road->lanes[lIdx]->shape.curvature[i]) < maxCurv ){
             maxCurv = road->lanes[lIdx]->shape.curvature[i];
         }
+
+        meanCurv += road->lanes[lIdx]->shape.curvature[i];
     }
+    meanCurv /= road->lanes[lIdx]->shape.curvature.size();
+    infoStr += QString("  Mean Curvature: %1 [1/m]\n").arg( meanCurv );
     infoStr += QString("  Max Curvature: %1 [1/m]\n").arg( maxCurv );
     if( fabs(maxCurv) > 0.0010 ){
         infoStr += QString("  Max Radius: %1 [m]\n").arg( 1.0/fabs(maxCurv) );

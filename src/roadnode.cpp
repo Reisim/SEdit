@@ -664,7 +664,13 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
 
                     QList<struct DurationPair> myMoveTime;
 
-                    int ST = nodes[i]->trafficSignals[myTS]->startOffset;
+                    int Duration = 0;
+                    for(int l=0;l<nodes[i]->trafficSignals[myTS]->sigPattern.size();++l){
+                        Duration += nodes[i]->trafficSignals[myTS]->sigPattern[l]->duration;
+                    }
+
+                    int ST = (Duration - nodes[i]->trafficSignals[myTS]->startOffset) % Duration;
+
                     for(int k=0;k<nodes[i]->trafficSignals[myTS]->sigPattern.size();++k){
                         if( (nodes[i]->trafficSignals[myTS]->sigPattern[k]->signal & 0x01) == 0x01 ||
                                 (nodes[i]->trafficSignals[myTS]->sigPattern[k]->signal & 0x10) == 0x10  ){
@@ -678,12 +684,12 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
                         }
                         ST += nodes[i]->trafficSignals[myTS]->sigPattern[k]->duration;
                     }
-                    ST -= nodes[i]->trafficSignals[myTS]->startOffset;
+
                     for(int k=0;k<myMoveTime.size();++k){
-                        myMoveTime[k].startTime = myMoveTime[k].startTime % ST;
-                        myMoveTime[k].endTime   = myMoveTime[k].endTime % ST;
+                        myMoveTime[k].startTime = myMoveTime[k].startTime % Duration;
+                        myMoveTime[k].endTime   = myMoveTime[k].endTime % Duration;
                         if( myMoveTime[k].endTime < myMoveTime[k].startTime ){
-                            myMoveTime[k].startTime -= ST;
+                            myMoveTime[k].startTime -= Duration;
                         }
                     }
 
@@ -715,7 +721,13 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
                         if( cTS >= 0 ){
                             QList<struct DurationPair> cMoveTime;
 
-                            ST = nodes[i]->trafficSignals[cTS]->startOffset;
+                            int Duration = 0;
+                            for(int l=0;l<nodes[i]->trafficSignals[cTS]->sigPattern.size();++l){
+                                Duration += nodes[i]->trafficSignals[cTS]->sigPattern[l]->duration;
+                            }
+
+                            ST = (Duration - nodes[i]->trafficSignals[cTS]->startOffset) % Duration;
+
                             for(int l=0;l<nodes[i]->trafficSignals[cTS]->sigPattern.size();++l){
                                 if( (nodes[i]->trafficSignals[cTS]->sigPattern[l]->signal & 0x01) == 0x01 ||
                                         (nodes[i]->trafficSignals[cTS]->sigPattern[l]->signal & 0x10) == 0x10  ){
@@ -729,12 +741,12 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
                                 }
                                 ST += nodes[i]->trafficSignals[cTS]->sigPattern[l]->duration;
                             }
-                            ST -= nodes[i]->trafficSignals[cTS]->startOffset;
+
                             for(int l=0;l<cMoveTime.size();++l){
-                                cMoveTime[l].startTime = cMoveTime[l].startTime % ST;
-                                cMoveTime[l].endTime   = cMoveTime[l].endTime % ST;
+                                cMoveTime[l].startTime = cMoveTime[l].startTime % Duration;
+                                cMoveTime[l].endTime   = cMoveTime[l].endTime % Duration;
                                 if( cMoveTime[l].endTime < cMoveTime[l].startTime ){
-                                    cMoveTime[l].startTime -= ST;
+                                    cMoveTime[l].startTime -= Duration;
                                 }
                             }
 

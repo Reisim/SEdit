@@ -109,6 +109,12 @@ void ResimFilesOutput::SelectOutputFilename()
     QString fileNameWitoutExt = fnDiv.last().trimmed().remove(".rc.txt");
 
     outputFilename->setText( fileNameWitoutExt );
+
+    QString folderName = fileName.remove( fnDiv.last() );
+    if( outputFolderStr->text().isEmpty() == true ||  outputFolderStr->text().contains("Not selected.") == true ){
+        outputFolderStr->setText( folderName );
+    }
+
     update();
 }
 
