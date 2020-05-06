@@ -19,6 +19,9 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
     LeftRight = new QComboBox();
     LeftRight->setFixedWidth(200);
 
+    useRelativePath = new QCheckBox();
+
+
     QStringList trafficDirectionsStr;
     trafficDirectionsStr << "Left-Hand" << "Right-Hand";
     LeftRight->addItems( trafficDirectionsStr );
@@ -30,6 +33,10 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
 
     tableLayout->addWidget( new QLabel("Traffic Direction"), row, 0 );
     tableLayout->addWidget( LeftRight, row, 1 );
+    row++;
+
+    tableLayout->addWidget( new QLabel("Use Relative Path"), row, 0 );
+    tableLayout->addWidget( useRelativePath, row, 1 );
     row++;
 
     vehicleKindTable = new QTableWidget();
@@ -152,6 +159,15 @@ void SettingDialog::LoadSetting()
             int val = QString(divLine[1]).trimmed().toInt();
             LeftRight->setCurrentIndex( val );
         }
+        else if( tagStr == QString("Use Relative Path") ){
+            int val = QString(divLine[1]).trimmed().toInt();
+            if( val == 1 ){
+                useRelativePath->setChecked( true );
+            }
+            else{
+                useRelativePath->setChecked( false );
+            }
+        }
         else if( tagStr == QString("Vehicle Kind") ){
 
             QStringList divVal = QString(divLine[1]).trimmed().split(",");
@@ -209,6 +225,8 @@ void SettingDialog::SaveSetting()
     out << "# S-Edit Setting File\n";
     out << "\n";
     out << "Traffic Direction ; " << LeftRight->currentIndex() << "\n";
+    out << "\n";
+    out << "Use Relative Path ; " << (useRelativePath->isChecked() == true ? 1 : 0) << "\n";
     out << "\n";
 
     for(int i=0;i<vehicleKindTable->rowCount();++i){

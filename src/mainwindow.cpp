@@ -109,6 +109,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     road->LeftOrRight = setDlg->GetCurrentLeftRightIndex();
+    road->useRelativePath = setDlg->GetUseRelativePath();
 
     //-------------------------
     roadObjProp = new RoadObjectProperty();
@@ -737,6 +738,8 @@ bool MainWindow::SaveFile()
         SaveAsFile();
         return false;
     }
+
+    road->useRelativePath = setDlg->GetUseRelativePath();
 
     if( road->SaveRoadData( currentSEditFilename ) == true ){
 

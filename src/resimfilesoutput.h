@@ -27,6 +27,7 @@
 #include <QSpinBox>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QCheckBox>
 
 #include "roadinfo.h"
 
@@ -56,6 +57,7 @@ private:
     QPushButton *selectFilename;
     QPushButton *selectFolder;
     QSpinBox *maxAgent;
+    QCheckBox *onlyFilename;
 
 };
 

@@ -36,6 +36,7 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
     maxAgent->setMaximum(10000);
     maxAgent->setValue(1000);
 
+    onlyFilename = new QCheckBox();
 
     QGridLayout *gridLayout = new QGridLayout();
 
@@ -49,6 +50,9 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
 
     gridLayout->addWidget( new QLabel("Max Agent Number : "), 2, 0 );
     gridLayout->addWidget( maxAgent, 2, 1 );
+
+    gridLayout->addWidget( new QLabel("Only File Name : "), 3, 0 );
+    gridLayout->addWidget( onlyFilename, 3, 1 );
 
 
     outputData = new QPushButton("Output");
@@ -156,9 +160,6 @@ void ResimFilesOutput::OutputFiles()
     // Set Lane List
     road->SetAllLaneLists();
 
-    // Set Route Lane List
-    road->SetAllRouteLaneList();
-
     // Set Turn Direction Info
     {
         QList<int> nodeList;
@@ -168,10 +169,12 @@ void ResimFilesOutput::OutputFiles()
         road->SetTurnDirectionInfo(nodeList);
     }
 
-
     // Find PedestSignal
     road->FindPedestSignalFroCrossWalk();
 
+
+    // Set Route Lane List
+    road->SetAllRouteLaneList();
 
 
 
@@ -194,7 +197,7 @@ void ResimFilesOutput::OutputFiles()
     }
 
 
-    bool ret3 = road->outputResimScenarioFiles( foldername, filename, maxAgent->value() );
+    bool ret3 = road->outputResimScenarioFiles( foldername, filename, maxAgent->value(), onlyFilename->isChecked() );
     qDebug() << "[outputResimScenarioFiles] ret = " << ret3;
 
     if( ret3 == false ){

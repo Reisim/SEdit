@@ -69,6 +69,7 @@ private:
     QLineEdit *resimLogFileName;
     QCheckBox *resimLogTimeStamp;
     QSpinBox *logOutputInterval;
+    QCheckBox *onlyFilename;
 };
 
 #endif // CONFIGFILEMANAGER_H

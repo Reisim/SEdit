@@ -191,9 +191,56 @@ bool RoadInfo::SaveRoadData(QString filename)
     }
     out << "\n";
 
+
+    QString tmpfilename = filename;
+
+    QStringList divFileName = tmpfilename.replace("\\","/").split("/");
+    QString pureFileName = QString(divFileName.last());
+    QString pathToThisFolder = tmpfilename.remove( pureFileName );
+
+    QStringList divPathToThisPath = pathToThisFolder.split("/");
+    int n1 = divPathToThisPath.size() - 1;
+
     for(int i=0;i<mapImageMng->baseMapImages.size();++i){
+
+        QString pathToImage = mapImageMng->baseMapImages[i]->path;
+        if( pathToImage.endsWith("/") == false ){
+            pathToImage += QString("/");
+        }
+
+        QString reconstStr = pathToImage;
+        if( useRelativePath == true ){
+
+            QStringList divPathToImage = pathToImage.replace("\\","/").split("/");
+            int n2 = divPathToImage.size() - 1;
+
+            int N = ( n1 < n2 ? n1 : n2 );
+            int nb = 0;
+            for(int j=0;j<N;++j){
+                nb = j;
+                if( divPathToThisPath.at(j) != divPathToImage.at(j) ){
+                    break;
+                }
+            }
+            nb++;
+
+            if( nb > 1 ){
+                int na1 = n1 - nb;
+                int na2 = n2 - nb;
+                reconstStr = QString();
+                for(int j=0;j<na1;++j){
+                    reconstStr += QString("../");
+                }
+                for(int j=nb;j<n2;++j){
+                    reconstStr += divPathToImage.at(j) + QString("/");
+                }
+            }
+        }
+        pathToImage = reconstStr;
+
+
         out << "BASE MAP : "
-            << mapImageMng->baseMapImages[i]->path << " , "
+            << pathToImage << " , "
             << mapImageMng->baseMapImages[i]->filename << " , "
             << mapImageMng->baseMapImages[i]->x << " , "
             << mapImageMng->baseMapImages[i]->y << " , "
@@ -237,6 +284,15 @@ bool RoadInfo::LoadRoadData(QString filename)
         qDebug() << "[LoadRoadData] cannot open file: "<< filename << " to read data.";
         return false;
     }
+
+
+    QString tmpfilename = filename;
+
+    QStringList divFileName = tmpfilename.replace("\\","/").split("/");
+    QString pureFileName = QString(divFileName.last());
+    QString pathToThisFolder = tmpfilename.remove( pureFileName );
+
+
 
     QTextStream in(&file);
 
@@ -776,10 +832,20 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             QStringList divDataStr = dataStr.split(",");
 
-            QString imagefilename = QString( divDataStr[0] ).trimmed();
-            if( imagefilename.endsWith("/") == false ){
+            QString imagefilename = QString( divDataStr[0] ).trimmed().replace("\\","/");
+            if( imagefilename.isEmpty() == false && imagefilename.endsWith("/") == false ){
                 imagefilename += QString("/");
             }
+
+            // Check if the path is absolute or relative
+            QString reconstFilename = imagefilename;
+            if( imagefilename.contains(":") == false ){
+
+                reconstFilename = pathToThisFolder + imagefilename;
+
+            }
+            imagefilename = reconstFilename;
+
             imagefilename += QString( divDataStr[1] ).trimmed();
 
             float x = QString( divDataStr[2] ).trimmed().toFloat();
@@ -1409,10 +1475,9 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
 
     out << "#-----------------------------------------------------\n";
-    out << "# Route Lanes ;  (node_1 -> node_2 -> ... -> node_M ) | \n";
-    out << "#            (lane_11 <- lane_12 <- ... <- lane_1N )    \n";
-    out << "#                    / ... /                            \n";
-    out << "#            (lane_k1 <- lane_k2 <- ... <- lane_kN )    \n";
+    out << "# Route Multi-Lanes ; 1, node_1 -> node_2 -> ... -> node_M \n";
+    out << "# Route Multi-Lanes ; 2, List No, Start, Goal, sIndex, gIndex \n";
+    out << "# Route Multi-Lanes ; 3, List No, lane1 , lane2 , ... , lane_n \n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<nodes.size();++i){
 
@@ -1428,7 +1493,7 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
             for(int k=0;k<nodes[i]->odData[j]->route.size();++k){
 
-                out << "Route Lanes ; ";
+                out << "Route Multi-Lanes ; 1 , ";
 
                 for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
 
@@ -1437,27 +1502,33 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                     if( l < nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
                         out << " , ";
                     }
-                    else{
-                        out << " | ";
-                    }
                 }
 
-                for(int l=0;l<nodes[i]->odData[j]->route[k]->laneList.size();++l){
+                out << "\n";
 
-                    for(int m=0;m<nodes[i]->odData[j]->route[k]->laneList[l].size();++m){
+                for(int l=0;l<nodes[i]->odData[j]->route[k]->routeLaneLists.size();++l){
 
-                        out << nodes[i]->odData[j]->route[k]->laneList[l][m];
+                    out << "Route Multi-Lanes ; 2 , "
+                        << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->startNode << " , "
+                        << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->goalNode << " , "
+                        << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->sIndexInNodeList << " , "
+                        << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->gIndexInNodeList << "\n";
 
-                        if( m < nodes[i]->odData[j]->route[k]->laneList[l].size() - 1 ){
-                            out << " , ";
-                        }
-                        else{
-                            if( l < nodes[i]->odData[j]->route[k]->laneList.size() - 1 ){
-                                out << " / ";
+                    for(int m=0;m<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList.size();++m){
+
+                        out << "Route Multi-Lanes ; 3 , ";
+
+                        for(int n=0;n<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size();++n){
+
+                            out << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m][n];
+
+                            if( n < nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size() - 1 ){
+                                out << " , ";
                             }
 
                         }
 
+                        out << "\n";
                     }
                 }
 
@@ -1623,7 +1694,7 @@ bool RoadInfo::outputResimTrafficSignalFiles(QString outputfoldername, QString o
 }
 
 
-bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString outputfilename,int maxAgent)
+bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString outputfilename,int maxAgent, bool onlyFilename)
 {
     if( outputfoldername.endsWith("/") == false ){
         outputfoldername += QString("/");
@@ -1643,9 +1714,20 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
     out << "#                 Re:sim Scenario File  \n";
     out << "#-----------------------------------------------------\n";
     out << "\n";
-    out << "Road Data File ; " << (outputfoldername + outputfilename + QString(".rr.txt")) << "\n";
+    if( onlyFilename == true ){
+        out << "Road Data File ; " << (outputfilename + QString(".rr.txt")) << "\n";
+    }
+    else{
+        out << "Road Data File ; " << (outputfoldername + outputfilename + QString(".rr.txt")) << "\n";
+    }
+
     out << "\n";
-    out << "Signal Data File ; " << (outputfoldername + outputfilename + QString(".ts.txt")) << "\n";
+    if( onlyFilename == true ){
+        out << "Signal Data File ; " << (outputfilename + QString(".ts.txt")) << "\n";
+    }
+    else{
+        out << "Signal Data File ; " << (outputfoldername + outputfilename + QString(".ts.txt")) << "\n";
+    }
     out << "\n";
     out << "Max Number of Agent ; " << maxAgent << "\n";
     out << "\n";

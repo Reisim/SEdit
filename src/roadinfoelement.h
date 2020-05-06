@@ -242,12 +242,24 @@ struct TrafficVolumeData
 };
 
 
+struct RouteLaneData
+{
+    int startNode;
+    int goalNode;
+    QList<QList<int>> laneList;
+    int sIndexInNodeList;
+    int gIndexInNodeList;
+};
+
+
 struct RouteData
 {
     float selProb;
     QList<RouteElem*> nodeList;
     QList<struct TrafficVolumeData*> volume;
     QList<QList<int>> laneList;
+
+    QList<struct RouteLaneData*> routeLaneLists;
 };
 
 

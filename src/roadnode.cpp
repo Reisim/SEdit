@@ -592,6 +592,7 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
 {
     qDebug() << "[RoadInfo::SetTurnDirectionInfo]";
     if( nodeList.size() == 0 ){
+        qDebug() << " no nodeList supplied.";
         return;
     }
 

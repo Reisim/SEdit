@@ -2219,6 +2219,8 @@ int DataManipulator::CreateNode_4x1x1_TS()
         }
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2275,6 +2277,8 @@ int DataManipulator::CreateNode_3x1x1_TS()
             }
         }
     }
+
+    road->nodes[ndIdx]->hasTS = true;
 
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
@@ -2335,6 +2339,8 @@ int DataManipulator::CreateNode_3x2x1_TS()
         }
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2394,6 +2400,8 @@ int DataManipulator::CreateNode_3x2x1_rm_TS()
         }
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2450,6 +2458,8 @@ int DataManipulator::CreateNode_4x2x1_TS()
             }
         }
     }
+
+    road->nodes[ndIdx]->hasTS = true;
 
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
@@ -2509,6 +2519,8 @@ int DataManipulator::CreateNode_4x2x2_TS()
         }
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2566,6 +2578,8 @@ int DataManipulator::CreateNode_4x1x1_r_TS()
         }        
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2622,6 +2636,8 @@ int DataManipulator::CreateNode_3x1x1_r_TS()
             }
         }
     }
+
+    road->nodes[ndIdx]->hasTS = true;
 
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
@@ -2681,6 +2697,8 @@ int DataManipulator::CreateNode_3x2x1_r_TS()
         }
     }
 
+    road->nodes[ndIdx]->hasTS = true;
+
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
         nodeList.append( ndIdx );
@@ -2738,6 +2756,8 @@ int DataManipulator::CreateNode_4x2x1_r_TS()
             }
         }
     }
+
+    road->nodes[ndIdx]->hasTS = true;
 
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
@@ -2797,6 +2817,8 @@ int DataManipulator::CreateNode_4x2x2_r_TS()
             }
         }
     }
+
+    road->nodes[ndIdx]->hasTS = true;
 
     if( road->updateCPEveryOperation == true ){
         QList<int> nodeList;
@@ -3846,7 +3868,7 @@ void DataManipulator::CreateNode_Dialog()
 
             if( isTSIntersect->isChecked() == true ){
 
-
+                road->nodes[ndIdx]->hasTS = true;
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
@@ -3947,7 +3969,7 @@ void DataManipulator::CreateNode_Dialog()
 
             if( isTSIntersect->isChecked() == true ){
 
-
+                road->nodes[ndIdx]->hasTS = true;
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
@@ -4049,7 +4071,7 @@ void DataManipulator::CreateNode_Dialog()
 
             if( isTSIntersect->isChecked() == true ){
 
-
+                road->nodes[ndIdx]->hasTS = true;
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 
@@ -4150,7 +4172,7 @@ void DataManipulator::CreateNode_Dialog()
 
             if( isTSIntersect->isChecked() == true ){
 
-
+                road->nodes[ndIdx]->hasTS = true;
 
                 for(int i=0;i<road->nodes[ndIdx]->legInfo.size();++i){
 

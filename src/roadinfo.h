@@ -158,11 +158,13 @@ public:
     bool LoadRoadData(QString filename);
     QString GetCurrentRoadDataFileName(){ return roadDataFileName; }
 
-    bool outputResimScenarioFiles( QString outputfolder, QString outputfilename, int maxAgent );
+    bool outputResimScenarioFiles( QString outputfolder, QString outputfilename, int maxAgent, bool onlyFilename );
     bool outputResimRoadFiles( QString outputfolder, QString outputfilename );
     bool outputResimTrafficSignalFiles( QString outputfolder, QString outputfilename );
 
     int LeftOrRight;
+    bool useRelativePath;
+
     QList<NodeInfo*> nodes;
     QList<LaneInfo*> lanes;
     QList<WayPoint*> wps;

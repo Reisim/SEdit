@@ -735,9 +735,14 @@ void GraphicCanvas::paintGL()
                                 continue;
                             }
                             for(int m=0;m<road->nodes[ndIdx]->odData[n]->route.size();++m){
-                                for(int k=0;k<road->nodes[ndIdx]->odData[n]->route[m]->laneList.size();++k){
-                                    if( road->nodes[ndIdx]->odData[n]->route[m]->laneList[k].indexOf(road->lanes[i]->id) >= 0 ){
-                                        isSelected = true;
+                                for(int k=0;k<road->nodes[ndIdx]->odData[n]->route[m]->routeLaneLists.size();++k){
+                                    for(int l=0;l<road->nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[k]->laneList.size();++l){
+                                        if( road->nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[k]->laneList[l].indexOf(road->lanes[i]->id) >= 0 ){
+                                            isSelected = true;
+                                            break;
+                                        }
+                                    }
+                                    if( isSelected == true ){
                                         break;
                                     }
                                 }
