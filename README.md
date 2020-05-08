@@ -22,6 +22,13 @@ For Windows 10, you can find these libraries at libs folders.
 
 The shaders and true-type font should be placed in the same folder of sedit.exe.
 
+## Manuals
+
+To be prepared.
+
+## Binary for windows
+
+You can get complete set of binary files of SEdit [here](https://github.com/Reisim/Reisim/tree/master/bin_win10).
 
 ## Licence
 
