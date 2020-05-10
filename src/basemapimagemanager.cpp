@@ -317,6 +317,15 @@ void BaseMapImageManager::EditMapImageProperty()
 
         emit UpdateGraphic();
     }
+    else{
+
+        baseMapImages[selRow]->x      = mapImageList->item( selRow, 2 )->text().toFloat();
+        baseMapImages[selRow]->y      = mapImageList->item( selRow, 3 )->text().toFloat();
+        baseMapImages[selRow]->scale  = mapImageList->item( selRow, 4 )->text().toFloat();
+        baseMapImages[selRow]->rotate = mapImageList->item( selRow, 5 )->text().toFloat();
+
+        emit UpdateGraphic();
+    }
 }
 
 

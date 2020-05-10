@@ -610,6 +610,7 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
     QProgressDialog *pd = new QProgressDialog("SetTurnDirectionInfo", "Cancel", 0, nodeList.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);

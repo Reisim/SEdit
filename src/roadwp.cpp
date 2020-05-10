@@ -47,6 +47,7 @@ void RoadInfo::CreateWPData()
         QProgressDialog *pd = new QProgressDialog("CreateWPData - 1/2", "Cancel", 0, lanes.size(), 0);
         pd->setWindowModality(Qt::WindowModal);
         pd->setAttribute( Qt::WA_DeleteOnClose );
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);
@@ -193,6 +194,7 @@ void RoadInfo::CreateWPData()
         QProgressDialog *pd = new QProgressDialog("CreateWPData - 2/2", "Cancel", 0, lanes.size(), 0);
         pd->setWindowModality(Qt::WindowModal);
         pd->setAttribute( Qt::WA_DeleteOnClose );
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);

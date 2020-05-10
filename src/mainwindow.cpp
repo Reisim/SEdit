@@ -105,6 +105,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     dispCtrl->road = road;
     dispCtrl->move(50,50);
+    dispCtrl->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     dispCtrl->show();
 
 
@@ -116,6 +117,7 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp->road = road;
 
     roadObjProp->move(50 + dispCtrl->size().width() + 10 ,50);
+    roadObjProp->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     roadObjProp->show();
 
     roadObjProp->setDlg  = setDlg;

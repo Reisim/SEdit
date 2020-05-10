@@ -103,6 +103,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
     if( numMap > 0 ){
         QProgressDialog *pd = new QProgressDialog("Loading Image ...", "Cancel", 0, numMap, 0);
         pd->setWindowModality(Qt::WindowModal);
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);
@@ -966,6 +967,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
     {
         QProgressDialog *pd = new QProgressDialog("Creating Lanes ...", "Cancel", 0, tmpPathFromWP.size(), 0);
         pd->setWindowModality(Qt::WindowModal);
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);
@@ -1035,6 +1037,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
     {
         QProgressDialog *pd = new QProgressDialog("Creating StopLines ...", "Cancel", 0, tmpStopLineType.size(), 0);
         pd->setWindowModality(Qt::WindowModal);
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);
@@ -1085,6 +1088,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
     {
         QProgressDialog *pd = new QProgressDialog("Creating Traffic Signals ...", "Cancel", 0, tmpTSIDs.size(), 0);
         pd->setWindowModality(Qt::WindowModal);
+        pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pd->show();
 
         pd->setValue(0);

@@ -183,9 +183,13 @@ int DataManipulator::CreateNode_4(float x,float y,QList<int> inlanes, QList<int>
     //
     // Create Terminal nodes around center node
     {
-        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
-        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
-        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+//        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
+//        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
+//        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+
+        float distToTN = 50.0;
+        float turnLaneLength = 15.0;
+        float shiftLength = 10.0;
 
         for(int i=0;i<4;++i){
 
@@ -532,9 +536,13 @@ int DataManipulator::CreateNode_3(float x,float y,QList<int> inlanes, QList<int>
     //
     // Create Terminal nodes around center node
     {
-        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
-        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
-        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+//        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
+//        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
+//        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+
+        float distToTN = 50.0;
+        float turnLaneLength = 15.0;
+        float shiftLength = 10.0;
 
         for(int i=0;i<3;++i){
 
@@ -904,9 +912,13 @@ int DataManipulator::CreateNode_5(float x,float y,QList<int> inlanes, QList<int>
     //
     // Create Terminal nodes around center node
     {
-        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
-        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
-        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+//        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
+//        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
+//        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+
+        float distToTN = 50.0;
+        float turnLaneLength = 15.0;
+        float shiftLength = 10.0;
 
         for(int i=0;i<5;++i){
 
@@ -1287,9 +1299,13 @@ int DataManipulator::CreateNode_6(float x,float y,QList<int> inlanes, QList<int>
     //
     // Create Terminal nodes around center node
     {
-        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
-        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
-        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+//        float distToTN = 50.0 + (maxLaneNum -1) * 50.0;
+//        float turnLaneLength = 20.0 + (maxLaneNum -2) * 15.0;
+//        float shiftLength = 15.0 + (maxLaneNum -2) * 3.0;
+
+        float distToTN = 50.0;
+        float turnLaneLength = 15.0;
+        float shiftLength = 10.0;
 
         for(int i=0;i<6;++i){
 

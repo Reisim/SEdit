@@ -937,6 +937,7 @@ bool RoadInfo::CheckLaneCrossPoints()
     QProgressDialog *pd = new QProgressDialog("CheckLaneCrossPoints", "Cancel", 0, lanes.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);
@@ -1078,6 +1079,7 @@ void RoadInfo::CheckLaneCrossPointsInsideNode(QList<int> nodeList)
     QProgressDialog *pd = new QProgressDialog("CheckLaneCrossPointsInsideNode", "Cancel", 0, laneList.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);
@@ -1538,6 +1540,7 @@ bool RoadInfo::CheckLaneConnectionFull()
     QProgressDialog *pd = new QProgressDialog("CheckLaneConnection", "Cancel", 0, lanes.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);

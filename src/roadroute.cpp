@@ -255,6 +255,7 @@ void RoadInfo::SetAllRouteLaneList()
     QProgressDialog *pd = new QProgressDialog("SetAllRouteLaneList", "Cancel", 0, nThread, 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);
@@ -335,6 +336,7 @@ void RoadInfo::SetAllLaneLists()
     QProgressDialog *pd = new QProgressDialog("SetAllLaneLists", "Cancel", 0, nodes.size(), 0);
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);
@@ -776,8 +778,14 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
 
 
         bool reachOrigin = false;
-
+        int countLoop = 0 ;
         while( reachOrigin == false ){
+
+            countLoop++;
+            if( countLoop >= 100 ){
+                qDebug() << "Can not reach to Origin Node. Check Route.";
+                break;
+            }
 
             int tmpDestNodeId = nodes[ndIdx]->odData[n]->route[m]->nodeList.at( currentDestNodeIndex )->node;
             int destNdIdx = indexOfNode( tmpDestNodeId );

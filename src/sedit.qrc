@@ -16,5 +16,6 @@
         <file>images/delete.png</file>
         <file>images/edit.png</file>
         <file>images/refresh.png</file>
+        <file>images/SEdit-icon.png</file>
     </qresource>
 </RCC>

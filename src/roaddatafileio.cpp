@@ -317,6 +317,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
     QProgressDialog *pd = new QProgressDialog("Loading Data ...", "Cancel", 0, line_count, 0);
     pd->setWindowModality(Qt::WindowModal);
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);
@@ -977,6 +978,7 @@ bool RoadInfo::LoadRoadData(QString filename)
     if( imLoadData.size() > 0 ){
 
         QProgressDialog *pdimg = new QProgressDialog("Loading Image ...", "Cancel", 0, imLoadData.size(), 0);
+        pdimg->setWindowIcon(QIcon(":images/SEdit-icon.png"));
         pdimg->setWindowModality(Qt::WindowModal);
         pdimg->show();
 

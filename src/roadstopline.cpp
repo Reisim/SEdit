@@ -225,6 +225,7 @@ void RoadInfo::CheckAllStopLineCrossLane()
 
     pd->setWindowModality(Qt::WindowModal);
     pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     pd->show();
 
     pd->setValue(0);

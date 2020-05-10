@@ -1137,6 +1137,19 @@ void GraphicCanvas::paintGL()
                 }
             }
 
+            bool isDestNode = false;
+            if( selectedObj.selObjKind.size() > 0 && (selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE || selectedObj.selObjKind[0] == _SEL_OBJ::SEL_NODE_ROUTE_PICK) ){
+
+                int ndIdx = road->indexOfNode( selectedObj.selObjID[0] );
+                if( ndIdx >= 0 && road->nodes[ndIdx]->isOriginNode == true && road->nodes[ndIdx]->odData.size() > 0 ){
+
+                    int destNode = odRoute->GetCurrentDestinationNode();
+                    if( destNode == road->nodes[i]->id ){
+                        isDestNode = true;
+                    }
+                }
+            }
+
             if( circlePoly.isValid == true ){
 
                 circlePoly.array.bind();
@@ -1160,7 +1173,14 @@ void GraphicCanvas::paintGL()
                 else{
                     glLineWidth(3.0);
                 }
-                glDrawArrays(GL_LINE_LOOP, 0, NODE_CIRCLE_DIV );
+
+                if( isDestNode == true ){
+                    glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+                }
+                else{
+                    glDrawArrays(GL_LINE_LOOP, 0, NODE_CIRCLE_DIV );
+                }
+
                 glLineWidth(1.0);
 
                 circlePoly.array.release();
@@ -1235,14 +1255,19 @@ void GraphicCanvas::paintGL()
                     model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
 
                     program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
-
-                    program->setUniformValue( u_useTex, 0 );
                     program->setUniformValue( u_isText, 0 );
 
-                    glLineWidth(1.0);
                     if( isSelected == true && numberKeyPressed > 0 && numberKeyPressed == j + 1 ){
-                        glLineWidth(4.0);
+                        glLineWidth(6.0);
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.8, 0.1, 0.1, 1.0 ) );
                     }
+                    else{
+                        glLineWidth(1.0);
+                        program->setUniformValue( u_useTex, 0 );
+                    }
+
                     glDrawArrays(GL_LINES, 0, 2 );
                     glLineWidth(1.0);
                 }
@@ -1418,7 +1443,7 @@ void GraphicCanvas::paintGL()
 
                         glLineWidth(4.0);
                         if( isSLSelected == true ){
-                            glLineWidth(8.0);
+                            glLineWidth(12.0);
                         }
                         glDrawArrays(GL_LINES, 0, 2 );
                         glLineWidth(1.0);
@@ -1637,7 +1662,7 @@ void GraphicCanvas::paintGL()
 
                     program->setUniformValue( u_isText, 0 );
                     program->setUniformValue( u_useTex, 2 );
-                    glLineWidth( 3 );
+                    glLineWidth( 6 );
 
                     // check connection
                     bool isValidConnect = false;
@@ -1674,7 +1699,7 @@ void GraphicCanvas::paintGL()
                     float L = sqrt(dx * dx + dy * dy);
                     float angle = atan2( dy, dx );
 
-                    model2World.setTranslation( QVector3D( x1, y1, 0.25 ) );
+                    model2World.setTranslation( QVector3D( x1, y1, 0.75 ) );
                     model2World.setScale( QVector3D( L, 1.0, 1.0 ) );
                     model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
 

@@ -12,6 +12,8 @@
 
 
 #include "graphiccanvas.h"
+#include <QMessageBox>
+
 
 void GraphicCanvas::mousePressEvent(QMouseEvent *e)
 {
@@ -132,22 +134,29 @@ void GraphicCanvas::mouseReleaseEvent(QMouseEvent *e)
         }
 
 
+        bool shouldUpdateStopLineCross = false;
         for(int i=0;i<selectedObj.selObjKind.size();++i){
             if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE ){
                 int nIdx = road->indexOfNode( selectedObj.selObjID[i] );
                 if( nIdx >= 0 ){
-                    for(int j=0;j<road->nodes[nIdx]->stopLines.size();++j){
-                        int slId = road->nodes[nIdx]->stopLines[j]->id;
-                        road->CheckStopLineCrossLanes( slId );
+                    if( road->nodes[nIdx]->stopLines.size() > 0 ){
+                        shouldUpdateStopLineCross = true;
                     }
                 }
             }
         }
 
-        for(int i=0;i<selectedObj.selObjKind.size();++i){
-            if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_STOPLINE ){
-                road->CheckStopLineCrossLanes( selectedObj.selObjID[i] );
+        if( shouldUpdateStopLineCross == false ){
+            for(int i=0;i<selectedObj.selObjKind.size();++i){
+                if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_STOPLINE ){
+                    shouldUpdateStopLineCross = true;
+                    break;
+                }
             }
+        }
+
+        if( shouldUpdateStopLineCross == true ){
+            road->CheckAllStopLineCrossLane();
         }
 
         update();
@@ -167,7 +176,7 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
     }
 
 
-    if( e->buttons() & Qt::RightButton ){
+    if( (e->buttons() & Qt::RightButton) && !( e->modifiers() & Qt::ShiftModifier) ){
 
         if( selectedObj.selObjKind.size() > 0 && (e->modifiers() & Qt::AltModifier) ){
 
@@ -1637,7 +1646,52 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
         }
 
         if( selID == selectedObj.selObjID.last() ){
-            emit SetNodeListForRoute( selectedObj.selObjID );
+
+            // Check connection
+            bool isOK = true;
+            for(int i=1;i<selectedObj.selObjKind.size();++i){
+                if( selectedObj.selObjKind[i-1] == _SEL_OBJ::SEL_NODE_ROUTE_PICK &&
+                        selectedObj.selObjKind[i] == _SEL_OBJ::SEL_NODE_ROUTE_PICK ){
+                    int nd2 = selectedObj.selObjID[i];
+                    int nd1 = selectedObj.selObjID[i-1];
+                    int nd2Idx = road->indexOfNode( nd2 );
+                    int nd1Idx = road->indexOfNode( nd1 );
+                    bool toND2 = false;
+                    for(int j=0;j<road->nodes[nd1Idx]->legInfo.size();++j){
+                        if( road->nodes[nd1Idx]->legInfo[j]->connectingNode == nd2 ){
+                            toND2 = true;
+                            break;
+                        }
+                    }
+                    bool fromND1 = false;
+                    for(int j=0;j<road->nodes[nd2Idx]->legInfo.size();++j){
+                        if( road->nodes[nd2Idx]->legInfo[j]->connectedNode == nd1 ){
+                            fromND1 = true;
+                            break;
+                        }
+                    }
+                    if( toND2 == false || fromND1 == false ){
+                        isOK = false;
+                        break;
+                    }
+                }
+                else{
+                    isOK = false;
+                    break;
+                }
+            }
+
+
+            if( isOK == true ){
+                emit SetNodeListForRoute( selectedObj.selObjID );
+            }
+            else{
+                QMessageBox::information(NULL,
+                                         "Invalid Route",
+                                         "Discountinuous Node Connection found.",
+                                         QMessageBox::Ok);
+            }
+
             return;
         }
 

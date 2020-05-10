@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
     qDebug() << "+--- Create Main Window";
     MainWindow w;
     w.setWindowTitle("MDS02-Canopus | S-Edit[*]");
+    w.setWindowIcon( QIcon(":images/SEdit-icon.png"));
     w.show();
 
 

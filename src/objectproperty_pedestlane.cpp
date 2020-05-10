@@ -100,6 +100,8 @@ void RoadObjectProperty::PedestLaneApplyClicked()
 
     if( cbIsCrossWalk->checkState() == Qt::Checked ){
         road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->isCrossWalk = true;
+
+        road->FindPedestSignalFroCrossWalk();
     }
     else{
         road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->isCrossWalk = false;
