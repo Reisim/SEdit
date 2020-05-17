@@ -20,6 +20,9 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 
+#include <QApplication>
+#include <QProgressDialog>
+
 
 BaseMapImageManager::BaseMapImageManager(QWidget *parent)
 {
@@ -357,7 +360,78 @@ void BaseMapImageManager::ApplyChange(double val)
 
 void BaseMapImageManager::InsertImageFromFile()
 {
+    QString filename = QFileDialog::getOpenFileName(this,"Select Image-List File",".",tr("Image-List file(*.txt)"));
+    if( filename.isNull() == true || filename.isEmpty() == true ){
+        return;
+    }
 
+    QFile file(filename);
+    if( file.open(QIODevice::ReadOnly | QIODevice::Text) == false ){
+        return;
+    }
+
+    QTextStream in(&file);
+
+    QStringList divFilename = filename.replace("\\","/").split("/");
+    QString folderName = filename.remove( divFilename.last() );
+
+    QStringList allLines;
+
+    QString aLine;
+    while( in.atEnd() == false ){
+
+        aLine = in.readLine();
+        if( aLine.isEmpty() || aLine.contains(",") == false ){
+            continue;
+        }
+
+        QStringList divLine = aLine.split(",");
+        if( divLine.size() < 4 ){
+            continue;
+        }
+
+        allLines.append( aLine );
+    }
+
+    file.close();
+
+
+    QProgressDialog *pd = new QProgressDialog("InsertImageFromFile", "Cancel", 0, allLines.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
+
+    for(int i=0;i<allLines.size();++i){
+
+        QStringList divLine = QString( allLines[i] ).split(",");
+
+        QString imageFilename = folderName + QString( divLine[0] ).trimmed();
+        float x = QString( divLine[1] ).trimmed().toFloat();
+        float y = QString( divLine[2] ).trimmed().toFloat();
+        float s = QString( divLine[3] ).trimmed().toFloat();
+
+        float rot = 0.0;
+        if( divLine.size() == 5 ){
+            rot = QString( divLine[4] ).trimmed().toFloat();
+        }
+
+        AddMapImageFromFile(imageFilename,x,y,s,0.0);
+
+        pd->setValue(i+1);
+        QApplication::processEvents();
+
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            break;
+        }
+    }
+
+    pd->close();
 }
 
 

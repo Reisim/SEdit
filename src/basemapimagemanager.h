@@ -25,7 +25,8 @@
 #include <QVBoxLayout>
 #include <QFileDialog>
 #include <QOpenGLTexture>
-
+#include <QFile>
+#include <QTextStream>
 
 #include "roadinfoelement.h"
 
