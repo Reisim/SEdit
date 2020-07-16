@@ -26,9 +26,11 @@ The shaders and true-type font should be placed in the same folder of sedit.exe.
 
 Part 1: [Basic Operation](https://github.com/Reisim/SEdit/tree/master/SEdit-Manual-Part1-Basic_Operation.pdf)
 
-Part 2: Advanced Topics - To be described
+Part 2: [Scenario Data Setting](https://github.com/Reisim/SEdit/tree/master/SEdit-Manual-Part2-Scenario_Data_Setting.pdf)
 
-Part 3: Scenario Data Setting - To be described
+Part 3: Advanced Topics - To be described
+
+
 
 ## Binary for windows
 
