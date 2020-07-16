@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.setWindowTitle("MDS02-Canopus | S-Edit[*]");
     w.setWindowIcon( QIcon(":images/SEdit-icon.png"));
+    w.setMinimumSize( ScreenSize.width() * 0.6, ScreenSize.height() * 0.6 );
     w.show();
 
 

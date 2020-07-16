@@ -41,11 +41,13 @@ public:
     void Clear();
     RoadInfo *road;
 
+
 signals:
 
 public slots:
     void SelectOutputFolder();
     void SelectOutputFilename();
+    void SelectScenarioFilename();
     void OutputFiles();
 
 
@@ -57,6 +59,9 @@ private:
     QPushButton *selectFilename;
     QPushButton *selectFolder;
     QSpinBox *maxAgent;
+    QCheckBox *assignScenarioData;
+    QLabel *scenarioFilename;
+    QPushButton *selectScenarioFile;
     QCheckBox *onlyFilename;
 
 };

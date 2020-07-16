@@ -904,11 +904,6 @@ bool RoadInfo::CheckLaneCrossPoints()
             delete lanes[i]->crossPoints[j];
         }
         lanes[i]->crossPoints.clear();
-
-        for(int j=0;j<lanes[i]->pedestCrossPoints.size();++j){
-            delete lanes[i]->pedestCrossPoints[j];
-        }
-        lanes[i]->pedestCrossPoints.clear();
     }
 
 
@@ -1045,11 +1040,6 @@ void RoadInfo::CheckLaneCrossPointsInsideNode(QList<int> nodeList)
             delete lanes[i]->crossPoints[j];
         }
         lanes[i]->crossPoints.clear();
-
-        for(int j=0;j<lanes[i]->pedestCrossPoints.size();++j){
-            delete lanes[i]->pedestCrossPoints[j];
-        }
-        lanes[i]->pedestCrossPoints.clear();
     }
 
 
@@ -1654,3 +1644,132 @@ void RoadInfo::CheckLaneRelatedNode(int laneID)
         }
     }
 }
+
+
+int RoadInfo::GetNearestLanePoint(int id,float xp,float yp,float &xt,float &yt,float &angle)
+{
+    int ret = -1;
+
+    int lIdx = indexOfLane( id );
+    if( lIdx >= 0 ){
+
+        int nDiv = lanes[lIdx]->shape.pos.size();
+        for(int i=1;i<nDiv;++i){
+
+            float x = lanes[lIdx]->shape.pos[i]->x();
+            float y = lanes[lIdx]->shape.pos[i]->y();
+
+            float rx = xp - x;
+            float ry = yp - y;
+            float dx = lanes[lIdx]->shape.derivative[i]->x();
+            float dy = lanes[lIdx]->shape.derivative[i]->y();
+
+            float ip = rx * dx + ry * dy;
+            if( ip > 0.0 ){
+                continue;
+            }
+
+            float cp = rx * (-dy) + ry * dx;
+
+            ret = id;
+
+            xt = x + ip * dx;
+            yt = y + ip * dy;
+
+            angle = atan2( dy, dx ) * 57.3;
+
+            break;
+        }
+    }
+
+    return ret;
+}
+
+
+int RoadInfo::GetNearestLanePointShapeInfo(struct LaneShapeInfo *s,float xp,float yp,float &xt,float &yt,float &angle)
+{
+    int ret = -1;
+
+    int nDiv = s->pos.size();
+    for(int i=1;i<nDiv;++i){
+
+        float x = s->pos[i]->x();
+        float y = s->pos[i]->y();
+
+        float rx = xp - x;
+        float ry = yp - y;
+        float dx = s->derivative[i]->x();
+        float dy = s->derivative[i]->y();
+
+        float ip = rx * dx + ry * dy;
+        if( ip > 0.0 ){
+            continue;
+        }
+
+        float cp = rx * (-dy) + ry * dx;
+
+        ret = 1;
+
+        xt = x + ip * dx;
+        yt = y + ip * dy;
+
+        angle = atan2( dy, dx ) * 57.3;
+
+        break;
+    }
+
+    return ret;
+}
+
+
+void RoadInfo::CutLanesByLine(QPointF p1, QPointF p2)
+{
+
+    QList<struct CrossPointInfo *> CPs;
+
+    for(int i=0;i<lanes.size();++i){
+
+        if( lanes[i]->shape.searchHelper.xmin > p1.x() && lanes[i]->shape.searchHelper.xmin > p2.x() ){
+            continue;
+        }
+        if( lanes[i]->shape.searchHelper.xmax < p1.x() && lanes[i]->shape.searchHelper.xmax < p2.x() ){
+            continue;
+        }
+        if( lanes[i]->shape.searchHelper.ymin > p1.y() && lanes[i]->shape.searchHelper.ymin > p2.y() ){
+            continue;
+        }
+        if( lanes[i]->shape.searchHelper.ymax < p1.y() && lanes[i]->shape.searchHelper.ymax < p2.y() ){
+            continue;
+        }
+
+        struct CrossPointInfo *cpInfo = CheckLaneCrossPoint( lanes[i]->id, p1, p2 );
+        if( cpInfo == NULL ){
+            continue;
+        }
+
+        qDebug() << "Has CP: Lane-ID = " << cpInfo->crossLaneID;
+        CPs.append( cpInfo );
+    }
+
+    qDebug() << "Size of CPs = " << CPs.size();
+
+    for(int i=0;i<CPs.size();++i){
+
+        QVector4D atPoint;
+
+        atPoint.setX( CPs[i]->pos.x() );
+        atPoint.setY( CPs[i]->pos.y() );
+        atPoint.setZ( CPs[i]->pos.z() );
+        atPoint.setW( atan2( CPs[i]->derivative.y(), CPs[i]->derivative.x() ) );
+
+        qDebug() << "Divide Lane " << CPs[i]->crossLaneID;
+
+        DivideLaneAtPos( CPs[i]->crossLaneID, atPoint );
+
+        delete CPs[i];
+    }
+
+    CPs.clear();
+}
+
+

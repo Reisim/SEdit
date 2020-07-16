@@ -17,8 +17,8 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
 {
     road = NULL;
 
-    QSize infoAreaSizeNode = QSize(500,800);
-    QSize infoAreaSizeLane = QSize(500,800);
+    QSize infoAreaSizeNode = QSize(500,700);
+    QSize infoAreaSizeLane = QSize(500,600);
     QSize infoAreaSizeTS = QSize(500,350);
     QSize infoAreaSizeSL = QSize(500,300);
     QSize infoAreaSizePL = QSize(500,300);
@@ -109,8 +109,15 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneButtonsLayout->addWidget( checkRelatedNode );
     laneButtonsLayout->addStretch( 1 );
 
-    laneInfo = new QLabel();
-    laneInfo->setMinimumSize( infoAreaSizeLane );
+
+    laneInfo = new QLabel("\nNot exist.\n");
+    laneInfo->setAlignment( Qt::AlignTop );
+
+    laneInfoScrollArea = new QScrollArea();
+    laneInfoScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    laneInfoScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    laneInfoScrollArea->setWidget( laneInfo );
+    laneInfoScrollArea->setMinimumSize( infoAreaSizeLane );
 
     QGridLayout *laneGrid = new QGridLayout();
     laneGrid->addWidget( new QLabel("ID:"), 0, 0 );
@@ -124,8 +131,9 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     laneGrid->addWidget( new QLabel("Driver Error:"), 4, 0 );
     laneGrid->addWidget( laneDriverErrorProb, 4, 1 );
     laneGrid->addLayout( laneButtonsLayout, 5, 1 );
-    laneGrid->addWidget( laneInfo, 6, 1 );
-    laneGrid->setColumnStretch(6,1);
+    laneGrid->addWidget( laneInfoScrollArea, 6, 1 );
+    laneGrid->setRowStretch(7,1);
+    laneGrid->setColumnStretch(2,1);
 
     lanePage->setLayout( laneGrid );
 
@@ -191,7 +199,8 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     tsGrid->addWidget( new QLabel("Display Pettern:"), 3, 0, 1, 2 , Qt::AlignLeft );
     tsGrid->addLayout( tsDPButtonLayout, 4, 1 );
     tsGrid->addWidget( tsDisplayPattern, 5, 1 );
-    tsGrid->setColumnStretch(4,1);
+    tsGrid->setRowStretch(6,1);
+    tsGrid->setColumnStretch(2,1);
 
     trafficSignalPage->setLayout( tsGrid );
 
@@ -275,8 +284,9 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     plGrid->addWidget( new QLabel("Run-out Direct"), 6, 0 );
     plGrid->addWidget( pedestRunOutDirect, 6, 1 );
     plGrid->addWidget( pedestLaneInfo, 7, 1 );
+    plGrid->setRowStretch(8,1);
+    plGrid->setColumnStretch(2,1);
 
-    plGrid->setColumnStretch(8,1);
 
     applyPedestLaneDataChange = new QPushButton("Apply");
     applyPedestLaneDataChange->setIcon(QIcon(":/images/accept.png"));

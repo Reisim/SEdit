@@ -875,6 +875,33 @@ bool RoadInfo::LoadRoadData(QString filename)
     for(int i=0;i<nodes.size();++i){
         nodes[i]->nLeg  = nodes[i]->legInfo.size();
         nodes[i]->hasTS = nodes[i]->trafficSignals.size() > 0 ? true : false;
+
+        // Check OD Data is valid
+        if(nodes[i]->odData.size() == 0){
+            continue;
+        }
+
+        for(int j=nodes[i]->odData.size()-1;j>=0;--j){
+
+            bool isFoundDestNode = false;
+            for(int k=0;k<nodes.size();++k){
+                if( k == i ){
+                    continue;
+                }
+                if( nodes[k]->id == nodes[i]->odData[j]->destinationNode ){
+                    isFoundDestNode = true;
+                    break;
+                }
+            }
+            if( isFoundDestNode == false ){
+
+                ClearODData( nodes[i]->odData[j] );
+
+                delete nodes[i]->odData[j];
+
+                nodes[i]->odData.removeAt( j );
+            }
+        }
     }
 
     for(int i=0;i<pedestLanes.size();++i){
@@ -944,6 +971,9 @@ bool RoadInfo::LoadRoadData(QString filename)
         return false;
     }
 
+    // Check Cross Points with pedestLanes
+    CheckPedestLaneCrossPoints();
+
     // Create WP Data
     CreateWPData();
 
@@ -988,6 +1018,25 @@ bool RoadInfo::LoadRoadData(QString filename)
         bool loadImage = true;
         for(int i=0;i<imLoadData.size();++i){
 
+            if( i > 0 ){
+
+                QStringList divPTF1 = imLoadData[i]->pathToFile.split("/");
+                QString folderPath1 = QString();
+                for(int j=0;j<divPTF1.size()-1;++j){
+                    folderPath1 += QString( divPTF1[j] ) + QString("/");
+                }
+
+                QStringList divPTF2 = imLoadData[i-1]->pathToFile.split("/");
+                QString folderPath2 = QString();
+                for(int j=0;j<divPTF2.size()-1;++j){
+                    folderPath2 += QString( divPTF2[j] ) + QString("/");
+                }
+
+                if( folderPath1 != folderPath2 ){
+                    imLoadData[i]->pathToFile = folderPath2 + QString(divPTF1.last());
+                }
+            }
+
             mapImageMng->AddMapImageFromFile( imLoadData[i]->pathToFile,
                                               imLoadData[i]->x,
                                               imLoadData[i]->y,
@@ -1009,7 +1058,6 @@ bool RoadInfo::LoadRoadData(QString filename)
                 qDebug() << "All Images loaded.";
             }
         }
-
 
 
         for(int i=0;i<imLoadData.size();++i){
@@ -1696,7 +1744,7 @@ bool RoadInfo::outputResimTrafficSignalFiles(QString outputfoldername, QString o
 }
 
 
-bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString outputfilename,int maxAgent, bool onlyFilename)
+bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString outputfilename,int maxAgent, bool onlyFilename,QString scenariofilename)
 {
     if( outputfoldername.endsWith("/") == false ){
         outputfoldername += QString("/");
@@ -1736,9 +1784,356 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
 
 
     // Scenario Data
-    // To be described
+    if( scenariofilename.isNull() == false && scenariofilename.isEmpty() == false && scenariofilename.contains(".ss.txt") == true ){
+
+        ScenarioEditor *sE = new ScenarioEditor( setDlg, this );
+
+        sE->LoadDataWithFilename( scenariofilename );
+
+        out << "#---------------\n";
+        out << "Scenario ID ; 0\n";
+        out << "End Condition ; 0\n";
+        out << "End Target ; -1\n";
+        out << "End Trigger Position ; 0 ; 0 ; 0\n";
+        out << "End Time ; 0 ; 0 ; 0 ; 0 ; 0 ; 0\n";
 
 
+        for(int i=0;i<sE->sSys.size();++i){
+
+             out << "#---------------\n";
+             out << "Scenario Event ID ; " << sE->sSys[i]->ID << "\n";
+
+             out << "Scenario Event Type ; " << sE->sSys[i]->sItem.act.actionType << "\n";
+
+             if( sE->sSys[i]->sItem.cond.externalTrigger == true ){
+                 out << "Scenario Event Trigger External ; "
+                     << (sE->sSys[i]->sItem.cond.funcKey + 1)  << " ; "
+                     << sE->sSys[i]->sItem.cond.FETrigger << "\n";
+             }
+             else{
+                 out << "Scenario Event Trigger External ; 0 ; "
+                     << sE->sSys[i]->sItem.cond.FETrigger << "\n";
+             }
+
+             out << "Scenario Event Trigger Internal ; "
+                 << sE->sSys[i]->sItem.cond.combination << " ; "
+                 << sE->sSys[i]->sItem.cond.noTrigger << " ; "
+                 << sE->sSys[i]->sItem.cond.timeTrigger << " ; "
+                 << sE->sSys[i]->sItem.cond.positionTrigger << " ; "
+                 << sE->sSys[i]->sItem.cond.velocityTrigger << " ; "
+                 << sE->sSys[i]->sItem.cond.TTCTrigger << "\n";
+
+             if( sE->sSys[i]->sItem.cond.timeTrigger == true ){
+                 out << "Scenario Event Trigger Time ; 0 ; "
+                     << (sE->sSys[i]->sItem.cond.ttMin * 60 + sE->sSys[i]->sItem.cond.ttSec) << " ; "
+                     << "0.0\n";
+             }
+
+             if( sE->sSys[i]->sItem.cond.positionTrigger == true ){
+                 out << "Scenario Event Trigger Position ; "
+                     << sE->sSys[i]->sItem.cond.ptX << " ; "
+                     << sE->sSys[i]->sItem.cond.ptY << " ; "
+                     << sE->sSys[i]->sItem.cond.ptPassAngle << " ; "
+                     << sE->sSys[i]->sItem.cond.ptTargetObjID << " ; "
+                     << sE->sSys[i]->sItem.cond.ptWidth << "\n";
+             }
+
+             if( sE->sSys[i]->sItem.cond.velocityTrigger == true ){
+                 out << "Scenario Event Trigger Speed ; "
+                     << sE->sSys[i]->sItem.cond.vtSpeed << " ; "
+                     << sE->sSys[i]->sItem.cond.vtLowOrHigh << " ; "
+                     << sE->sSys[i]->sItem.cond.vtTargetObjID << "\n";
+             }
+
+             if( sE->sSys[i]->sItem.cond.TTCTrigger == true ){
+                 out << "Scenario Event Trigger TTC ; "
+                     << sE->sSys[i]->sItem.cond.ttcVal << " ; "
+                     << sE->sSys[i]->sItem.cond.ttcCalTargetObjID << " ; "
+                     << sE->sSys[i]->sItem.cond.ttcCalType << " ; "
+                     << sE->sSys[i]->sItem.cond.ttcCalObjectID << " ; "
+                     << sE->sSys[i]->sItem.cond.ttcCalPosX << " ; "
+                     << sE->sSys[i]->sItem.cond.ttcCalPosY << "\n";
+             }
+
+             if( sE->sSys[i]->sItem.act.fParams.size() > 0 ){
+
+                 out << "Scenario Event Param Float ; ";
+                 for(int j=0;j<sE->sSys[i]->sItem.act.fParams.size();++j){
+                     out << sE->sSys[i]->sItem.act.fParams[j];
+                     if( j < sE->sSys[i]->sItem.act.fParams.size() - 1 ){
+                         out << " ; ";
+                     }
+                 }
+                 out << "\n";
+
+             }
+
+             if( sE->sSys[i]->sItem.act.iParams.size() > 0 ){
+
+                 out << "Scenario Event Param Integer ; ";
+                 for(int j=0;j<sE->sSys[i]->sItem.act.iParams.size();++j){
+                     out << sE->sSys[i]->sItem.act.iParams[j];
+                     if( j < sE->sSys[i]->sItem.act.iParams.size() - 1 ){
+                         out << " ; ";
+                     }
+                 }
+                 out << "\n";
+
+             }
+
+             if( sE->sSys[i]->sItem.act.bParams.size() > 0 ){
+
+                 out << "Scenario Event Param Boolean ; ";
+                 for(int j=0;j<sE->sSys[i]->sItem.act.bParams.size();++j){
+                     out << sE->sSys[i]->sItem.act.bParams[j];
+                     if( j < sE->sSys[i]->sItem.act.bParams.size() - 1 ){
+                         out << " ; ";
+                     }
+                 }
+                 out << "\n";
+
+             }
+
+        }
+
+        for(int i=0;i<sE->sVehicle.size();++i){
+
+            out << "#---------------\n";
+            out << "Vehicle ID ; " << sE->sVehicle[i]->ID << "\n";
+
+            for(int j=0;j<sE->sVehicle[i]->sItem.size();++j){
+
+                out << "Vehicle Event Type ; " << sE->sVehicle[i]->sItem[j]->act.actionType << "\n";
+
+                if( sE->sVehicle[i]->sItem[j]->cond.externalTrigger == true ){
+                    out << "Vehicle Event Trigger External ; "
+                        << (sE->sVehicle[i]->sItem[j]->cond.funcKey + 1)
+                        << sE->sVehicle[i]->sItem[j]->cond.FETrigger << "\n";
+                }
+                else{
+                    out << "Vehicle Event Trigger External ; 0 ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.FETrigger << "\n";
+                }
+
+                out << "Vehicle Event Trigger Internal ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.combination << " ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.noTrigger << " ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.timeTrigger << " ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.positionTrigger << " ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.velocityTrigger << " ; "
+                    << sE->sVehicle[i]->sItem[j]->cond.TTCTrigger << "\n";
+
+                if( sE->sVehicle[i]->sItem[j]->cond.timeTrigger == true ){
+                    out << "Vehicle Event Trigger Time ; 0 ; "
+                        << (sE->sVehicle[i]->sItem[j]->cond.ttMin * 60 + sE->sVehicle[i]->sItem[j]->cond.ttSec) << " ; "
+                        << "0.0\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->cond.positionTrigger == true ){
+                    out << "Vehicle Event Trigger Position ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ptX << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ptY << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ptPassAngle << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ptTargetObjID << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ptWidth << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->cond.velocityTrigger == true ){
+                    out << "Vehicle Event Trigger Speed ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.vtSpeed << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.vtLowOrHigh << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.vtTargetObjID << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->cond.TTCTrigger == true ){
+                    out << "Vehicle Event Trigger TTC ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcVal << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcCalType << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcCalTargetObjID << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcCalPosX << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcCalPosY << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->act.fParams.size() > 0 ){
+
+                    out << "Vehicle Event Param Float ; ";
+                    for(int k=0;k<sE->sVehicle[i]->sItem[j]->act.fParams.size();++k){
+                        out << sE->sVehicle[i]->sItem[j]->act.fParams[k];
+                        if( k < sE->sVehicle[i]->sItem[j]->act.fParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->act.iParams.size() > 0 ){
+
+                    out << "Vehicle Event Param Integer ; ";
+                    for(int k=0;k<sE->sVehicle[i]->sItem[j]->act.iParams.size();++k){
+                        out << sE->sVehicle[i]->sItem[j]->act.iParams[k];
+                        if( k < sE->sVehicle[i]->sItem[j]->act.iParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->act.bParams.size() > 0 ){
+
+                    out << "Vehicle Event Param Boolean ; ";
+                    for(int k=0;k<sE->sVehicle[i]->sItem[j]->act.bParams.size();++k){
+                        out << sE->sVehicle[i]->sItem[j]->act.bParams[k];
+                        if( k < sE->sVehicle[i]->sItem[j]->act.bParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+
+                if( sE->sVehicle[i]->sItem[j]->act.route != NULL &&
+                        sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists.size() > 0 ){
+
+                    out << "Vehicle Route Multi-Lanes ; 1 ; ";
+
+                    for(int l=0;l<sE->sVehicle[i]->sItem[j]->act.route->nodeList.size();++l){
+
+                        out << sE->sVehicle[i]->sItem[j]->act.route->nodeList[l]->node;
+
+                        if( l < sE->sVehicle[i]->sItem[j]->act.route->nodeList.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+
+                    out << "\n";
+
+                    for(int l=0;l<sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists.size();++l){
+
+                       out << "Vehicle Route Multi-Lanes ; 2 ; "
+                           << sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->startNode << " ; "
+                           << sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->goalNode << " ; "
+                           << sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->sIndexInNodeList << " ; "
+                           << sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->gIndexInNodeList << "\n";
+
+                       for(int m=0;m<sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->laneList.size();++m){
+
+                           out << "Vehicle Route Multi-Lanes ; 3 ; ";
+
+                           for(int n=0;n<sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->laneList[m].size();++n){
+
+                               out << sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->laneList[m][n];
+
+                               if( n < sE->sVehicle[i]->sItem[j]->act.route->routeLaneLists[l]->laneList[m].size() - 1 ){
+                                   out << " ; ";
+                               }
+                           }
+                           out << "\n";
+                       }
+                    }
+                }
+            }
+        }
+
+        for(int i=0;i<sE->sPedest.size();++i){
+
+            out << "#---------------\n";
+
+            out << "Pedestrian ID ; " << sE->sPedest[i]->ID << "\n";
+
+            for(int j=0;j<sE->sPedest[i]->sItem.size();++j){
+
+                out << "Pedestrian Event Type ; " << sE->sPedest[i]->sItem[j]->act.actionType << "\n";
+
+                if( sE->sPedest[i]->sItem[j]->cond.externalTrigger == true ){
+                    out << "Pedestrian Event Trigger External ; "
+                        << (sE->sPedest[i]->sItem[j]->cond.funcKey + 1)
+                        << sE->sPedest[i]->sItem[j]->cond.FETrigger << "\n";
+                }
+                else{
+                    out << "Pedestrian Event Trigger External ; 0 ; "
+                        << sE->sPedest[i]->sItem[j]->cond.FETrigger << "\n";
+                }
+
+                out << "Pedestrian Event Trigger Internal ; "
+                    << sE->sPedest[i]->sItem[j]->cond.combination << " ; "
+                    << sE->sPedest[i]->sItem[j]->cond.noTrigger << " ; "
+                    << sE->sPedest[i]->sItem[j]->cond.timeTrigger << " ; "
+                    << sE->sPedest[i]->sItem[j]->cond.positionTrigger << " ; "
+                    << sE->sPedest[i]->sItem[j]->cond.velocityTrigger << " ; "
+                    << sE->sPedest[i]->sItem[j]->cond.TTCTrigger << "\n";
+
+                if( sE->sPedest[i]->sItem[j]->cond.timeTrigger == true ){
+                    out << "Pedestrian Event Trigger Time ; 0 ; "
+                        << (sE->sPedest[i]->sItem[j]->cond.ttMin * 60 + sE->sPedest[i]->sItem[j]->cond.ttSec) << " ; "
+                        << "0.0\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->cond.positionTrigger == true ){
+                    out << "Pedestrian Event Trigger Position ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ptX << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ptY << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ptPassAngle << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ptTargetObjID << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ptWidth << "\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->cond.velocityTrigger == true ){
+                    out << "Pedestrian Event Trigger Speed ; "
+                        << sE->sPedest[i]->sItem[j]->cond.vtSpeed << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.vtLowOrHigh << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.vtTargetObjID << "\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->cond.TTCTrigger == true ){
+                    out << "Vehicle Event Trigger TTC ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcVal << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcCalType << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcCalTargetObjID << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcCalPosX << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcCalPosY << "\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->act.fParams.size() > 0 ){
+
+                    out << "Pedestrian Event Param Float ; ";
+                    for(int k=0;k<sE->sPedest[i]->sItem[j]->act.fParams.size();++k){
+                        out << sE->sPedest[i]->sItem[j]->act.fParams[k];
+                        if( k < sE->sPedest[i]->sItem[j]->act.fParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->act.iParams.size() > 0 ){
+
+                    out << "Pedestrian Event Param Integer ; ";
+                    for(int k=0;k<sE->sPedest[i]->sItem[j]->act.iParams.size();++k){
+                        out << sE->sPedest[i]->sItem[j]->act.iParams[k];
+                        if( k < sE->sPedest[i]->sItem[j]->act.iParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+
+                if( sE->sPedest[i]->sItem[j]->act.bParams.size() > 0 ){
+
+                    out << "Pedestrian Event Param Boolean ; ";
+                    for(int k=0;k<sE->sPedest[i]->sItem[j]->act.bParams.size();++k){
+                        out << sE->sPedest[i]->sItem[j]->act.bParams[k];
+                        if( k < sE->sPedest[i]->sItem[j]->act.bParams.size() - 1 ){
+                            out << " ; ";
+                        }
+                    }
+                    out << "\n";
+                }
+            }
+        }
+
+        out << "#---------------\n";
+
+        delete sE;
+    }
 
     file_rs.close();
 

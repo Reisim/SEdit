@@ -12,6 +12,8 @@
 
 
 #include "mainwindow.h"
+#include <QApplication>
+#include <QtGui>
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -30,7 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //-------------------------
     canvas = new GraphicCanvas();
-    canvas->setMinimumSize(1600,1200);
+    //canvas->setMinimumSize(1600,1200);
     canvas->road = road;
     connect( canvas, SIGNAL(UpdateStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)));
 
@@ -116,7 +118,7 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp = new RoadObjectProperty();
     roadObjProp->road = road;
 
-    roadObjProp->move(50 + dispCtrl->size().width() + 10 ,50);
+    roadObjProp->move(50 + dispCtrl->sizeHint().width() + 10 ,50);
     roadObjProp->setWindowIcon(QIcon(":images/SEdit-icon.png"));
     roadObjProp->show();
 
@@ -130,7 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
     odRoute->propRO = roadObjProp;
     odRoute->setDlg = setDlg;
     odRoute->SetHeaderTrafficVolumeTable();
-    odRoute->move(50 + dispCtrl->size().width() + roadObjProp->size().width() + 10, 50);
+    odRoute->move(50 + dispCtrl->sizeHint().width() + roadObjProp->sizeHint().width() + 10, 50);
     odRoute->hide();
 
     canvas->odRoute = odRoute;
@@ -151,6 +153,20 @@ MainWindow::MainWindow(QWidget *parent)
     //-------------------------
     configMgr = new ConfigFileManager();
     configMgr->hide();
+
+
+    //-------------------------
+    scenarioEdit = new ScenarioEditor(setDlg,road);
+    scenarioEdit->hide();
+    scenarioEdit->move( QGuiApplication::screens().at(0)->size().width() - scenarioEdit->sizeHint().width() - 50, 50);
+
+    connect( scenarioEdit, SIGNAL(SetScenarioPickMode(int)), canvas, SLOT(SetScenarioPickMode(int)) );
+    connect( scenarioEdit, SIGNAL(UpdateGraphic()), canvas, SLOT(update()) );
+    connect( canvas, SIGNAL(PointsPickedForScenario(int,float,float,float,float)), scenarioEdit, SLOT(GetPointsPicked(int,float,float,float,float)));
+    connect( canvas, SIGNAL(PointListForScenario(int,QList<QPointF>)), scenarioEdit, SLOT(GetPointListPicked(int,QList<QPointF>)));
+
+    canvas->scnrEdit = scenarioEdit;
+
 
 
     //
@@ -215,6 +231,10 @@ MainWindow::MainWindow(QWidget *parent)
     QAction* showMapImageDialogAct = new QAction( tr("&Show Map Image Dialog"), this );
     connect( showMapImageDialogAct, SIGNAL(triggered()), mapImageMng, SLOT(show()) );
     toolMenu->addAction( showMapImageDialogAct );
+
+    QAction* showScenarioEditorAct = new QAction( tr("&Show Scenario Editor"), this );
+    connect( showScenarioEditorAct, SIGNAL(triggered()), scenarioEdit, SLOT(show()) );
+    toolMenu->addAction( showScenarioEditorAct );
 
     QAction* showResimOutputAct = new QAction( tr("&Show Resim Files Output Dialog"), this );
     connect( showResimOutputAct, SIGNAL(triggered()), resimOut, SLOT(show()) );
@@ -435,6 +455,14 @@ MainWindow::MainWindow(QWidget *parent)
     //
     utilityPopup = new QMenu();
 
+    QAction *createNode_duplicate = new QAction();
+    createNode_duplicate->setText("Duplicate Selected Nodes and Lanes");
+    connect( createNode_duplicate, SIGNAL(triggered()),dtManip,SLOT(DuplicateNodes()));
+    connect( createNode_duplicate, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( createNode_duplicate );
+
+    utilityPopup->addSeparator();
+
     QAction *checkLaneConnect = new QAction();
     checkLaneConnect->setText("Check Lane Connection");
     connect( checkLaneConnect, SIGNAL(triggered()),dtManip,SLOT(CheckLaneConnectionFull()));
@@ -500,6 +528,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect( changeActualSpeedOfSelectedLanes, SIGNAL(triggered()),dtManip,SLOT(ChangeActualSpeedOfSelectedLanes()));
     connect( changeActualSpeedOfSelectedLanes, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( changeActualSpeedOfSelectedLanes );
+
+    QAction *checkCPOfLaneAndPedestLane = new QAction();
+    checkCPOfLaneAndPedestLane->setText("Check Cross Points of Lanes and Pedestrian Lanes");
+    connect( checkCPOfLaneAndPedestLane, SIGNAL(triggered()),dtManip,SLOT(CheckLaneAndPedestLaneCrossPoint()));
+    connect( checkCPOfLaneAndPedestLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( checkCPOfLaneAndPedestLane );
 
     utilityPopup->addSeparator();
 
@@ -595,6 +629,11 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
         if( mapImageMng ){
             mapImageMng->close();
+        }
+
+        if( scenarioEdit ){
+            scenarioEdit->CloseDialogs();
+            scenarioEdit->close();
         }
 
         event->accept();
@@ -886,100 +925,79 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
             dtManip->SplitSelectedLane();
         }
         else if( key == Qt::Key_I ){
+
             int checkInsertCondition = 0;
-            if( canvas->selectedObj.selObjKind.size() == 2 &&
-                    canvas->selectedObj.selObjKind[0] == canvas->SEL_NODE &&
-                    canvas->selectedObj.selObjKind[1] == canvas->SEL_NODE ){
+            bool selectedIsAllLane = true;
+            for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+                if( canvas->selectedObj.selObjKind[i] != canvas->SEL_LANE ){
+                    selectedIsAllLane = false;
+                    break;
+                }
+            }
+            if( selectedIsAllLane == false ){
+                return;
+            }
 
-                // Selected two nodes should be connected
-                int nd1 = canvas->selectedObj.selObjID[0];
-                int nd2 = canvas->selectedObj.selObjID[1];
-                int nd1Idx = road->indexOfNode( nd1 );
-                int nd2Idx = road->indexOfNode( nd2 );
-                if( nd1Idx >= 0 && nd2Idx >= 0 ){
-                    for(int i=0;i<road->nodes[nd1Idx]->legInfo.size();++i){
-                        if( road->nodes[nd1Idx]->legInfo[i]->connectingNode == nd2 ){
-                            for(int j=0;j<road->nodes[nd2Idx]->legInfo.size();++j){
-                                if( road->nodes[nd2Idx]->legInfo[j]->connectedNode == nd1 ){
-                                    if( road->nodes[nd2Idx]->legInfo[j]->connectedNodeOutDirect == road->nodes[nd1Idx]->legInfo[i]->legID &&
-                                            road->nodes[nd1Idx]->legInfo[i]->connectingNodeInDirect == road->nodes[nd2Idx]->legInfo[j]->legID ){
-                                        checkInsertCondition += 1;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if( checkInsertCondition > 0 ){
-                            break;
-                        }
+            QStringList relNodes;
+            for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+                int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+                if( lidx >= 0 ){
+                    if( road->lanes[lidx]->sWPInNode == road->lanes[lidx]->eWPInNode ){
+                        continue;
                     }
-                    for(int i=0;i<road->nodes[nd2Idx]->legInfo.size();++i){
-                        if( road->nodes[nd2Idx]->legInfo[i]->connectingNode == nd1 ){
-                            for(int j=0;j<road->nodes[nd1Idx]->legInfo.size();++j){
-                                if( road->nodes[nd1Idx]->legInfo[j]->connectedNode == nd2 ){
-                                    if( road->nodes[nd1Idx]->legInfo[j]->connectedNodeOutDirect == road->nodes[nd2Idx]->legInfo[i]->legID &&
-                                            road->nodes[nd2Idx]->legInfo[i]->connectingNodeInDirect == road->nodes[nd1Idx]->legInfo[j]->legID ){
-                                        checkInsertCondition += 2;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        if( checkInsertCondition > 1 ){
-                            break;
-                        }
+                    QString snInfo = QString("%1-%2").arg( road->lanes[lidx]->sWPInNode ).arg( road->lanes[lidx]->sWPNodeDir);
+                    if( relNodes.indexOf( snInfo ) < 0 ){
+                        relNodes.append( snInfo );
+                    }
+                    QString enInfo = QString("%1-%2").arg( road->lanes[lidx]->eWPInNode ).arg( road->lanes[lidx]->eWPNodeDir);
+                    if( relNodes.indexOf( enInfo ) < 0 ){
+                        relNodes.append( enInfo );
                     }
                 }
             }
-            qDebug() << "checkInsertCondition = " << checkInsertCondition;
-
-            if( checkInsertCondition > 0 ){
-                dtManip->insertMode = checkInsertCondition;
-                dtManip->insertNode1 = canvas->selectedObj.selObjID[0];
-                dtManip->insertNode2 = canvas->selectedObj.selObjID[1];
-
-                insertNodePopup->clear();
-
-                QAction *insert4Legx1 = new QAction();
-                insert4Legx1->setText("4-Leg 1-Lane noTS");
-                connect( insert4Legx1, SIGNAL(triggered()),dtManip,SLOT(InsertNode_4x1_noTS()));
-                insertNodePopup->addAction( insert4Legx1 );
-
-                QAction *insert4Legx2 = new QAction();
-                insert4Legx2->setText("4-Leg 2-Lanes noTS");
-                connect( insert4Legx2, SIGNAL(triggered()),dtManip,SLOT(InsertNode_4x2_noTS()));
-                insertNodePopup->addAction( insert4Legx2 );
-
-                if( checkInsertCondition == 1 || checkInsertCondition == 3 ){
-
-                    QAction *insert3Legx1Left = new QAction();
-                    insert3Legx1Left->setText("3-Leg(Left-Side) 1-Lanes noTS");
-                    connect( insert3Legx1Left, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Lx1_noTS()));
-                    insertNodePopup->addAction( insert3Legx1Left );
-
-                    QAction *insert3Legx2Left = new QAction();
-                    insert3Legx2Left->setText("3-Leg(Left-Side) 2-Lanes noTS");
-                    connect( insert3Legx2Left, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Lx2_noTS()));
-                    insertNodePopup->addAction( insert3Legx2Left );
-
-                }
-
-                if( checkInsertCondition == 2 || checkInsertCondition == 3 ){
-
-                    QAction *insert3Legx1Right = new QAction();
-                    insert3Legx1Right->setText("3-Leg(Right-Side) 1-Lanes noTS");
-                    connect( insert3Legx1Right, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Rx1_noTS()));
-                    insertNodePopup->addAction( insert3Legx1Right );
-
-                    QAction *insert3Legx2Right = new QAction();
-                    insert3Legx2Right->setText("3-Leg(Right-Side) 2-Lanes noTS");
-                    connect( insert3Legx2Right, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Rx2_noTS()));
-                    insertNodePopup->addAction( insert3Legx2Right );
-
-                }
-
-                insertNodePopup->exec( QCursor::pos() );
+            if( relNodes.size() != 2 ){
+                return;
             }
+
+
+            dtManip->insertMode = checkInsertCondition;
+            dtManip->insertNode1 = canvas->selectedObj.selObjID[0];
+            dtManip->insertNode2 = canvas->selectedObj.selObjID[1];
+
+            insertNodePopup->clear();
+
+            QAction *insert4Legx1 = new QAction();
+            insert4Legx1->setText("4-Leg 1-Lane noTS");
+            connect( insert4Legx1, SIGNAL(triggered()),dtManip,SLOT(InsertNode_4x1_noTS()));
+            insertNodePopup->addAction( insert4Legx1 );
+
+//            QAction *insert4Legx2 = new QAction();
+//            insert4Legx2->setText("4-Leg 2-Lanes noTS");
+//            connect( insert4Legx2, SIGNAL(triggered()),dtManip,SLOT(InsertNode_4x2_noTS()));
+//            insertNodePopup->addAction( insert4Legx2 );
+
+            QAction *insert3Legx1Left = new QAction();
+            insert3Legx1Left->setText("3-Leg(B-Direction) 1-Lanes noTS");
+            connect( insert3Legx1Left, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Lx1_noTS()));
+            insertNodePopup->addAction( insert3Legx1Left );
+
+//            QAction *insert3Legx2Left = new QAction();
+//            insert3Legx2Left->setText("3-Leg(B-Direction) 2-Lanes noTS");
+//            connect( insert3Legx2Left, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Lx2_noTS()));
+//            insertNodePopup->addAction( insert3Legx2Left );
+
+
+            QAction *insert3Legx1Right = new QAction();
+            insert3Legx1Right->setText("3-Leg(D-Direction) 1-Lanes noTS");
+            connect( insert3Legx1Right, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Rx1_noTS()));
+            insertNodePopup->addAction( insert3Legx1Right );
+
+//            QAction *insert3Legx2Right = new QAction();
+//            insert3Legx2Right->setText("3-Leg(D-Direction) 2-Lanes noTS");
+//            connect( insert3Legx2Right, SIGNAL(triggered()),dtManip,SLOT(InsertNode_3Rx2_noTS()));
+//            insertNodePopup->addAction( insert3Legx2Right );
+
+            insertNodePopup->exec( QCursor::pos() );
         }
     }
     else if( modifi & Qt::ControlModifier ){

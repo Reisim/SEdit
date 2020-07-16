@@ -1158,6 +1158,11 @@ void RoadInfo::ForwardTreeSearchForRouteLaneList(struct RouteData* route,int nex
                     break;
                 }
             }
+
+            if( lanes[pIdx]->eWPInNode == route->nodeList.first()->node &&
+                    lanes[pIdx]->eWPBoundary == true ){
+                isInRoute = false;
+            }
         }
         else{
             isInRoute = true;
@@ -1175,3 +1180,401 @@ void RoadInfo::ForwardTreeSearchForRouteLaneList(struct RouteData* route,int nex
     }
 }
 
+
+void RoadInfo::GetLaneListForScenarioNodeRoute(struct RouteData *route)
+{
+    int hIdx = 0;
+
+    if( route->nodeList.size() == 0 ){
+        return;
+    }
+
+    qDebug() << "[" << hIdx << "]" << "[RoadInfo::GetLaneListForScenarioNodeRoute]";
+
+
+    // Clear Existing Data
+    for(int i=0;i<route->routeLaneLists.size();++i){
+
+        for(int j=0;j<route->routeLaneLists.at(i)->laneList.size();++j){
+            route->routeLaneLists.at(i)->laneList[j].clear();
+        }
+        route->routeLaneLists.at(i)->laneList.clear();
+
+        delete route->routeLaneLists.at(i);
+    }
+    route->routeLaneLists.clear();
+
+    for(int i=0;i<route->laneList.size();++i){
+        route->laneList[i].clear();
+    }
+    route->laneList.clear();
+
+
+    qDebug() << " checking route";
+    for(int i=0;i<route->nodeList.size();++i){
+        qDebug() << "[" << i << "]: "
+                 << " In:" << route->nodeList[i]->inDir
+                 << " Nd:" << route->nodeList[i]->node
+                 << " Out:" << route->nodeList[i]->outDir;
+    }
+
+    int origNodeId = route->nodeList.first()->node;
+    int destNodeId = route->nodeList.last()->node;
+
+    int currentDestNodeIndex = route->nodeList.size() - 1;
+
+    bool reachOrigin = false;
+    int countLoop = 0 ;
+    while( reachOrigin == false ){
+
+        countLoop++;
+        if( countLoop >= 10 ){
+            qDebug() << "Can not reach to Origin Node. Check Route.";
+            break;
+        }
+
+        int tmpDestNodeId = route->nodeList.at( currentDestNodeIndex )->node;
+        int destNdIdx = indexOfNode( tmpDestNodeId );
+        int destInDir = route->nodeList.at( currentDestNodeIndex )->inDir;
+
+        qDebug() << " tmpDestNodeId = " << tmpDestNodeId << " destInDir = " << destInDir;
+
+        QList<int> topLanes;
+        for(int i=0;i<nodes[destNdIdx]->relatedLanes.size();++i ){
+
+            int lIdx = indexOfLane( nodes[destNdIdx]->relatedLanes[i] );
+
+//            qDebug() << " eWPInNode   = " << lanes[lIdx]->eWPInNode;
+//            qDebug() << " sWPInNode   = " << lanes[lIdx]->sWPInNode;
+//            qDebug() << " eWPNodeDir  = " << lanes[lIdx]->eWPNodeDir;
+//            qDebug() << " eWPBoundary = " << lanes[lIdx]->eWPBoundary;
+
+
+            if( lanes[lIdx]->eWPInNode != lanes[lIdx]->sWPInNode &&
+                    lanes[lIdx]->eWPInNode == tmpDestNodeId &&
+                    lanes[lIdx]->eWPBoundary == true &&
+                    lanes[lIdx]->eWPNodeDir == destInDir ){
+
+                if( topLanes.indexOf(nodes[destNdIdx]->relatedLanes[i]) < 0 ){
+                    topLanes.append( nodes[destNdIdx]->relatedLanes[i] );
+//                    qDebug() << "Add this lane to topLanes";
+                }
+            }
+        }
+
+        qDebug() << "  topLanes = " << topLanes;
+
+
+        struct RouteData *rt = new struct RouteData;
+        for(int i=0;i<=currentDestNodeIndex;++i){
+            struct RouteElem *re = new struct RouteElem;
+            re->node = route->nodeList[i]->node;
+            re->inDir = route->nodeList[i]->inDir;
+            re->outDir = route->nodeList[i]->outDir;
+            rt->nodeList.append( re );
+        }
+
+        qDebug() << "[Search]: ";
+
+        QList<struct RouteLaneData*> tmpRouteLanes;
+
+
+        for(int k=0;k<topLanes.size();++k){
+
+            qDebug() << " checking topLane = " << topLanes[k];
+
+            ClearSearchHelper(hIdx);
+
+            qDebug() << " start search";
+
+            ForwardTreeSearchForRouteLaneList( rt, -1, topLanes[k], hIdx);
+
+            qDebug() << " end search";
+
+            struct RouteLaneData *rLanes = new struct RouteLaneData;
+
+            rLanes->goalNode = tmpDestNodeId;
+            rLanes->startNode = -1;
+            rLanes->gIndexInNodeList = currentDestNodeIndex;
+            rLanes->sIndexInNodeList = -1;
+
+
+            bool foundAll = false;
+            while( 1 ){
+
+                QList<int> extractedLanes;
+
+                qDebug() << " treeSeachHelper size = " << treeSeachHelper[hIdx].size();
+
+                for(int l=0;l<treeSeachHelper[hIdx].size();++l){
+
+                    if( treeSeachHelper[hIdx][l]->isEnd == false ){
+                        extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
+                    }
+                    else if( treeSeachHelper[hIdx][l]->isEnd == true ){
+                        extractedLanes.append( treeSeachHelper[hIdx][l]->currentLane );
+
+                        // Check this list reached origin
+
+                        qDebug() << "Last Lane = " << extractedLanes.last();
+
+                        int lastLaneIdx = indexOfLane( extractedLanes.last() );
+
+                        qDebug() << "sWPInNode = " << lanes[lastLaneIdx]->sWPInNode;
+                        qDebug() << "origNodeId = " << origNodeId;
+
+                        if( lanes[lastLaneIdx]->sWPInNode == origNodeId ){
+                            reachOrigin = true;
+                            qDebug() << "Reached Origin Node";
+                        }
+
+                        if( rLanes->startNode < 0 || rLanes->startNode == lanes[lastLaneIdx]->sWPInNode ){
+
+                            rLanes->startNode = lanes[lastLaneIdx]->sWPInNode;
+                            rLanes->laneList.append( extractedLanes );
+
+                            for(int i=route->nodeList.size()-1;i>0;--i){
+                                int dnd = route->nodeList[i]->node;
+                                int dni = route->nodeList[i]->inDir;
+                                int ond = route->nodeList[i-1]->node;
+                                int ono = route->nodeList[i-1]->outDir;
+                                if( dnd == lanes[lastLaneIdx]->eWPInNode &&
+                                        dni == lanes[lastLaneIdx]->eWPNodeDir &&
+                                        ond == lanes[lastLaneIdx]->sWPInNode &&
+                                        ono == lanes[lastLaneIdx]->sWPNodeDir ){
+
+                                    rLanes->sIndexInNodeList = i - 1;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if( l < treeSeachHelper[hIdx].size() - 1 ){
+                            int branch = treeSeachHelper[hIdx][l+1]->nextLane;
+                            for(int m=l;m>0;m--){
+                                if( treeSeachHelper[hIdx][m]->currentLane != branch ){
+                                    delete treeSeachHelper[hIdx][m];
+                                    treeSeachHelper[hIdx].removeAt(m);
+                                }
+                                else{
+                                    break;
+                                }
+                            }
+                        }
+                        else{
+                            foundAll = true;
+                        }
+                        break;
+                    }
+                }
+                if( foundAll == true ){
+                    break;
+                }
+            }
+
+            tmpRouteLanes.append( rLanes );
+        }
+
+
+        int farON = -1;
+        int farONIndex = -1;
+        for(int i=0;i<tmpRouteLanes.size();++i){
+            if( farON < 0 || farONIndex > tmpRouteLanes[i]->sIndexInNodeList ){
+                farON = tmpRouteLanes[i]->startNode;
+                farONIndex = tmpRouteLanes[i]->sIndexInNodeList;
+            }
+        }
+
+        currentDestNodeIndex = farONIndex + 1;
+
+        qDebug() << " farON = " << farON
+                 << " farONIndex = " << farONIndex
+                 << " currentDestNodeIndex = " << currentDestNodeIndex;
+
+
+        for(int i=0;i<tmpRouteLanes.size();++i){
+            if( tmpRouteLanes[i]->sIndexInNodeList == farONIndex ){
+
+                if( route->routeLaneLists.size() > 0 ){
+                    //
+                    // Extend lane list forward
+                    for(int j=0;j<tmpRouteLanes.at(i)->laneList.size();++j){
+                        while(1){
+                            int tL = tmpRouteLanes[i]->laneList[j].first();
+                            int tLIdx = indexOfLane( tL );
+
+                            if( lanes[tLIdx]->eWPInNode == destNodeId ){
+                                break;
+                            }
+
+                            if( lanes[tLIdx]->nextLanes.size() == 1 ){
+                                tmpRouteLanes[i]->laneList[j].prepend( lanes[tLIdx]->nextLanes[0] );
+                            }
+                            else if( lanes[tLIdx]->nextLanes.size() > 1 ){
+                                bool hasNL = false;
+                                for(int z=0;z<lanes[tLIdx]->nextLanes.size();++z){
+                                    int nLIdx = indexOfLane( lanes[tLIdx]->nextLanes[z] );
+                                    if( lanes[nLIdx]->eWPInNode == lanes[nLIdx]->sWPInNode ){
+                                        int inDir = lanes[nLIdx]->sWPNodeDir;
+                                        int outDir = lanes[nLIdx]->eWPNodeDir;
+                                        int ndIdx = indexOfNode( lanes[nLIdx]->eWPInNode );
+                                        if( ndIdx >= 0 ){
+                                            for(int l=0;l<nodes[ndIdx]->legInfo.size();++l){
+                                                if( nodes[ndIdx]->legInfo[l]->legID == inDir &&
+                                                        nodes[ndIdx]->legInfo[l]->oncomingLegID == outDir ){
+                                                    tmpRouteLanes[i]->laneList[j].prepend( lanes[tLIdx]->nextLanes[z] );
+                                                    hasNL = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if( hasNL == true ){
+                                        break;
+                                    }
+                                }
+                                if( hasNL == false ){
+                                    break;
+                                }
+                            }
+                            else{
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if( reachOrigin == false ){
+                    //
+                    // Extend lane list backward
+                    for(int j=0;j<tmpRouteLanes.at(i)->laneList.size();++j){
+                        while(1){
+                            int tL = tmpRouteLanes[i]->laneList[j].last();
+                            int tLIdx = indexOfLane( tL );
+                            if( lanes[tLIdx]->previousLanes.size() == 1 ){
+                                tmpRouteLanes[i]->laneList[j].append( lanes[tLIdx]->previousLanes[0] );
+                            }
+                            else if( lanes[tLIdx]->previousLanes.size() > 1 ){
+                                bool hasPL = false;
+                                for(int z=0;z<lanes[tLIdx]->previousLanes.size();++z){
+                                    int nLIdx = indexOfLane( lanes[tLIdx]->previousLanes[z] );
+                                    if( lanes[nLIdx]->eWPInNode == lanes[nLIdx]->sWPInNode ){
+                                        int inDir = lanes[nLIdx]->sWPNodeDir;
+                                        int outDir = lanes[nLIdx]->eWPNodeDir;
+                                        int ndIdx = indexOfNode( lanes[nLIdx]->eWPInNode );
+                                        if( ndIdx >= 0 ){
+                                            for(int l=0;l<nodes[ndIdx]->legInfo.size();++l){
+                                                if( nodes[ndIdx]->legInfo[l]->legID == inDir &&
+                                                        nodes[ndIdx]->legInfo[l]->oncomingLegID == outDir ){
+                                                    tmpRouteLanes[i]->laneList[j].append( lanes[tLIdx]->previousLanes[z] );
+                                                    hasPL = true;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if( hasPL == true ){
+                                        break;
+                                    }
+                                }
+                                if( hasPL == false ){
+                                    break;
+                                }
+                            }
+                            else{
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                bool addNew = true;
+                for(int j=0;j<route->routeLaneLists.size();++j){
+
+                    if( route->routeLaneLists[j]->startNode == tmpRouteLanes[i]->startNode &&
+                            route->routeLaneLists[j]->goalNode == tmpRouteLanes[i]->goalNode &&
+                            route->routeLaneLists[j]->sIndexInNodeList == tmpRouteLanes[i]->sIndexInNodeList &&
+                            route->routeLaneLists[j]->gIndexInNodeList == tmpRouteLanes[i]->gIndexInNodeList ){
+
+                        addNew = false;
+                        for(int k=0;k<tmpRouteLanes[i]->laneList.size();++k){
+                            route->routeLaneLists[j]->laneList.append( tmpRouteLanes[i]->laneList[k] );
+                        }
+                        break;
+                    }
+
+                }
+
+                if( addNew == true ){
+                    route->routeLaneLists.append( tmpRouteLanes.at(i) );
+                }
+
+            }
+            else{
+                delete tmpRouteLanes.at(i);
+            }
+        }
+
+        tmpRouteLanes.clear();
+
+
+
+        for(int i=0;i<rt->nodeList.size();++i){
+            delete rt->nodeList[i];
+        }
+        rt->nodeList.clear();
+        delete rt;
+
+    }
+
+
+    qDebug() << "[" << hIdx << "]" << " Route Lane List from ON = "
+             << route->nodeList.first()->node << " to DN = "
+             << route->nodeList.last()->node;
+
+    for(int i=0;i<route->routeLaneLists.size();i++){
+
+        qDebug() << "[" << hIdx << "]" << "  ND: "
+                 << route->routeLaneLists[i]->startNode << " -> "
+                 << route->routeLaneLists[i]->goalNode;
+
+        for(int j=0;j<route->routeLaneLists[i]->laneList.size();++j){
+            qDebug() << "[" << hIdx << "]" << "    List[" << j << "]: "
+                     << route->routeLaneLists[i]->laneList[j];
+        }
+    }
+}
+
+
+void RoadInfo::ClearODData(struct ODData *od)
+{
+    for(int k=0;k<od->route.size();++k){
+        for(int l=0;l<od->route[k]->nodeList.size();++l){
+            delete od->route[k]->nodeList[l];
+        }
+        od->route[k]->nodeList.clear();
+
+        for(int l=0;l<od->route[k]->volume.size();++l){
+            delete od->route[k]->volume[l];
+        }
+        od->route[k]->volume.clear();
+
+        for(int l=0;l<od->route[k]->routeLaneLists.size();++l){
+            for(int m=0;m<od->route[k]->routeLaneLists[l]->laneList.size();++m){
+                od->route[k]->routeLaneLists[l]->laneList[m].clear();
+            }
+            od->route[k]->routeLaneLists[l]->laneList.clear();
+
+            delete od->route[k]->routeLaneLists[l];
+        }
+        od->route[k]->routeLaneLists.clear();
+
+        for(int m=0;m<od->route[k]->laneList.size();++m){
+            od->route[k]->laneList[m].clear();
+        }
+        od->route[k]->laneList.clear();
+
+        delete od->route[k];
+    }
+    od->route.clear();
+}

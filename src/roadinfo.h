@@ -24,6 +24,7 @@
 #include "roadinfoelement.h"
 #include "settingdialog.h"
 #include "basemapimagemanager.h"
+#include "scenarioeditor.h"
 
 
 class RoadInfo
@@ -60,6 +61,7 @@ public:
     void SetODFlagOfTerminalNode();
     void SetTurnDirectionInfo(QList<int> nodeList, bool verbose=false);
 
+    int GetNearestNode(QVector2D pos);
     void ClearNodes();
 
 
@@ -80,9 +82,22 @@ public:
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);
+    void CutLanesByLine(QPointF p1, QPointF p2);
 
     int GetNearestLane(QVector2D pos);
     int GetDistanceLaneFromPoint(int id,QVector2D pos,float &dist,int &isEdge);
+    int GetNearestLanePoint( int id,
+                             float xp,
+                             float yp,
+                             float &xt,
+                             float &yt,
+                             float &angle );
+    int GetNearestLanePointShapeInfo(struct LaneShapeInfo *s,
+                                     float xp,
+                                     float yp,
+                                     float &xt,
+                                     float &yt,
+                                     float &angle);
     void CheckIfTwoLanesCross(int lID1,int lID2,bool verbose=false);
     void CheckLaneCrossWithPedestLane(int lID,int pedestID);
     bool CheckLaneCrossPoints();
@@ -91,8 +106,10 @@ public:
     QString GetLaneProperty(int id);
 
     void ClearLanes();
+    void ClearLaneShape(struct LaneShapeInfo *);
 
     bool updateCPEveryOperation;
+    bool updateWPDataEveryOperation;
 
 
     // WP
@@ -115,6 +132,7 @@ public:
     int GetNearestPedestLane(QVector2D pos,float &dist);
     void GetNearestPedestLanePoint(QVector2D pos, float &dist,int &nearPedestLaneID,int &nearPedestLanePointIndex);
     void FindPedestSignalFroCrossWalk();
+    bool CheckPedestLaneCrossPoints();
 
     void ClearPedestLanes();
 
@@ -142,7 +160,8 @@ public:
     void CheckRouteInOutDirectionGivenODNode(int origNodeId,int destNodeID);
     void GetLaneListForRoute(int origNodeId,int destNodeID,int hIdx);
     void SetAllRouteLaneList();
-
+    void GetLaneListForScenarioNodeRoute(struct RouteData *);
+    void ClearODData(struct ODData *);
 
 
     // List / Vector Index
@@ -158,7 +177,11 @@ public:
     bool LoadRoadData(QString filename);
     QString GetCurrentRoadDataFileName(){ return roadDataFileName; }
 
-    bool outputResimScenarioFiles( QString outputfolder, QString outputfilename, int maxAgent, bool onlyFilename );
+    bool outputResimScenarioFiles( QString outputfolder,
+                                   QString outputfilename,
+                                   int maxAgent,
+                                   bool onlyFilename,
+                                   QString scenariofilename);
     bool outputResimRoadFiles( QString outputfolder, QString outputfilename );
     bool outputResimTrafficSignalFiles( QString outputfolder, QString outputfilename );
 

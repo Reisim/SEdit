@@ -107,6 +107,7 @@ private:
     QLabel *laneInfo;
     QPushButton *editLaneData;
     QPushButton *checkRelatedNode;
+    QScrollArea *laneInfoScrollArea;
 
     QWidget *trafficSignalPage;
     QLabel *tsInfo;

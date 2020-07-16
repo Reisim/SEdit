@@ -78,6 +78,12 @@ void RoadObjectProperty::ChangePedestLaneInfo(int pedestLaneID, int pedestLanePo
     pedestLaneInfo->setAlignment( Qt::AlignTop );
 
     SetPedestLaneTrafficVolume( pedestLaneID );
+
+    int tHeight = 500;
+    if( pedestLaneTrafficVolume->sizeHint().height() + 100 < tHeight ){
+        tHeight = pedestLaneTrafficVolume->sizeHint().height() + 100;
+    }
+    pedestLaneTrafficVolume->setFixedHeight( tHeight );
 }
 
 

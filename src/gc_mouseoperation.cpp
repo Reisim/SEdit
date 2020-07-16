@@ -32,7 +32,105 @@ void GraphicCanvas::mousePressEvent(QMouseEvent *e)
         wxyValid = false;
     }
 
-    if( pedestPathPointPickFlag == true ){
+
+    if( scenarioPickMode > 0 && (e->modifiers() & Qt::AltModifier) ){
+
+        if( scenarioPickMode == 6 || scenarioPickMode == 9 || scenarioPickMode == 10 ){
+            if( e->buttons() & Qt::RightButton ){
+
+                qDebug() << "End Set Path Route";
+
+                emit PointListForScenario( scenarioPickMode,
+                                           pathRoutePointStock);
+
+                scenarioPickMode  = 0;
+                scenarioPickCount = 0;
+
+                pathRoutePointStock.clear();
+
+
+                update();
+                return;
+            }
+        }
+
+        if( scenarioPickCount == 0 ){
+
+            if( scenarioPickMode == 6 || scenarioPickMode == 9 || scenarioPickMode == 10 ){  // Vehicle Path Route and Node Route
+
+                pathRoutePointStock.clear();
+
+                QPointF p;
+
+                p.setX( x );
+                p.setY( y );
+
+                pathRoutePointStock.append( p );
+
+                qDebug() << "Add Path Route:" << p;
+
+            }
+            else{
+
+                if( scenarioPickMode == 2 || scenarioPickMode == 5 || scenarioPickMode == 7 || scenarioPickMode == 8 ){
+
+                    emit PointsPickedForScenario( scenarioPickMode,
+                                                  x,
+                                                  y,
+                                                  0.0,
+                                                  0.0);
+
+                    scenarioPickMode  = 0;
+                    scenarioPickCount = 0;
+
+                    update();
+                    return;
+                }
+
+                pickedPoint1.setX( x );
+                pickedPoint1.setY( y );
+
+            }
+
+
+            scenarioPickCount++;
+        }
+        else {
+
+            if( scenarioPickMode == 6 || scenarioPickMode == 9 || scenarioPickMode == 10 ){  // Vehicle Path Route and Node Route
+
+                QPointF p;
+
+                p.setX( x );
+                p.setY( y );
+
+                pathRoutePointStock.append( p );
+
+                scenarioPickCount++;
+
+                qDebug() << "Add Path Route:" << p << "  count = " << scenarioPickCount;
+
+            }
+            else{
+
+                emit PointsPickedForScenario( scenarioPickMode,
+                                              pickedPoint1.x(),
+                                              pickedPoint1.y(),
+                                              x,
+                                              y);
+
+                scenarioPickMode  = 0;
+                scenarioPickCount = 0;
+            }
+
+        }
+
+        update();
+        return;
+    }
+
+
+    if( pedestPathPointPickFlag == true && (e->modifiers() & Qt::ControlModifier) ){
 
         bool addOK = true;
         for(int i=0;i<pedestLanePoints.size();++i){
@@ -71,6 +169,17 @@ void GraphicCanvas::mousePressEvent(QMouseEvent *e)
             selectedObj.selObjID.clear();
             numberKeyPressed = -1;
         }
+        else if( e->buttons() & Qt::MiddleButton ){
+
+            selectByArea = true;
+
+            for(int i=0;i<4;++i){
+                selectByArearPoints[i].setX( wxMousePress );
+                selectByArearPoints[i].setY( wyMousePress );
+            }
+
+            qDebug() << "selectByArea is set";
+        }
         else{
             SelectObject( e->modifiers() & Qt::ShiftModifier );
             if( selectedObj.selObjKind.size() > 0 ){
@@ -81,6 +190,21 @@ void GraphicCanvas::mousePressEvent(QMouseEvent *e)
             }
         }
         update();
+    }
+    else if( e->modifiers() & Qt::AltModifier ){
+
+        if( e->buttons() & Qt::MiddleButton ){
+
+            cutLaneByLine = true;
+
+            for(int i=0;i<2;++i){
+                cutLaneByLinePoints[i].setX( wxMousePress );
+                cutLaneByLinePoints[i].setY( wyMousePress );
+            }
+
+            qDebug() << "cutLaneByLine is set";
+        }
+
     }
 
     objectMoveFlag = false;
@@ -159,9 +283,95 @@ void GraphicCanvas::mouseReleaseEvent(QMouseEvent *e)
             road->CheckAllStopLineCrossLane();
         }
 
+        if( road->updateWPDataEveryOperation == true ){
+            road->CreateWPData();
+        }
+
         update();
     }
 
+
+    if( selectByArea == true ){
+
+        float dx[4];
+        float dy[4];
+        for(int j=0;j<4;++j){
+            dx[j] = selectByArearPoints[(j+1)%4].x() - selectByArearPoints[j].x();
+            dy[j] = selectByArearPoints[(j+1)%4].y() - selectByArearPoints[j].y();
+        }
+
+        QList<int> inAreaNodes;
+
+        for(int i=0;i<road->nodes.size();++i){
+
+            float xc = road->nodes[i]->pos.x();
+            float yc = road->nodes[i]->pos.y();
+
+            bool insideArea = true;
+
+            float cp = (xc - selectByArearPoints[0].x()) * (-dy[0]) + (yc - selectByArearPoints[0].y())  * dx[0];
+            for(int j=1;j<4;++j){
+                float cp2 = (xc - selectByArearPoints[j].x()) * (-dy[j]) + (yc - selectByArearPoints[j].y())  * dx[j];
+                if( cp * cp2 < 0.0 ){
+                    insideArea = false;
+                    break;
+                }
+                else{
+                    cp = cp2;
+                }
+            }
+            if( insideArea == false ){
+                continue;
+            }
+
+            inAreaNodes.append( i );
+        }
+
+        if( !(e->modifiers() & Qt::ShiftModifier) ){
+            selectedObj.selObjKind.clear();
+            selectedObj.selObjID.clear();
+        }
+
+        for(int i=0;i<inAreaNodes.size();++i){
+
+            if( e->modifiers() & Qt::ShiftModifier ){
+
+                bool alreadExist = false;
+                for(int j=0;j<selectedObj.selObjKind.size();++j){
+                    if( selectedObj.selObjKind[j] == SEL_NODE &&
+                            selectedObj.selObjID[j] == road->nodes[ inAreaNodes[i] ]->id ){
+
+                        alreadExist = true;
+
+                        selectedObj.selObjKind.removeAt(j);
+                        selectedObj.selObjID.removeAt(j);
+
+                        break;
+                    }
+                }
+                if( alreadExist == false ){
+                    selectedObj.selObjKind.append( SEL_NODE );
+                    selectedObj.selObjID.append( road->nodes[ inAreaNodes[i] ]->id );
+                }
+            }
+            else{
+                selectedObj.selObjKind.append( SEL_NODE );
+                selectedObj.selObjID.append( road->nodes[ inAreaNodes[i] ]->id );
+            }
+        }
+
+        selectByArea = false;
+
+        QOpenGLWidget::update();
+    }
+
+    if( cutLaneByLine == true ){
+
+        road->CutLanesByLine( cutLaneByLinePoints[0], cutLaneByLinePoints[1] );
+
+        cutLaneByLine = false;
+        QOpenGLWidget::update();
+    }
 }
 
 
@@ -176,7 +386,46 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
     }
 
 
-    if( (e->buttons() & Qt::RightButton) && !( e->modifiers() & Qt::ShiftModifier) ){
+    if( e->buttons() & Qt::MiddleButton ){
+
+        if( selectByArea == true ){
+
+            float ct = cos( -cameraYaw );
+            float st = sin( -cameraYaw );
+
+            float x0 = selectByArearPoints[0].x();
+            float y0 = selectByArearPoints[0].y();
+
+            float rx = x - x0;
+            float ry = y - y0;
+
+            float ip = rx * ct + ry * st;
+            selectByArearPoints[1].setX( x0 + ct * ip );
+            selectByArearPoints[1].setY( y0 + st * ip );
+
+            selectByArearPoints[2].setX( x );
+            selectByArearPoints[2].setY( y );
+
+            ip = rx * (-st) + ry * ct;
+            selectByArearPoints[3].setX( x0 + (-st) * ip );
+            selectByArearPoints[3].setY( y0 + ct * ip );
+
+//        qDebug() << "selectByArearPoints updated.";
+//        for(int i=0;i<4;++i){
+//            qDebug() << " [" << i << "] x = " << selectByArearPoints[i].x() << " , y = " << selectByArearPoints[i].y();
+//        }
+
+        }
+        else if( cutLaneByLine == true ){
+
+            cutLaneByLinePoints[1].setX( x );
+            cutLaneByLinePoints[1].setY( y );
+
+        }
+
+        QOpenGLWidget::update();
+    }
+    else if( (e->buttons() & Qt::RightButton) && !( e->modifiers() & Qt::ShiftModifier) ){
 
         if( selectedObj.selObjKind.size() > 0 && (e->modifiers() & Qt::AltModifier) ){
 
@@ -1890,11 +2139,11 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                     qDebug() << "Lane Selected: ID = " << selID;
                 }
 
-                QString propStr = road->GetLaneProperty( selID );
-                QStringList divPropStr = propStr.split("\n");
-                for(int i=0;i<divPropStr.size();++i){
-                    qDebug() << QString( divPropStr[i] );
-                }
+//                QString propStr = road->GetLaneProperty( selID );
+//                QStringList divPropStr = propStr.split("\n");
+//                for(int i=0;i<divPropStr.size();++i){
+//                    qDebug() << QString( divPropStr[i] );
+//                }
             }
             else if( kind == _SEL_OBJ::SEL_LANE_EDGE_START ){
                 bool alreadySelected = false;

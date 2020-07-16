@@ -183,6 +183,42 @@ void RoadInfo::SetNodePosition(int id, float atX, float atY)
     float moveY = atY - nodes[index]->pos.y();
 
     MoveNode(id, moveX, moveY);
+
+    qDebug() << "MoveNode: id = " << id << " moveX = " << moveX << " moveY = " << moveY;
+
+    QList<int> moveLaneBothEdge;
+    QList<int> moveLaneStart;
+    QList<int> moveLaneEnd;
+
+    for(int j=0;j<nodes[index]->relatedLanes.size();++j){
+
+        int lIdx = indexOfLane( nodes[index]->relatedLanes[j] );
+        if( lanes[lIdx]->sWPInNode != id && lanes[lIdx]->sWPBoundary == true ){
+            if( moveLaneEnd.indexOf( nodes[index]->relatedLanes[j] ) < 0 ){
+                moveLaneEnd.append( nodes[index]->relatedLanes[j] );
+            }
+        }
+        else if( lanes[lIdx]->eWPInNode != id && lanes[lIdx]->eWPBoundary == true ){
+            if( moveLaneStart.indexOf( nodes[index]->relatedLanes[j] ) < 0 ){
+                moveLaneStart.append( nodes[index]->relatedLanes[j] );
+            }
+        }
+        else{
+            if( moveLaneBothEdge.indexOf( nodes[index]->relatedLanes[j] ) < 0 ){
+                moveLaneBothEdge.append( nodes[index]->relatedLanes[j] );
+            }
+        }
+    }
+
+    for(int i=0;i<moveLaneBothEdge.size();++i){
+        MoveLane( moveLaneBothEdge[i], moveX, moveY, true);
+    }
+    for(int i=0;i<moveLaneStart.size();++i){
+        MoveLaneEdge( moveLaneStart[i], moveX, moveY, 0 );  // Lane Start Point
+    }
+    for(int i=0;i<moveLaneEnd.size();++i){
+        MoveLaneEdge( moveLaneEnd[i], moveX, moveY, 1 );  // Lane End Point
+    }
 }
 
 
@@ -967,6 +1003,26 @@ void RoadInfo::ClearNodes()
     for(int i=0;i<allNodeIDs.size();++i){
         DeleteNode( allNodeIDs[i] );
     }
+}
+
+
+int RoadInfo::GetNearestNode(QVector2D pos)
+{
+    int ret = -1;
+    float nearDist = 0.0;
+
+    for(int i=0;i<nodes.size();++i){
+
+        float dist = (nodes[i]->pos - pos).length();
+        if( ret < 0 || nearDist > dist ){
+            ret = nodes[i]->id;
+            nearDist = dist;
+        }
+    }
+
+    qDebug() << "[GetNearestNode] ret = " << ret << " nearDist = " << nearDist;
+
+    return ret;
 }
 
 

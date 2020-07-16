@@ -12,6 +12,10 @@
 
 
 #include "roadinfo.h"
+#include "workingthread.h"
+
+#include <QProgressDialog>
+#include <QApplication>
 #include <QDebug>
 
 
@@ -397,4 +401,91 @@ void RoadInfo::ClearPedestLanes()
     }
 }
 
+
+bool RoadInfo::CheckPedestLaneCrossPoints()
+{
+    bool ret = true;
+
+    for(int i=0;i<lanes.size();++i){
+
+        for(int j=0;j<lanes[i]->pedestCrossPoints.size();++j){
+            delete lanes[i]->pedestCrossPoints[j];
+        }
+        lanes[i]->pedestCrossPoints.clear();
+    }
+
+
+    int nThread = 8;
+    WorkingThread *wt = new WorkingThread[nThread];
+    for(int i=0;i<nThread;++i){
+        wt[i].mode = 6;
+        wt[i].road = this;
+        wt[i].wtID = i;
+    }
+
+    int thrIdx = 0;
+    for(int i=0;i<lanes.size();++i){
+        wt[thrIdx].params.append( i );
+        thrIdx++;
+        if( thrIdx == nThread ){
+            thrIdx = 0;
+        }
+    }
+
+    for(int i=0;i<nThread;++i){
+        wt[i].start();
+    }
+
+
+    QProgressDialog *pd = new QProgressDialog("CheckPedestLaneCrossPoints", "Cancel", 0, lanes.size(), 0);
+    pd->setWindowModality(Qt::WindowModal);
+    pd->setAttribute( Qt::WA_DeleteOnClose );
+    pd->setWindowIcon(QIcon(":images/SEdit-icon.png"));
+    pd->show();
+
+    pd->setValue(0);
+    QApplication::processEvents();
+
+    qDebug() << "[RoadInfo::CheckPedestLaneCrossPoints]";
+
+    while(1){
+
+        int nFinish = 0;
+        int nProcessed = 0;
+        for(int i=0;i<nThread;++i){
+            nProcessed += wt[i].nProcessed;
+            if( wt[i].mode < 0 ){
+                nFinish++;
+            }
+        }
+
+        pd->setValue(nProcessed);
+        QApplication::processEvents();
+        if( pd->wasCanceled() ){
+            qDebug() << "Canceled.";
+            for(int i=0;i<nThread;++i){
+                if( wt[i].mode > 0 ){
+                    wt[i].SetStopFlag();
+                }
+            }
+
+            if( nFinish == nThread ){
+                break;
+            }
+
+        }
+        else if( nFinish == nThread ){
+            qDebug() << "Finished.";
+            break;
+        }
+    }
+
+    pd->setValue( lanes.size() );
+
+    pd->close();
+
+    delete [] wt;
+
+    return ret;
+}
 

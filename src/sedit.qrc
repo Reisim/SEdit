@@ -17,5 +17,11 @@
         <file>images/edit.png</file>
         <file>images/refresh.png</file>
         <file>images/SEdit-icon.png</file>
+        <file>images/Flag_blue.png</file>
+        <file>images/Chart_bar.png</file>
+        <file>images/Bell.png</file>
+        <file>images/pedestrian.png</file>
+        <file>images/vehicle.png</file>
+        <file>images/fit_lane.png</file>
     </qresource>
 </RCC>

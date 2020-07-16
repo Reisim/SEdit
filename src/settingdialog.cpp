@@ -39,6 +39,27 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
     tableLayout->addWidget( useRelativePath, row, 1 );
     row++;
 
+
+    saveVehiclePedestrianKindBtn = new QPushButton("Save");
+    saveVehiclePedestrianKindBtn->setIcon( QIcon(":/images/save.png") );
+    saveVehiclePedestrianKindBtn->setFixedSize( saveVehiclePedestrianKindBtn->sizeHint() );
+    connect(saveVehiclePedestrianKindBtn,SIGNAL(clicked()),this,SLOT(SaveVehiclePedestrianSetting()));
+
+    loadVehiclePedestrianKindBtn = new QPushButton("Load");
+    loadVehiclePedestrianKindBtn->setIcon( QIcon(":/images/open.png") );
+    loadVehiclePedestrianKindBtn->setFixedSize( loadVehiclePedestrianKindBtn->sizeHint() );
+    connect(loadVehiclePedestrianKindBtn,SIGNAL(clicked()),this,SLOT(LoadVehiclePedestrianSetting()));
+
+
+    QHBoxLayout *SLLayout = new QHBoxLayout();
+    SLLayout->addWidget( saveVehiclePedestrianKindBtn );
+    SLLayout->addSpacing( 50 );
+    SLLayout->addWidget( loadVehiclePedestrianKindBtn );
+    SLLayout->addStretch( 1 );
+
+    tableLayout->addLayout( SLLayout, row, 1 );
+    row++;
+
     vehicleKindTable = new QTableWidget();
 
     vehicleKindTable->setColumnCount(5);
@@ -135,6 +156,8 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
 
 void SettingDialog::LoadSetting()
 {
+    qDebug() << "[SettingDialog::LoadSetting]";
+
     QFile file("SEdit_Setting.txt");
     if( !file.open(QIODevice::ReadOnly | QIODevice::Text) ){
         qDebug() << "[SettingDialog::LoadSetting] failed to open SEdit_Setting.txt";
@@ -209,6 +232,8 @@ void SettingDialog::LoadSetting()
     }
 
     file.close();
+
+    qDebug() << "done.";
 }
 
 
@@ -549,5 +574,163 @@ void SettingDialog::DelRowPedestKind()
     pedestrianKindTable->setCurrentIndex( QModelIndex() );
 }
 
+
+void SettingDialog::SaveVehiclePedestrianSetting()
+{
+    QString fileName = QFileDialog::getSaveFileName(this,
+                                                    tr("Save Vehicle and Pedestrian Category Data"),
+                                                    ".",
+                                                    tr("Vehicle and Pedestrian Category file(*.VPcat.txt)"));
+
+    if( fileName.isNull() == false ){
+
+        if( fileName.endsWith(".VPcat.txt") == false ){
+            fileName += QString(".VPcat.txt");
+        }
+
+        qDebug() << "filename = " << fileName;
+
+    }
+    else{
+        qDebug() << "SaveVehiclePedestrianSetting canceled.";
+        return;
+    }
+
+
+    QFile file(fileName);
+    if( !file.open(QIODevice::WriteOnly | QIODevice::Text) ){
+        qDebug() << "[SettingDialog::SaveVehiclePedestrianSetting] failed to open file :" << fileName;
+        return;
+    }
+
+
+    QTextStream out(&file);
+
+    out << "# Vehicle and Pedestrian Category file\n";
+    out << "\n";
+
+    for(int i=0;i<vehicleKindTable->rowCount();++i){
+        out << "Vehicle Kind ; ";
+        for(int j=0;j<5;++j){
+            out << vehicleKindTable->item(i,j)->text();
+            if( j < 4 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+    }
+
+    out << "\n";
+
+    for(int i=0;i<pedestrianKindTable->rowCount();++i){
+        out << "Pedestrian Kind ; ";
+        for(int j=0;j<5;++j){
+            out << pedestrianKindTable->item(i,j)->text();
+            if( j < 4 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+    }
+
+    file.close();
+}
+
+
+void SettingDialog::LoadVehiclePedestrianSetting()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                            tr("Choose Vehicle and Pedestrian Category File"),
+                                            ".",
+                                            tr("Vehicle and Pedestrian Category file(*.VPcat.txt)"));
+
+    if( fileName.isNull() == false ){
+        qDebug() << "filename = " << fileName;
+    }
+    else{
+        qDebug() << "LoadVehiclePedestrianSetting canceled.";
+        return;
+    }
+
+
+    QFile file(fileName);
+    if( !file.open(QIODevice::ReadOnly | QIODevice::Text) ){
+        qDebug() << "[LoadVehiclePedestrianSetting::LoadSetting] failed to open file : " << fileName;
+        return;
+    }
+
+    QTextStream in(&file);
+    QString line;
+    QStringList divLine;
+
+    QList<QStringList> vData;
+    QList<QStringList> pData;
+
+    while( in.atEnd() == false ){
+
+        line = in.readLine();
+        if( line.startsWith("#") == true || line.isEmpty() == true ){
+            continue;
+        }
+
+        divLine = line.split(";");
+        QString tagStr = QString(divLine[0]).trimmed();
+
+        if( tagStr == QString("Vehicle Kind") ){
+
+            QStringList divVal = QString(divLine[1]).trimmed().split(",");
+            vData.append( divVal );
+        }
+        else if( tagStr == QString("Pedestrian Kind") ){
+
+            QStringList divVal = QString(divLine[1]).trimmed().split(",");
+            pData.append( divVal );
+        }
+    }
+
+    if( vData.size() > 0 ){
+
+        vehicleKindTable->clearContents();
+
+        int nRow = vehicleKindTable->rowCount();
+        for(int i=nRow-1;i>=0;i--){
+            vehicleKindTable->removeRow(i);
+        }
+
+        for(int i=0;i<vData.size();++i){
+            nRow = vehicleKindTable->rowCount();
+            vehicleKindTable->insertRow( nRow );
+            for(int j=0;j<5;++j){
+                QTableWidgetItem *item = new QTableWidgetItem();
+                item->setText( QString(vData[i][j] ).trimmed() );
+                vehicleKindTable->setItem( nRow, j, item);
+            }
+        }
+    }
+
+    if( pData.size() > 0 ){
+
+        pedestrianKindTable->clearContents();
+
+        int nRow = pedestrianKindTable->rowCount();
+        for(int i=nRow-1;i>=0;i--){
+            pedestrianKindTable->removeRow(i);
+        }
+
+        for(int i=0;i<pData.size();++i){
+            nRow = pedestrianKindTable->rowCount();
+            pedestrianKindTable->insertRow( nRow );
+            for(int j=0;j<5;++j){
+                QTableWidgetItem *item = new QTableWidgetItem();
+                item->setText( QString(pData[i][j] ).trimmed() );
+                pedestrianKindTable->setItem( nRow, j, item);
+            }
+        }
+    }
+}
 
 

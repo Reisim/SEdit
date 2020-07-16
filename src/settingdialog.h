@@ -28,6 +28,8 @@
 #include <QFile>
 #include <QTextStream>
 #include <QCheckBox>
+#include <QFileDialog>
+
 
 
 class SettingDialog : public QWidget
@@ -39,7 +41,7 @@ public:
     void SaveSetting();
 
     int GetCurrentLeftRightIndex();
-    bool GetUseRelativePath() { useRelativePath->isChecked(); }
+    bool GetUseRelativePath() { return useRelativePath->isChecked(); }
     int GetVehicleKindNum();
     int GetPedestrianKindNum();
     QStringList GetVehicleKindCategory();
@@ -68,11 +70,16 @@ public slots:
     void AddRowPedestKind();
     void DelRowPedestKind();
 
+    void LoadVehiclePedestrianSetting();
+    void SaveVehiclePedestrianSetting();
 
 
 private:
     QComboBox *LeftRight;
     QCheckBox *useRelativePath;
+
+    QPushButton *saveVehiclePedestrianKindBtn;
+    QPushButton *loadVehiclePedestrianKindBtn;
 
     QTableWidget *vehicleKindTable;
     QPushButton *addVehicleKindBtn;

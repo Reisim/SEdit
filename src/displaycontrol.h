@@ -46,7 +46,7 @@ signals:
 public slots:
     void moveToClicked();
     void SetManualUpdateCPFlag(bool);
-
+    void SetManualUpdateWPDataFlag(bool);
 
 public:
     QPushButton *resetRotate;
@@ -83,6 +83,7 @@ public:
     QPushButton *prevLaneList;
     QPushButton *nextLaneList;
     QCheckBox *manualUpdateOfCP;
+    QCheckBox *manualUpdateOfWPData;
 
 
 private:

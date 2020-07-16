@@ -1535,6 +1535,7 @@ void DataManipulator::CheckLaneConnectionFull()
 
 void DataManipulator::CreateWPData()
 {
+    road->CheckLaneConnectionFull();
     road->CreateWPData();
     canvas->update();
 }
@@ -1587,6 +1588,12 @@ void DataManipulator::CheckAllStopLineCrossLane()
 void DataManipulator::CheckLaneCrossPoints()
 {
     road->CheckLaneCrossPoints();
+}
+
+
+void DataManipulator::CheckLaneAndPedestLaneCrossPoint()
+{
+    road->CheckPedestLaneCrossPoints();
 }
 
 

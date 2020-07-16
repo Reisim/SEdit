@@ -36,6 +36,14 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
     maxAgent->setMaximum(10000);
     maxAgent->setValue(1000);
 
+    assignScenarioData = new QCheckBox();
+
+    scenarioFilename = new QLabel("Not selected.");
+
+    selectScenarioFile = new QPushButton();
+    selectScenarioFile->setIcon( QIcon(":/images/Select.png") );
+    connect( selectScenarioFile, SIGNAL(clicked()), this, SLOT(SelectScenarioFilename()) );
+
     onlyFilename = new QCheckBox();
 
     QGridLayout *gridLayout = new QGridLayout();
@@ -51,8 +59,15 @@ ResimFilesOutput::ResimFilesOutput(QWidget *parent) : QWidget(parent)
     gridLayout->addWidget( new QLabel("Max Agent Number : "), 2, 0 );
     gridLayout->addWidget( maxAgent, 2, 1 );
 
-    gridLayout->addWidget( new QLabel("Only File Name : "), 3, 0 );
-    gridLayout->addWidget( onlyFilename, 3, 1 );
+    gridLayout->addWidget( new QLabel("Assign Scenario Data : "), 3, 0 );
+    gridLayout->addWidget( assignScenarioData, 3, 1 );
+
+    gridLayout->addWidget( new QLabel("Scenario Filename : "), 4, 0 );
+    gridLayout->addWidget( scenarioFilename, 4, 1 );
+    gridLayout->addWidget( selectScenarioFile, 4, 2 );
+
+    gridLayout->addWidget( new QLabel("Only File Name : "), 5, 0 );
+    gridLayout->addWidget( onlyFilename, 5, 1 );
 
 
     outputData = new QPushButton("Output");
@@ -122,9 +137,31 @@ void ResimFilesOutput::SelectOutputFilename()
     update();
 }
 
+void ResimFilesOutput::SelectScenarioFilename()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    "Scenario Data File",
+                                                    ".",
+                                                    tr("SEdit Scenario file(*.ss.txt)")) ;
+
+    if( fileName.isNull() == true || fileName.isEmpty() == true ){
+        scenarioFilename->setText("Not selected.");
+        return;
+    }
+
+    scenarioFilename->setText( fileName );
+    update();
+}
+
 
 void ResimFilesOutput::OutputFiles()
 {
+    if( road->roadDataFileName.isNull() || road->roadDataFileName.isEmpty() ){
+        qDebug() << "[ResimFilesOutput::OutputFiles] road data file should be opened";
+        return;
+    }
+
+
     QString filename = outputFilename->text();
     if( filename.isNull() == true || filename.isEmpty() == true ){
         qDebug() << "[ResimFilesOutput::OutputFiles] filename is null or empty";
@@ -150,6 +187,9 @@ void ResimFilesOutput::OutputFiles()
 
     // Check Cross Points
     road->CheckLaneCrossPoints();
+
+    // Check Cross Points with pedestLanes
+    road->CheckPedestLaneCrossPoints();
 
     // Create WP Data
     road->CreateWPData();
@@ -196,15 +236,18 @@ void ResimFilesOutput::OutputFiles()
         return;
     }
 
+    QString scenariofile = QString();
+    if( assignScenarioData->isChecked() == true ){
+        scenariofile = scenarioFilename->text();
+    }
 
-    bool ret3 = road->outputResimScenarioFiles( foldername, filename, maxAgent->value(), onlyFilename->isChecked() );
+    bool ret3 = road->outputResimScenarioFiles( foldername, filename, maxAgent->value(), onlyFilename->isChecked(), scenariofile );
     qDebug() << "[outputResimScenarioFiles] ret = " << ret3;
 
     if( ret3 == false ){
         QMessageBox::warning(this,"Error","Failed to make Re:sim Scenario Files.");
         return;
     }
-
 
     QMessageBox::information(this,"Success","Re:sim Files created.");
 }

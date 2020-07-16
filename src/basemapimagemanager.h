@@ -39,7 +39,7 @@ public:
     ~BaseMapImageManager();
 
     QList<struct baseMapImage*> baseMapImages;
-    void AddMapImageFromFile(QString filename,float x,float y,float scale,float rot,bool loadImage = true);
+    void AddMapImageFromFile(QString &filename,float x,float y,float scale,float rot,bool loadImage = true);
 
 signals:
     void MapImageAdded(struct baseMapImage *);

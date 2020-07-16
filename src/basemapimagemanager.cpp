@@ -147,7 +147,7 @@ void BaseMapImageManager::AddMapImage()
 }
 
 
-void BaseMapImageManager::AddMapImageFromFile(QString filename, float x, float y, float scale, float rot,bool loadImage)
+void BaseMapImageManager::AddMapImageFromFile(QString &filename, float x, float y, float scale, float rot,bool loadImage)
 {
     QStringList strDiv = filename.split("/");
     QString path = QString();
@@ -177,6 +177,11 @@ void BaseMapImageManager::AddMapImageFromFile(QString filename, float x, float y
     }
 
     AddMapImageToList(map);
+
+
+    if( map->path != path ){
+
+    }
 
     if( loadImage == true ){
         emit UpdateGraphic();

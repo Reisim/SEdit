@@ -36,6 +36,8 @@
 #include "roadinfo.h"
 #include "objectproperty.h"
 #include "odrouteeditor.h"
+#include "scenarioeditor.h"
+
 
 #include <QAction>
 #include <QMenu>
@@ -90,6 +92,24 @@ struct LinePoly
 
 
 struct RectPoly
+{
+    bool isValid;
+    QOpenGLVertexArrayObject array;
+    QOpenGLBuffer *buffer;
+    QVector<GLfloat> vertex;
+};
+
+
+struct TrianglePoly
+{
+    bool isValid;
+    QOpenGLVertexArrayObject array;
+    QOpenGLBuffer *buffer;
+    QVector<GLfloat> vertex;
+};
+
+
+struct VehiclePoly
 {
     bool isValid;
     QOpenGLVertexArrayObject array;
@@ -168,7 +188,7 @@ public:
     RoadObjectProperty *roadProperty;
     BaseMapImageManager *mapImageMng;
     ODRouteEditor *odRoute;
-
+    ScenarioEditor *scnrEdit;
 
     QMenu *addObjToNodePopup;
     QAction *createVTS;
@@ -194,10 +214,19 @@ protected:
     void mouseReleaseEvent(QMouseEvent *e);
     void wheelEvent(QWheelEvent *e);
 
+
+//    void PutText(float x,float y,float z,char*);
+//    void DrawLine(float x,float y,float z,float len,float angle,float thickness,float cr,float cg,float cb);
+//    void DrawCircle(float x,float y,float z,float R,float cr,float cg,float cb,bool fill);
+
+
+
 signals:
     void UpdateStatusBar(QString);
     void SetNodeListForRoute(QList<int>);
     void PedestLanePointPicked();
+    void PointsPickedForScenario(int,float,float,float,float);
+    void PointListForScenario(int,QList<QPointF>);
 
 public slots:
     void SetMapVisibility(bool);
@@ -238,7 +267,7 @@ public slots:
     void SetNodeSelected(int);
     void SetLaneColorBySpeedLimitFlag(bool);
     void SetLaneColorByActualSpeedFlag(bool);
-
+    void SetScenarioPickMode(int);
 
 private:
     float X_eye;
@@ -303,6 +332,8 @@ private:
     struct CirclePoly circlePoly;
     struct LinePoly linePoly;
     struct RectPoly rectPoly;
+    struct TrianglePoly trianglePoly;
+    struct VehiclePoly vhclPoly;
 
 
     // Flags
@@ -340,6 +371,17 @@ private:
     bool colorLaneByActualSpeedFlag;
 
     int laneListIndex;
+
+    int scenarioPickMode;
+    int scenarioPickCount;
+    QPointF pickedPoint1;
+    QList<QPointF> pathRoutePointStock;
+
+    bool selectByArea;
+    QPointF selectByArearPoints[4];
+
+    bool cutLaneByLine;
+    QPointF cutLaneByLinePoints[2];
 
     // Folders
     QStringList imageFilePathFolders;

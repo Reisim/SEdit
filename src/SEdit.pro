@@ -45,6 +45,7 @@ SOURCES += \
         configfilemanager.cpp \
         datamanip_base.cpp \
         datamanip_createnode.cpp \
+        datamanip_duplicate.cpp \
         datamanip_import.cpp \
         datamanip_insertnode.cpp \
         datamanip_pedestlane.cpp \
@@ -52,6 +53,7 @@ SOURCES += \
         gc_displaycontrol.cpp \
         gc_mouseoperation.cpp \
         gltransform3d.cpp \
+        graphdialog.cpp \
         graphiccanvas.cpp \
         main.cpp \
         mainwindow.cpp \
@@ -72,6 +74,7 @@ SOURCES += \
         roadstopline.cpp \
         roadts.cpp \
         roadwp.cpp \
+        scenarioeditor.cpp \
         settingdialog.cpp \
         workingthread.cpp
 
@@ -81,6 +84,7 @@ HEADERS += \
         datamanipulator.h \
         displaycontrol.h \
         gltransform3d.h \
+        graphdialog.h \
         graphiccanvas.h \
         mainwindow.h \
         objectproperty.h \
@@ -88,6 +92,7 @@ HEADERS += \
         resimfilesoutput.h \
         roadinfo.h \
         roadinfoelement.h \
+        scenarioeditor.h \
         settingdialog.h \
         workingthread.h
 

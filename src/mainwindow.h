@@ -37,6 +37,7 @@
 #include "odrouteeditor.h"
 #include "resimfilesoutput.h"
 #include "configfilemanager.h"
+#include "scenarioeditor.h"
 
 
 class MainWindow : public QMainWindow
@@ -58,6 +59,7 @@ public:
     ODRouteEditor *odRoute;
     ResimFilesOutput *resimOut;
     ConfigFileManager *configMgr;
+    ScenarioEditor *scenarioEdit;
 
 
     void SetRecentDataFile();

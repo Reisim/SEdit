@@ -93,7 +93,7 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
 
         infoStr += QString("  [%1] %2\n").arg(i).arg( road->lanes[lIdx]->shape.curvature[i] );
 
-        if( fabs(road->lanes[lIdx]->shape.curvature[i]) < maxCurv ){
+        if( fabs(road->lanes[lIdx]->shape.curvature[i]) > maxCurv ){
             maxCurv = road->lanes[lIdx]->shape.curvature[i];
         }
 
@@ -109,29 +109,30 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
     disconnect( laneSpeed, SIGNAL(valueChanged(int)), this, SLOT(SpeedLimitChanged(int)) );
     laneSpeed->setValue( road->lanes[lIdx]->speedInfo );
     connect( laneSpeed, SIGNAL(valueChanged(int)), this, SLOT(SpeedLimitChanged(int)) );
-    qDebug() << "speed limit = " << road->lanes[lIdx]->speedInfo;
+    //qDebug() << "speed limit = " << road->lanes[lIdx]->speedInfo;
 
 
     disconnect( laneActualSpeed, SIGNAL(valueChanged(int)), this, SLOT(ActualSpeedChanged(int)) );
     laneActualSpeed->setValue( road->lanes[lIdx]->actualSpeed );
     connect( laneActualSpeed, SIGNAL(valueChanged(int)), this, SLOT(ActualSpeedChanged(int)) );
-    qDebug() << "actual speed = " << road->lanes[lIdx]->actualSpeed;
+    //qDebug() << "actual speed = " << road->lanes[lIdx]->actualSpeed;
 
 
     disconnect( laneAutomaticDrivingEnabled, SIGNAL(toggled(bool)), this, SLOT(AutomaticDrivingEnableFlagChanged(bool)) );
     laneAutomaticDrivingEnabled->setChecked( road->lanes[lIdx]->automaticDrivingEnabled );
     connect( laneAutomaticDrivingEnabled, SIGNAL(toggled(bool)), this, SLOT(AutomaticDrivingEnableFlagChanged(bool)) );
-    qDebug() << "automaticDrivingEnabled = " << road->lanes[lIdx]->automaticDrivingEnabled;
+    //qDebug() << "automaticDrivingEnabled = " << road->lanes[lIdx]->automaticDrivingEnabled;
 
 
     disconnect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
     laneDriverErrorProb->setValue( road->lanes[lIdx]->driverErrorProb );
     connect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
-    qDebug() << "driverErrorProb = " << road->lanes[lIdx]->driverErrorProb;
+    //qDebug() << "driverErrorProb = " << road->lanes[lIdx]->driverErrorProb;
 
 
     laneInfo->setText( infoStr );
     laneInfo->setAlignment( Qt::AlignTop );
+    laneInfo->setFixedSize( laneInfo->sizeHint() );
 }
 
 

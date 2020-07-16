@@ -66,12 +66,6 @@ void WorkingThread::run()
 
                     road->CheckIfTwoLanesCross( lIdx, clIdx );
                 }
-
-                for(int k=0;k<road->pedestLanes.size();++k){
-
-                    road->CheckLaneCrossWithPedestLane( road->nodes[ndIdx]->relatedLanes[j], road->pedestLanes[k]->id );
-
-                }
             }
         }
 
@@ -168,12 +162,26 @@ void WorkingThread::run()
 
                 road->CheckIfTwoLanesCross( lIdx, tlIdx );
             }
+        }
+    }
+    else if( mode == 6 ){
+
+        nProcessed = 0;
+
+        for(int i=0;i<params.size();++i){
+
+            if( stopFlag == true ){
+                break;
+            }
+
+            int lIdx = params[i];
 
             for(int k=0;k<road->pedestLanes.size();++k){
 
                 road->CheckLaneCrossWithPedestLane( road->lanes[lIdx]->id, road->pedestLanes[k]->id );
-
             }
+
+            nProcessed++;
         }
     }
 

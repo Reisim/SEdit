@@ -28,6 +28,7 @@ RoadInfo::RoadInfo()
     LeftOrRight = LEFT_HAND_TRAFFIC;
 
     updateCPEveryOperation = false;
+    updateWPDataEveryOperation = false;
 }
 
 
@@ -171,6 +172,30 @@ void RoadInfo::ClearAllData()
 
 
     roadDataFileName = QString();
+}
+
+
+void RoadInfo::ClearLaneShape(LaneShapeInfo *s)
+{
+    for(int l=0;l<s->pos.size();++l){
+        delete s->pos[l];
+    }
+    s->pos.clear();
+
+    for(int l=0;l<s->derivative.size();++l){
+        delete s->derivative[l];
+    }
+    s->derivative.clear();
+
+    for(int l=0;l<s->diff.size();++l){
+        delete s->diff[l];
+    }
+    s->diff.clear();
+
+    s->angles.clear();
+    s->curvature.clear();
+    s->length.clear();
+    s->segmentLength.clear();
 }
 
 

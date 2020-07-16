@@ -78,6 +78,9 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     manualUpdateOfCP->setChecked( true );
     connect( manualUpdateOfCP,SIGNAL(toggled(bool)),this,SLOT(SetManualUpdateCPFlag(bool)) );
 
+    manualUpdateOfWPData = new QCheckBox("Manual Update of WPData");
+    manualUpdateOfWPData->setChecked( true );
+    connect( manualUpdateOfWPData,SIGNAL(toggled(bool)),this,SLOT(SetManualUpdateWPDataFlag(bool)) );
 
     showTrafficSignals      = new QCheckBox("Traffic Signals");
     showTrafficSignalLabels = new QCheckBox("Label");
@@ -106,6 +109,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     LaneListHBox->addWidget( nextLaneList );
     LaneListHBox->addStretch(1);
     grid->addLayout(  LaneListHBox, row++, 2 );
+    grid->addWidget( manualUpdateOfWPData, row++, 2 );
 
     grid->addWidget( showLanes, row, 1 );
     grid->addWidget( showLaneLabels, row++, 2 );
@@ -169,6 +173,7 @@ void DisplayControl::InitSetting()
     showLanes->setChecked(true);
     laneWidth->setValue(6);
     manualUpdateOfCP->setChecked(true);
+    manualUpdateOfWPData->setChecked(true);
     showLaneLabels->setChecked(true);
     colorMapOfLaneSpeedLimit->setChecked(false);
     colorMapOfLaneActualSpeed->setChecked(false);
@@ -211,6 +216,18 @@ void DisplayControl::SetManualUpdateCPFlag(bool v)
         }
         else{
             road->updateCPEveryOperation = true;
+        }
+    }
+}
+
+void DisplayControl::SetManualUpdateWPDataFlag(bool v)
+{
+    if( road != NULL ){
+        if( v == true ){
+            road->updateWPDataEveryOperation = false;
+        }
+        else{
+            road->updateWPDataEveryOperation = true;
         }
     }
 }

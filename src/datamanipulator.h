@@ -76,6 +76,10 @@ public:
     int CreateNode_3x2x1_rm();
     int CreateNode_3x2x1_r();
 
+    int depthCount;
+    void ChangeRelatedLanesForPreviousLanes(int lidx,int addNode,int relDir,int rmvNode);
+    void ChangeRelatedLanesForNextLanes(int lidx,int addNode,int relDir,int rmvNode);
+
 
 signals:
     void UpdateStatusBar(QString);
@@ -122,11 +126,11 @@ public slots:
     int CreatePedestPath();
 
 
-
     int CreateNode(float x,float y,int nLeg,QList<int> inlanes,QList<int> outlanes);
     int CreateTrafficSignal(int nodeID,int nodeDir,int type);
     int CreateStopLine(int nodeID,int nodeDir,int type);
 
+    void DuplicateNodes();
     void CheckLaneConnectionFull();
     void CreateWPData();
     void SetODFlagOfTerminalNode();
@@ -138,7 +142,9 @@ public slots:
     void CheckCrossPointsOfSelectedLane();
     void ChangeSpeedLimitOfSelectedLanes();
     void ChangeActualSpeedOfSelectedLanes();
+    void CheckLaneAndPedestLaneCrossPoint();
 
+    void GetConnectionDirection(int nd1,int nd2, int& dir1, int &dir2);
     void InsertNode_4x1_noTS();
     void InsertNode_4x2_noTS();
     void InsertNode_3Lx1_noTS();

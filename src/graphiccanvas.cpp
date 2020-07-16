@@ -130,6 +130,11 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
 
     mousePressed = false;
 
+    scenarioPickMode = 0;
+    scenarioPickCount = 0;
+
+    selectByArea = false;
+    cutLaneByLine = false;
 
     addObjToNodePopup = new QMenu();
 
@@ -475,6 +480,7 @@ void GraphicCanvas::initializeGL()
         }
     }
 
+
     //
     // Rectangle
     rectPoly.isValid = false;
@@ -519,6 +525,95 @@ void GraphicCanvas::initializeGL()
         }
     }
 
+
+    //
+    // Triangle
+    trianglePoly.isValid = false;
+    ret = trianglePoly.array.create();
+    if( !ret ){
+        qDebug() << "   trianglePoly.array.create failed.";
+    }
+    trianglePoly.array.bind();
+    trianglePoly.buffer = new QOpenGLBuffer();
+    ret =  trianglePoly.buffer->create();
+    if( !ret ){
+        qDebug() << "   trianglePoly.buffer.create failed.";
+    }
+    else{
+        ret = trianglePoly.buffer->bind();
+        if( !ret ){
+            qDebug() << "   trianglePoly.buffer.bind failed.";
+        }
+        else{
+
+            trianglePoly.vertex <<  1.0 <<    0.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            trianglePoly.vertex << -0.5 <<  0.707 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            trianglePoly.vertex << -0.5 << -0.707 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+
+            trianglePoly.buffer->setUsagePattern( QOpenGLBuffer::StaticDraw );
+            trianglePoly.buffer->allocate( trianglePoly.vertex.constData(), trianglePoly.vertex.size() * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 0 );
+            program->setAttributeBuffer( 0, GL_FLOAT, 0, 3, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 1 );
+            program->setAttributeBuffer( 1, GL_FLOAT, 3 * sizeof(GLfloat) , 2, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 2 );
+            program->setAttributeBuffer( 2, GL_FLOAT, 5 * sizeof(GLfloat) , 3, 8 * sizeof(GLfloat) );
+
+            trianglePoly.buffer->release();
+            trianglePoly.array.release();
+
+            trianglePoly.isValid = true;
+        }
+    }
+
+
+    //
+    // Vehicle
+    vhclPoly.isValid = false;
+    ret = vhclPoly.array.create();
+    if( !ret ){
+        qDebug() << "   vhclPoly.array.create failed.";
+    }
+    vhclPoly.array.bind();
+    vhclPoly.buffer = new QOpenGLBuffer();
+    ret =  vhclPoly.buffer->create();
+    if( !ret ){
+        qDebug() << "   vhclPoly.buffer.create failed.";
+    }
+    else{
+        ret = vhclPoly.buffer->bind();
+        if( !ret ){
+            qDebug() << "   vhclPoly.buffer.bind failed.";
+        }
+        else{
+
+            vhclPoly.vertex <<  1.0  <<  0.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            vhclPoly.vertex <<  0.75 <<  1.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            vhclPoly.vertex << -1.0  <<  1.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            vhclPoly.vertex << -1.0  << -1.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+            vhclPoly.vertex <<  0.75 << -1.0 << 0.0 << 0.0 << 0.0 << 1.0 << 1.0 << 1.0;
+
+            vhclPoly.buffer->setUsagePattern( QOpenGLBuffer::StaticDraw );
+            vhclPoly.buffer->allocate( vhclPoly.vertex.constData(), vhclPoly.vertex.size() * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 0 );
+            program->setAttributeBuffer( 0, GL_FLOAT, 0, 3, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 1 );
+            program->setAttributeBuffer( 1, GL_FLOAT, 3 * sizeof(GLfloat) , 2, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 2 );
+            program->setAttributeBuffer( 2, GL_FLOAT, 5 * sizeof(GLfloat) , 3, 8 * sizeof(GLfloat) );
+
+            vhclPoly.buffer->release();
+            vhclPoly.array.release();
+
+            vhclPoly.isValid = true;
+        }
+    }
 }
 
 
@@ -684,6 +779,1089 @@ void GraphicCanvas::paintGL()
     model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
 
 
+    // Cut Lane By Line
+    if( cutLaneByLine == true ){
+
+        float dx = cutLaneByLinePoints[1].x() - cutLaneByLinePoints[0].x();
+        float dy = cutLaneByLinePoints[1].y() - cutLaneByLinePoints[0].y();
+        float len = sqrt( dx * dx + dy * dy );
+        if( len > 0.1 ){
+            dx /= len;
+            dy /= len;
+
+            linePoly.array.bind();
+
+            model2World.setTranslation( QVector3D( cutLaneByLinePoints[0].x(),
+                                                   cutLaneByLinePoints[0].y(),
+                                                   0.55 ) );
+
+            model2World.setScale( QVector3D(len,1.0,1.0) );
+
+            float angle = atan2( dy, dx );
+            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+            glLineWidth(4.0);
+            glDrawArrays(GL_LINES, 0, 2 );
+
+            linePoly.array.release();
+        }
+    }
+
+    // Selection Area
+    if( selectByArea == true ){
+
+        for(int i=0;i<4;++i){
+
+            linePoly.array.bind();
+
+            float dx = selectByArearPoints[(i+1)%4].x() - selectByArearPoints[i].x();
+            float dy = selectByArearPoints[(i+1)%4].y() - selectByArearPoints[i].y();
+            float len = sqrt( dx * dx + dy * dy );
+            if( len < 0.1 ){
+                continue;
+            }
+            dx /= len;
+            dy /= len;
+
+            model2World.setTranslation( QVector3D( selectByArearPoints[i].x(),
+                                                   selectByArearPoints[i].y(),
+                                                   0.55 ) );
+
+            model2World.setScale( QVector3D(len,1.0,1.0) );
+
+            float angle = atan2( dy, dx );
+            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+            glLineWidth(4.0);
+            glDrawArrays(GL_LINES, 0, 2 );
+
+            linePoly.array.release();
+        }
+
+    }
+
+    //
+    // Scenario Objects
+    if( scenarioPickMode > 0 && scenarioPickCount >= 1 && circlePoly.isValid == true ){
+
+        if( scenarioPickMode == 6 || scenarioPickMode == 9 || scenarioPickMode == 10 ){ // path route
+            for(int i=0;i<pathRoutePointStock.size();++i){
+
+                if( i > 0 ){
+                    linePoly.array.bind();
+
+                    float dx = pathRoutePointStock[i].x() - pathRoutePointStock[i-1].x();
+                    float dy = pathRoutePointStock[i].y() - pathRoutePointStock[i-1].y();
+                    float rot = atan2( dy, dx ) * 0.5;
+                    float len = sqrt( dx * dx + dy * dy );
+
+                    model2World.setTranslation( QVector3D( pathRoutePointStock[i-1].x(),
+                                                           pathRoutePointStock[i-1].y(),
+                                                           0.55 ) );
+                    model2World.setScale( QVector3D(len,1.0,1.0) );
+                    model2World.setRotation( QQuaternion( cos(rot), 0.0 , 0.0 , sin(rot) ) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                    glLineWidth(4.0);
+                    glDrawArrays(GL_LINES, 0, 2 );
+
+                    linePoly.array.release();
+                }
+
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( pathRoutePointStock[i].x(),
+                                                       pathRoutePointStock[i].y(),
+                                                       0.5) );
+
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.0, 0.1, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                circlePoly.array.release();
+            }
+        }
+        else{
+
+            if( scenarioPickCount == 1 ){
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( pickedPoint1.x(),
+                                                       pickedPoint1.y(),
+                                                       0.5) );
+
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.0, 0.1, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                circlePoly.array.release();
+            }
+
+        }
+
+    }
+
+    for(int i=0;i<scnrEdit->sSys.size();++i){
+
+        if( scnrEdit->sSys[i]->sItem.cond.positionTrigger == true ){
+
+            float xtrigger = scnrEdit->sSys[i]->sItem.cond.ptX;
+            float ytrigger = scnrEdit->sSys[i]->sItem.cond.ptY;
+            float rottrigger = scnrEdit->sSys[i]->sItem.cond.ptPassAngle * 0.017452 * 0.5;
+            float halfWidthTrigger = scnrEdit->sSys[i]->sItem.cond.ptWidth * 0.5;
+
+            trianglePoly.array.bind();
+
+            model2World.setTranslation( QVector3D( xtrigger,ytrigger,0.55) );
+            model2World.setRotation( QQuaternion( cos( rottrigger ), 0.0, 0.0, sin( rottrigger ) ) );
+            model2World.setScale( QVector3D(0.5, 0.5, 0.5) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+            glLineWidth(1.0);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 3 );
+
+            trianglePoly.array.release();
+
+            linePoly.array.bind();
+
+            rottrigger *= 2.0;
+            float c = cos( rottrigger );
+            float s = sin( rottrigger );
+
+            model2World.setTranslation( QVector3D( xtrigger - s * halfWidthTrigger,
+                                                   ytrigger + c * halfWidthTrigger,
+                                                   0.55 ) );
+
+            model2World.setScale( QVector3D(halfWidthTrigger * 2.0,1.0,1.0) );
+
+            float angle = atan2( -c, s );
+            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+            glLineWidth(4.0);
+            glDrawArrays(GL_LINES, 0, 2 );
+
+            linePoly.array.release();
+
+            if( textPoly.isTextValid == true ){
+
+                textPoly.textArray.bind();
+
+                program->setUniformValue( u_useTex, 100 );
+                program->setUniformValue( u_isText, 100 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                char act[50];
+                if( scnrEdit->sSys[i]->sItem.act.actionType == 0 ){
+                    sprintf(act,"TELEPORT/OBJ[%d]",scnrEdit->sSys[i]->sItem.act.iParams[0]);
+                }
+                else if( scnrEdit->sSys[i]->sItem.act.actionType == 1 ){
+                    sprintf(act,"CHANGE TS/TS[%d]",scnrEdit->sSys[i]->sItem.act.iParams[0]);
+                }
+                else if( scnrEdit->sSys[i]->sItem.act.actionType == 2 ){
+                    sprintf(act,"CHANGE SPEED");
+                }
+                else if( scnrEdit->sSys[i]->sItem.act.actionType == 3 ){
+                    sprintf(act,"SEND UDP");
+                }
+                else{
+                    memset( act, 0, 50 );
+                }
+
+
+
+                char str[50];
+                sprintf(str,"SYS[%d] POS/TRIG TARGET[%d] %s",scnrEdit->sSys[i]->ID, scnrEdit->sSys[i]->sItem.cond.ptTargetObjID, act);
+
+                model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                       ytrigger + 0.5,
+                                                       0.60) );
+
+                QQuaternion letterQuat = cameraQuat.conjugated();
+                model2World.setRotation( letterQuat );
+                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glActiveTexture( GL_TEXTURE0 );
+
+                float x = 0.0;
+                float y = 0.0;
+                float scale = FONT_SCALE;
+
+                if( showLabelsFlag == true ){
+                    for(unsigned int c=0;c<strlen(str);++c ){
+
+                        Character* ch = Characters[ str[c] ];
+
+                        GLfloat xpos = x + ch->Bearing.width() * scale;
+                        GLfloat ypos = y;
+                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                        x += ( ch->Advance >> 6 ) * scale;
+                    }
+                }
+
+                textPoly.textArray.release();
+            }
+        }
+
+        if( scnrEdit->sSys[i]->sItem.cond.TTCTrigger == true && scnrEdit->sSys[i]->sItem.cond.ttcCalType == 0 ){
+
+            float xtrigger = scnrEdit->sSys[i]->sItem.cond.ttcCalPosX;
+            float ytrigger = scnrEdit->sSys[i]->sItem.cond.ttcCalPosY;
+
+            circlePoly.array.bind();
+
+            model2World.setTranslation( QVector3D( xtrigger, ytrigger, 0.55) );
+            model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+            model2World.setScale( QVector3D(0.50,0.50,0.50) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+            glLineWidth(1.0);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+            circlePoly.array.release();
+
+            if( textPoly.isTextValid == true ){
+
+                textPoly.textArray.bind();
+
+                program->setUniformValue( u_useTex, 100 );
+                program->setUniformValue( u_isText, 100 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                char str[50];
+                sprintf(str,"SYS[%d] TTC/TRIG/POINT",scnrEdit->sSys[i]->ID);
+
+                model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                       ytrigger + 0.5,
+                                                       0.60) );
+
+                QQuaternion letterQuat = cameraQuat.conjugated();
+                model2World.setRotation( letterQuat );
+                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glActiveTexture( GL_TEXTURE0 );
+
+                float x = 0.0;
+                float y = 0.0;
+                float scale = FONT_SCALE;
+
+                if( showLabelsFlag == true ){
+                    for(unsigned int c=0;c<strlen(str);++c ){
+
+                        Character* ch = Characters[ str[c] ];
+
+                        GLfloat xpos = x + ch->Bearing.width() * scale;
+                        GLfloat ypos = y;
+                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                        x += ( ch->Advance >> 6 ) * scale;
+                    }
+                }
+
+                textPoly.textArray.release();
+            }
+        }
+
+        if( scnrEdit->sSys[i]->sItem.act.actionType == 0 && scnrEdit->sSys[i]->sItem.act.fParams.size() > 0 ){ // Teleport
+
+            float xTeleportTo = scnrEdit->sSys[i]->sItem.act.fParams[0];
+            float yTeleportTo = scnrEdit->sSys[i]->sItem.act.fParams[1];
+            float rotTeleportTo = scnrEdit->sSys[i]->sItem.act.fParams[2] * 0.017452 * 0.5;
+
+            trianglePoly.array.bind();
+
+            model2World.setTranslation( QVector3D( xTeleportTo,yTeleportTo,0.55) );
+            model2World.setRotation( QQuaternion( cos( rotTeleportTo ), 0.0, 0.0, sin( rotTeleportTo ) ) );
+            model2World.setScale( QVector3D(0.5, 0.5, 0.5) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 0.0, 1.0, 0.0, 1.0 ) );
+
+            glLineWidth(1.0);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 3 );
+
+            trianglePoly.array.release();
+
+            linePoly.array.bind();
+
+            rotTeleportTo *= 2.0;
+            float c = cos( rotTeleportTo );
+            float s = sin( rotTeleportTo );
+
+            model2World.setTranslation( QVector3D( xTeleportTo - s * 1.5,
+                                                   yTeleportTo + c * 1.5,
+                                                   0.55 ) );
+
+            model2World.setScale( QVector3D(3.0,1.0,1.0) );
+
+            float angle = atan2( -c, s );
+            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+            program->setUniformValue( u_vColor, QVector4D( 0.0, 1.0, 0.0, 1.0 ) );
+
+            glLineWidth(4.0);
+            glDrawArrays(GL_LINES, 0, 2 );
+
+            linePoly.array.release();
+
+            if( textPoly.isTextValid == true ){
+
+                textPoly.textArray.bind();
+
+                program->setUniformValue( u_useTex, 100 );
+                program->setUniformValue( u_isText, 100 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                char str[50];
+                sprintf(str,"SYS[%d] TELEPORT POINT/OBJ[%d]",scnrEdit->sSys[i]->ID,scnrEdit->sSys[i]->sItem.act.iParams[0]);
+
+                model2World.setTranslation( QVector3D( xTeleportTo + 0.5,
+                                                       yTeleportTo + 0.5,
+                                                       0.60) );
+
+                QQuaternion letterQuat = cameraQuat.conjugated();
+                model2World.setRotation( letterQuat );
+                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glActiveTexture( GL_TEXTURE0 );
+
+                float x = 0.0;
+                float y = 0.0;
+                float scale = FONT_SCALE;
+
+                if( showLabelsFlag == true ){
+                    for(unsigned int c=0;c<strlen(str);++c ){
+
+                        Character* ch = Characters[ str[c] ];
+
+                        GLfloat xpos = x + ch->Bearing.width() * scale;
+                        GLfloat ypos = y;
+                        program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                        x += ( ch->Advance >> 6 ) * scale;
+                    }
+                }
+
+                textPoly.textArray.release();
+            }
+
+        }
+
+    }
+
+    for(int i=0;i<scnrEdit->sVehicle.size();++i){
+
+        for(int j=0;j<scnrEdit->sVehicle[i]->sItem.size();++j){
+
+            if( scnrEdit->sVehicle[i]->sItem[j]->cond.positionTrigger == true ){
+
+                float xtrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ptX;
+                float ytrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ptY;
+                float rottrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ptPassAngle * 0.017452 * 0.5;
+                float halfWidthTrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ptWidth * 0.5;
+
+                trianglePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xtrigger,ytrigger,0.55) );
+                model2World.setRotation( QQuaternion( cos( rottrigger ), 0.0, 0.0, sin( rottrigger ) ) );
+                model2World.setScale( QVector3D(0.5, 0.5, 0.5) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 3 );
+
+                trianglePoly.array.release();
+
+                linePoly.array.bind();
+
+                rottrigger *= 2.0;
+                float c = cos( rottrigger );
+                float s = sin( rottrigger );
+
+                model2World.setTranslation( QVector3D( xtrigger - s * halfWidthTrigger,
+                                                       ytrigger + c * halfWidthTrigger,
+                                                       0.55 ) );
+
+                model2World.setScale( QVector3D(halfWidthTrigger * 2.0,1.0,1.0) );
+
+                float angle = atan2( -c, s );
+                model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(4.0);
+                glDrawArrays(GL_LINES, 0, 2 );
+
+                linePoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SVHCL[%d]SLOT[%d] POS/TRIG",scnrEdit->sVehicle[i]->ID,j);
+
+                    model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                           ytrigger + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+            }
+
+            if( scnrEdit->sVehicle[i]->sItem[j]->cond.TTCTrigger == true && scnrEdit->sVehicle[i]->sItem[j]->cond.ttcCalType == 0 ){
+
+                float xtrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ttcCalPosX;
+                float ytrigger = scnrEdit->sVehicle[i]->sItem[j]->cond.ttcCalPosY;
+
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xtrigger, ytrigger, 0.55) );
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(0.50,0.50,0.50) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                circlePoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SVHCL[%d]SLOT[%d] TTC/TRIG/POINT",scnrEdit->sVehicle[i]->ID,j);
+
+                    model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                           ytrigger + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+            }
+
+            if( scnrEdit->sVehicle[i]->sItem[j]->act.actionType == 0 &&
+                    scnrEdit->sVehicle[i]->sItem[j]->act.fParams.size() >= 3 &&
+                    scnrEdit->sVehicle[i]->sItem[j]->act.iParams.size() >= 2 ){
+
+                float xat = scnrEdit->sVehicle[i]->sItem[j]->act.fParams[0];
+                float yat = scnrEdit->sVehicle[i]->sItem[j]->act.fParams[1];
+                float rot = scnrEdit->sVehicle[i]->sItem[j]->act.fParams[2] * 0.017452 * 0.5;
+
+                int modelID = scnrEdit->sVehicle[i]->sItem[j]->act.iParams[0];
+                float hl = scnrEdit->setDlg->GetVehicleKindTableStr( modelID, 2 ).toFloat() * 0.5;
+                float hw = scnrEdit->setDlg->GetVehicleKindTableStr( modelID, 3 ).toFloat() * 0.5;
+
+                vhclPoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xat, yat, 0.55) );
+                model2World.setRotation( QQuaternion( cos(rot), 0.0, 0.0, sin(rot) ) );
+                model2World.setScale( QVector3D(hl,hw,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 1.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                vhclPoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SVHCL[%d] APPEAR",scnrEdit->sVehicle[i]->ID);
+
+                    model2World.setTranslation( QVector3D( xat + hl + 0.5,
+                                                           yat + hw + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+
+
+                // Draw Path Route
+                if( scnrEdit->sVehicle[i]->sItem[j]->act.iParams[2] == 1 &&
+                        scnrEdit->sVehicle[i]->sItem[j]->act.laneShape.size() > 0 ){
+
+                    bool sVselected = scnrEdit->isScenarioVehicleSelected( scnrEdit->sVehicle[i]->ID );
+
+                    for(int k=0;k<scnrEdit->sVehicle[i]->sItem[j]->act.laneShape.size();k++){
+
+                        linePoly.array.bind();
+
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_useTex, 2 );
+                        glLineWidth( laneDrawWidth );
+                        if( sVselected == true ){
+                            program->setUniformValue( u_vColor, QVector4D( 1.0, 0.80, 0.74, 1.0 ) );
+                        }
+                        else{
+                            program->setUniformValue( u_vColor, QVector4D( 0.6, 0.8, 1.0, 1.0 ) );
+                        }
+
+                        struct LaneShapeInfo *s = scnrEdit->sVehicle[i]->sItem[j]->act.laneShape[k];
+
+                        for(int l=0;l<s->pos.size()-1;++l){
+
+                            model2World.setTranslation( QVector3D( s->pos[l]->x(),
+                                                                   s->pos[l]->y(),
+                                                                   s->pos[l]->z()) );
+
+                            model2World.setScale( QVector3D(s->segmentLength[l],1.0,1.0) );
+
+                            float pitch = asin( (s->pos[l]->z() - s->pos[l+1]->z()) / s->segmentLength[l]) ;
+
+                            float angle = s->angles[l];
+                            model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) * QQuaternion( cos(pitch*0.5), 0.0 , sin(pitch*0.5) , 0.0 ) );
+
+                            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                            glDrawArrays(GL_LINES, 0, 2 );
+                        }
+
+                        linePoly.array.release();
+
+                        if(k == 0){
+                            float xw = s->pos.first()->x();
+                            float yw = s->pos.first()->y();
+                            float zw = s->pos.first()->z();
+
+                            circlePoly.array.bind();
+
+                            model2World.setTranslation( QVector3D( xw, yw, zw + 0.05) );
+                            model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                            model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                            program->setUniformValue( u_isText, 0 );
+                            program->setUniformValue( u_useTex, 2 );
+                            program->setUniformValue( u_vColor, QVector4D( 0.2, 0.5, 1.0, 1.0 ) );
+
+                            glLineWidth(1.0);
+                            glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                            circlePoly.array.release();
+                        }
+
+
+                        float xw = s->pos.last()->x();
+                        float yw = s->pos.last()->y();
+                        float zw = s->pos.last()->z();
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( QVector3D( xw, yw, zw + 0.05) );
+                        model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                        model2World.setScale( QVector3D(0.30,0.30,0.30) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.2, 0.5, 1.0, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+                }
+
+            }
+
+        }
+    }
+
+    for(int i=0;i<scnrEdit->sPedest.size();++i){
+
+        for(int j=0;j<scnrEdit->sPedest[i]->sItem.size();++j){
+
+            if( scnrEdit->sPedest[i]->sItem[j]->cond.positionTrigger == true ){
+
+                float xtrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ptX;
+                float ytrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ptY;
+                float rottrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ptPassAngle * 0.017452 * 0.5;
+                float halfWidthTrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ptWidth * 0.5;
+
+
+                trianglePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xtrigger,ytrigger,0.55) );
+                model2World.setRotation( QQuaternion( cos( rottrigger ), 0.0, 0.0, sin( rottrigger ) ) );
+                model2World.setScale( QVector3D(0.5, 0.5, 0.5) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 3 );
+
+                trianglePoly.array.release();
+
+                linePoly.array.bind();
+
+                rottrigger *= 2.0;
+                float c = cos( rottrigger );
+                float s = sin( rottrigger );
+
+                model2World.setTranslation( QVector3D( xtrigger - s * halfWidthTrigger,
+                                                       ytrigger + c * halfWidthTrigger,
+                                                       0.55 ) );
+
+                model2World.setScale( QVector3D(halfWidthTrigger * 2.0,1.0,1.0) );
+
+                float angle = atan2( -c, s );
+                model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(4.0);
+                glDrawArrays(GL_LINES, 0, 2 );
+
+                linePoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SPED[%d]SLOT[%d] POS/TRIG",scnrEdit->sPedest[i]->ID,j);
+
+                    model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                           ytrigger + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+            }
+
+            if( scnrEdit->sPedest[i]->sItem[j]->cond.TTCTrigger == true && scnrEdit->sPedest[i]->sItem[j]->cond.ttcCalType == 0 ){
+
+                float xtrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ttcCalPosX;
+                float ytrigger = scnrEdit->sPedest[i]->sItem[j]->cond.ttcCalPosY;
+
+                circlePoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xtrigger, ytrigger, 0.55) );
+                model2World.setRotation( QQuaternion( 1.0, 0.0, 0.0, 0.0 ) );
+                model2World.setScale( QVector3D(0.50,0.50,0.50) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 0.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                circlePoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SPED[%d]SLOT[%d] TTC/TRIG/POINT",scnrEdit->sPedest[i]->ID,j);
+
+                    model2World.setTranslation( QVector3D( xtrigger + 0.5,
+                                                           ytrigger + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+            }
+
+            if( scnrEdit->sPedest[i]->sItem[j]->act.actionType == 0 &&
+                    scnrEdit->sPedest[i]->sItem[j]->act.fParams.size() >= 3 &&
+                    scnrEdit->sPedest[i]->sItem[j]->act.iParams.size() >= 1 ){
+
+                float xat = scnrEdit->sPedest[i]->sItem[j]->act.fParams[0];
+                float yat = scnrEdit->sPedest[i]->sItem[j]->act.fParams[1];
+                float rot = scnrEdit->sPedest[i]->sItem[j]->act.fParams[2] * 0.017452 * 0.5;
+
+                int modelID = scnrEdit->sPedest[i]->sItem[j]->act.iParams[0];
+                float hl = scnrEdit->setDlg->GetPedestKindTableStr( modelID, 2 ).toFloat() * 0.5;
+                float hw = scnrEdit->setDlg->GetPedestKindTableStr( modelID, 3 ).toFloat() * 0.5;
+
+                vhclPoly.array.bind();
+
+                model2World.setTranslation( QVector3D( xat, yat, 0.55) );
+                model2World.setRotation( QQuaternion( cos(rot), 0.0, 0.0, sin(rot) ) );
+                model2World.setScale( QVector3D(hl,hw,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                program->setUniformValue( u_isText, 0 );
+                program->setUniformValue( u_useTex, 2 );
+                program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 1.0, 1.0 ) );
+
+                glLineWidth(1.0);
+                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                vhclPoly.array.release();
+
+                if( textPoly.isTextValid == true ){
+
+                    textPoly.textArray.bind();
+
+                    program->setUniformValue( u_useTex, 100 );
+                    program->setUniformValue( u_isText, 100 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                    char str[50];
+                    sprintf(str,"SPEDEST[%d] APPEAR",scnrEdit->sPedest[i]->ID);
+
+                    model2World.setTranslation( QVector3D( xat + hl + 0.5,
+                                                           yat + hw + 0.5,
+                                                           0.60) );
+
+                    QQuaternion letterQuat = cameraQuat.conjugated();
+                    model2World.setRotation( letterQuat );
+                    model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                    program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                    glActiveTexture( GL_TEXTURE0 );
+
+                    float x = 0.0;
+                    float y = 0.0;
+                    float scale = FONT_SCALE;
+
+                    if( showLabelsFlag == true ){
+                        for(unsigned int c=0;c<strlen(str);++c ){
+
+                            Character* ch = Characters[ str[c] ];
+
+                            GLfloat xpos = x + ch->Bearing.width() * scale;
+                            GLfloat ypos = y;
+                            program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                            x += ( ch->Advance >> 6 ) * scale;
+                        }
+                    }
+
+                    textPoly.textArray.release();
+                }
+
+                // Draw PedestLane Route
+                if( scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape.size() > 0 ){
+
+                    bool sPselected = scnrEdit->isScenarioPedestrianSelected( scnrEdit->sPedest[i]->ID );
+
+                    for(int k=0;k<scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape.size()-1;k++){
+
+                        linePoly.array.bind();
+
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_useTex, 2 );
+                        glLineWidth( laneDrawWidth );
+                        if( sPselected == true ){
+                            program->setUniformValue( u_vColor, QVector4D( 1.0, 0.80, 0.74, 1.0 ) );
+                        }
+                        else{
+                            program->setUniformValue( u_vColor, QVector4D( 0.6, 0.8, 1.0, 1.0 ) );
+                        }
+
+                        model2World.setTranslation( scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape[k]->pos );
+
+                        float len = scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape[k]->distanceToNextPos;
+                        model2World.setScale( QVector3D(len,1.0,1.0) );
+
+                        float angle = scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape[k]->angleToNextPos;
+                        model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        glDrawArrays(GL_LINES, 0, 2 );
+
+                        linePoly.array.release();
+                    }
+
+                    if( circlePoly.isValid == true ){
+
+                        circlePoly.array.bind();
+
+                        model2World.setTranslation( scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape[0]->pos );
+
+                        model2World.setRotation( QQuaternion( 1.0, 0.0 , 0.0 , 0.0 )  );
+
+                        float w = scnrEdit->sPedest[i]->sItem[j]->act.pedestLaneshape[0]->width * 0.5;
+                        model2World.setScale( QVector3D(w,w,1.0) );
+
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_isText, 0 );
+                        program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 1.0, 1.0 ) );
+
+                        glLineWidth(1.0);
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+
+                        circlePoly.array.release();
+                    }
+                }
+            }
+
+        }
+    }
+
+
     //
     // Lane
     if( linePoly.isValid == true && road != NULL && showLanesFlag == true ){
@@ -787,13 +1965,44 @@ void GraphicCanvas::paintGL()
                 }
             }
 
+            bool isScenarioNodeRouteLane = false;
+            for(int j=0;j<scnrEdit->sVehicle.size();++j){
+                if( scnrEdit->isScenarioVehicleSelected( scnrEdit->sVehicle[j]->ID ) == true ){
+                    for(int k=0;k<scnrEdit->sVehicle[j]->sItem.size();++k){
+                        if( scnrEdit->sVehicle[j]->sItem[k]->act.actionType == 0 &&
+                                scnrEdit->sVehicle[j]->sItem[k]->act.iParams.size() >= 3 &&
+                                scnrEdit->sVehicle[j]->sItem[k]->act.iParams[2] == 0 &&
+                                scnrEdit->sVehicle[j]->sItem[k]->act.route != NULL ){
+
+                            for(int l=0;l<scnrEdit->sVehicle[j]->sItem[k]->act.route->routeLaneLists.size();++l){
+                                for(int m=0;m<scnrEdit->sVehicle[j]->sItem[k]->act.route->routeLaneLists[l]->laneList.size();++m){
+                                    if( scnrEdit->sVehicle[j]->sItem[k]->act.route->routeLaneLists[l]->laneList[m].contains( road->lanes[i]->id ) == true ){
+                                        isScenarioNodeRouteLane = true;
+                                        break;
+                                    }
+                                }
+                                if( isScenarioNodeRouteLane == true ){
+                                    break;
+                                }
+                            }
+                            if( isScenarioNodeRouteLane == true ){
+                                break;
+                            }
+                        }
+                    }
+                }
+                if( isScenarioNodeRouteLane == true ){
+                    break;
+                }
+            }
+
             linePoly.array.bind();
 
 
             program->setUniformValue( u_isText, 0 );
 
 
-            if( isSelected == true ){
+            if( isSelected == true || isScenarioNodeRouteLane == true ){
                 program->setUniformValue( u_useTex, 2 );
                 glLineWidth( laneDrawWidth * 2 );
                 program->setUniformValue( u_vColor, QVector4D( 1.0, 0.5, 0.5, 1.0 ) );
@@ -1792,6 +3001,9 @@ void GraphicCanvas::paintGL()
     }
 
 
+    //
+    // PedestLane
+    //
     if( linePoly.isValid == true ){
 
         if( pedestPathPointPickFlag == true ){
@@ -2439,6 +3651,16 @@ void GraphicCanvas::SetNodeSelected(int node)
     selectedObj.selObjID.append( node );
 
     update();
+}
+
+
+void GraphicCanvas::SetScenarioPickMode(int m)
+{
+    qDebug() << "[GraphicCanvas::SetScenarioPickMode] mode = " << m;
+
+    activateWindow();
+
+    scenarioPickMode = m;
 }
 
 

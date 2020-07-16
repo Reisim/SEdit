@@ -111,7 +111,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
 
         for(int i=0;i<numMap;++i){
 
-            mapImageMng->AddMapImageFromFile( mapFileList.at(i), xMaps[i], yMaps[i], sMaps[i], 0.0 );
+            mapImageMng->AddMapImageFromFile( mapFileList[i], xMaps[i], yMaps[i], sMaps[i], 0.0 );
 
             pd->setValue(i+1);
             QApplication::processEvents();
