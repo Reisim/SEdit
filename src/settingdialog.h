@@ -29,7 +29,7 @@
 #include <QTextStream>
 #include <QCheckBox>
 #include <QFileDialog>
-
+#include <QSpinBox>
 
 
 class SettingDialog : public QWidget
@@ -44,6 +44,8 @@ public:
     bool GetUseRelativePath() { return useRelativePath->isChecked(); }
     int GetVehicleKindNum();
     int GetPedestrianKindNum();
+    int GetNumberActorForUE4Model(){ return numActorForUE4Models->value(); }
+    int GetMaxActorsInUE4(){ return maxActorForUE4->value(); }
     QStringList GetVehicleKindCategory();
     QStringList GetPedestianKindCategory();
     QStringList GetVehicleKindSubcategory();
@@ -88,6 +90,9 @@ private:
     QTableWidget *pedestrianKindTable;
     QPushButton *addPedestKindBtn;
     QPushButton *delPedestKindBtn;
+
+    QSpinBox *numActorForUE4Models;
+    QSpinBox *maxActorForUE4;
 
     QPushButton *closeButton;
 };

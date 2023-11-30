@@ -12,7 +12,7 @@
 
 
 #include "objectproperty.h"
-
+#include <QInputDialog>
 
 void RoadObjectProperty::ChangeTrafficSignalInfo(int id)
 {
@@ -55,16 +55,22 @@ void RoadObjectProperty::ChangeTrafficSignalInfo(int id)
     infoStr += QString("  Control Lane : %1\n").arg( road->nodes[ndIdx]->trafficSignals[tsIdx]->controlNodeLane );
     infoStr += QString("\n");
     infoStr += QString("[Signal Pattern]\n");
+
+    int totalCycle = 0;
     for(int i=0;i<road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.size();++i){
         infoStr += QString("  Pattern[%1]: Val=%2 Dur=%3\n").arg(i)
                 .arg( road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i]->signal )
                 .arg( road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i]->duration );
+
+        totalCycle += road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i]->duration;
     }
+    infoStr += QString("Total Cycle = %1[s]\n").arg( totalCycle );
     infoStr += QString("\n");
     infoStr += QString("\n");
 
     tsInfo->setText( infoStr );
     tsInfo->setAlignment( Qt::AlignTop );
+    tsInfo->setFixedSize( tsInfo->sizeHint() );
 
     tsStartOffset->setValue( road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset );
 
@@ -74,6 +80,19 @@ void RoadObjectProperty::ChangeTrafficSignalInfo(int id)
     }
     else{
         SetTSPattern( ndIdx, tsIdx );
+    }
+
+    if( road->nodes[ndIdx]->trafficSignals[tsIdx]->isSensorType == true ){
+        tsIsSensorType->setChecked(true);
+        tsChangeTimeBySensor->setValue( road->nodes[ndIdx]->trafficSignals[tsIdx]->timeToChangeBySensor );
+    }
+    else{
+        tsIsSensorType->setChecked(false);
+        tsChangeTimeBySensor->setValue( 0 );
+    }
+
+    if( cbChangeSelectionBySpinbox->isChecked() == true ){
+        emit ChangeSelectionRequest(5,id);
     }
 }
 
@@ -215,6 +234,15 @@ void RoadObjectProperty::TSPatternApplyClicked()
         return;
     }
 
+    if( tsIsSensorType->isChecked() == true ){
+        road->nodes[ndIdx]->trafficSignals[tsIdx]->isSensorType = true;
+        road->nodes[ndIdx]->trafficSignals[tsIdx]->timeToChangeBySensor = tsChangeTimeBySensor->value();
+    }
+    else{
+        road->nodes[ndIdx]->trafficSignals[tsIdx]->isSensorType = false;
+        road->nodes[ndIdx]->trafficSignals[tsIdx]->timeToChangeBySensor = 0;
+    }
+
     for(int i=0;i<road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.size();++i){
         delete road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i];
     }
@@ -251,6 +279,59 @@ void RoadObjectProperty::TSPatternApplyClicked()
     }
 
     road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset = tsStartOffset->value();
+
+    ChangeTrafficSignalInfo( road->nodes[ndIdx]->trafficSignals[tsIdx]->id );
+}
+
+
+void RoadObjectProperty::TSPatternCopyClicked()
+{
+    int id = tsIDSB->value();
+    int nodeID = road->indexOfTS( id, -1 );
+    if( nodeID < 0){
+        return;
+    }
+    int ndIdx  = road->indexOfNode( nodeID );
+    int tsIdx  = road->indexOfTS( id, nodeID );
+    if( tsIdx < 0 ){
+        return;
+    }
+
+    int copyFromTSID = QInputDialog::getInt( NULL, "Copy From Other TS", "TS ID");
+    int cftsNodeID = road->indexOfTS( copyFromTSID, -1 );
+    if( cftsNodeID < 0){
+        return;
+    }
+    int cfndIdx  = road->indexOfNode( cftsNodeID );
+    int cftsIdx = road->indexOfTS( copyFromTSID, cftsNodeID );
+    if( cftsIdx < 0 ){
+        return;
+    }
+
+    road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset = road->nodes[cfndIdx]->trafficSignals[cftsIdx]->startOffset;
+    road->nodes[ndIdx]->trafficSignals[tsIdx]->isSensorType = road->nodes[cfndIdx]->trafficSignals[cftsIdx]->isSensorType;
+    road->nodes[ndIdx]->trafficSignals[tsIdx]->timeToChangeBySensor = road->nodes[cfndIdx]->trafficSignals[cftsIdx]->timeToChangeBySensor;
+
+    for(int i=0;i<road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.size();++i){
+        delete road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern[i];
+    }
+    road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.clear();
+
+    for(int i=0;i<road->nodes[cfndIdx]->trafficSignals[cftsIdx]->sigPattern.size();++i){
+
+        struct SignalPatternData* spd = new struct SignalPatternData;
+
+        spd->signal = road->nodes[cfndIdx]->trafficSignals[cftsIdx]->sigPattern[i]->signal;
+        spd->duration = road->nodes[cfndIdx]->trafficSignals[cftsIdx]->sigPattern[i]->duration;
+
+        road->nodes[ndIdx]->trafficSignals[tsIdx]->sigPattern.append( spd );
+    }
+
+    tsStartOffset->setValue( road->nodes[ndIdx]->trafficSignals[tsIdx]->startOffset );
+    tsIsSensorType->setChecked( road->nodes[ndIdx]->trafficSignals[tsIdx]->isSensorType );
+    tsChangeTimeBySensor->setValue( road->nodes[ndIdx]->trafficSignals[tsIdx]->timeToChangeBySensor );
+
+    SetTSPattern( ndIdx, tsIdx );
 
     ChangeTrafficSignalInfo( road->nodes[ndIdx]->trafficSignals[tsIdx]->id );
 }

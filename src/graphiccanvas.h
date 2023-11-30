@@ -37,12 +37,15 @@
 #include "objectproperty.h"
 #include "odrouteeditor.h"
 #include "scenarioeditor.h"
+#include "displaycontrol.h"
 
 
 #include <QAction>
 #include <QMenu>
 
 #include <QDebug>
+
+#include <windows.h>
 
 
 #define NODE_CIRCLE_DIV  (30)
@@ -118,6 +121,15 @@ struct VehiclePoly
 };
 
 
+struct BoxPoly
+{
+    bool isValid;
+    QOpenGLVertexArrayObject array;
+    QOpenGLBuffer *buffer;
+    QVector<GLfloat> vertex;
+};
+
+
 struct ObjectSelect
 {
     QList<int> selObjKind;
@@ -182,6 +194,7 @@ public:
         MOVE_OBJECT,
         ROTATE_OBJECT,
         SEL_NODE_ROUTE_PICK,
+        SEL_STATIC_OBJECT,
     };
 
     RoadInfo *road;
@@ -189,6 +202,7 @@ public:
     BaseMapImageManager *mapImageMng;
     ODRouteEditor *odRoute;
     ScenarioEditor *scnrEdit;
+    DisplayControl *dispCtrl;
 
     QMenu *addObjToNodePopup;
     QAction *createVTS;
@@ -248,6 +262,8 @@ public slots:
     void SetStopLineLabelVisibility(bool);
     void SetPedestLaneVisibility(bool);
     void SetPedestLaneLabelVisibility(bool);
+    void SetStaticObjectVisibility(bool);
+    void SetStaticObjectLabelVisibility(bool);
     void ResetRotate();
     void MoveTo(float x,float y);
     void SetProjectionOrthogonal(bool);
@@ -257,6 +273,7 @@ public slots:
     void SetTrafficSignalSelection(bool);
     void SetStopLineSelection(bool);
     void SetPedestLaneSelection(bool);
+    void SetStaticObjectSelection(bool);
     void SetNodePickMode(int,int);
     void ResetNodePickMode();
     void LoadMapImage(struct baseMapImage *);
@@ -268,6 +285,9 @@ public slots:
     void SetLaneColorBySpeedLimitFlag(bool);
     void SetLaneColorByActualSpeedFlag(bool);
     void SetScenarioPickMode(int);
+    void ChangeSelectionRequest(int,int);
+    void SetLaneColorByODDFlag(bool);
+
 
 private:
     float X_eye;
@@ -334,7 +354,7 @@ private:
     struct RectPoly rectPoly;
     struct TrianglePoly trianglePoly;
     struct VehiclePoly vhclPoly;
-
+    struct BoxPoly boxPoly;
 
     // Flags
     bool isOrthogonal;
@@ -346,12 +366,14 @@ private:
     bool showTrafficSignalsFlag;
     bool showStopLinesFlag;
     bool showPedestLaneFlag;
+    bool showStaticObjectFlag;
 
     bool showNodeLabelsFlag;
     bool showLaneLabelsFlag;
     bool showTrafficSignalLabelsFlag;
     bool showStopLineLabelsFlag;
     bool showPedestLaneLabelsFlag;
+    bool showStaticObjectLabelsFlag;
     bool showLabelsFlag;
 
     bool selectNodeFlag;
@@ -359,6 +381,7 @@ private:
     bool selectTrafficSignalFlag;
     bool selectStopLineFlag;
     bool selectPedestLaneFlag;
+    bool selectStaticObjectFlag;
 
     bool LaneListFlag;
     bool RelatedLanesFlag;
@@ -369,6 +392,7 @@ private:
 
     bool colorLaneBySpeedLimitFlag;
     bool colorLaneByActualSpeedFlag;
+    bool colorLaneByODDFlag;
 
     int laneListIndex;
 
@@ -385,6 +409,11 @@ private:
 
     // Folders
     QStringList imageFilePathFolders;
+    QString lastImageLoadFolder;
+
+
+    LARGE_INTEGER start, end;
+    LARGE_INTEGER freq;
 };
 
 

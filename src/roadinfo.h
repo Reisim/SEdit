@@ -79,6 +79,7 @@ public:
     bool CheckLaneConnection();
     bool CheckLaneConnectionFull();
     void CheckLaneRelatedNode(int laneID);
+    void CheckLaneRelatedNodeAllLanes();
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);
@@ -134,6 +135,10 @@ public:
     void FindPedestSignalFroCrossWalk();
     bool CheckPedestLaneCrossPoints();
 
+    void DividePedestLaneHalf(int id,int sect);
+    void DividePedestLaneAtPos(int id,int sect, QVector3D atPoint);
+    void ChangePedestLaneWidthByWheel(int id,int sect,float diff);
+
     void ClearPedestLanes();
 
 
@@ -155,6 +160,16 @@ public:
     void DeleteStopLine(int id);
 
 
+    // Static Ocjects
+    int CreateStaticObject(int assignId);
+    int GetNearestStaticObject(QVector2D pos,float &dist);
+    void MoveStaticObject(int id,float moveX,float moveY,float moveZ);
+    void RotateStaticObject(int id,float rot);
+    void SetSizeStaticObject(int id,float lenx,float leny,float height);
+    void SetCornerPointsStaticObject(int id);
+    void DeleteStaticObject(int id);
+    void ClearStaticObject();
+
     // Route
     void CheckRouteInOutDirection();
     void CheckRouteInOutDirectionGivenODNode(int origNodeId,int destNodeID);
@@ -171,6 +186,7 @@ public:
     int indexOfSL(int id,int relatedNodeID);
     int indexOfWP(int id);
     int indexOfPedestLane(int id);
+    int indexOfStaticObject(int id);
 
 
     bool SaveRoadData(QString filename);
@@ -192,7 +208,7 @@ public:
     QList<LaneInfo*> lanes;
     QList<WayPoint*> wps;
     QList<PedestrianLane*> pedestLanes;
-
+    QList<StaticObject*> staticObj;
 
     float tbl_cos[DEFAULT_LANE_SHAPE_POINTS+1];
     float tbl_sin[DEFAULT_LANE_SHAPE_POINTS+1];
@@ -208,6 +224,7 @@ public:
     void ClearSearchHelper(int);
 
     void ForwardTreeSearchForRouteLaneList(struct RouteData* route,int nextLane,int currentLane, int);
+    void FindInconsistentData();
 };
 
 #endif // ROADINFO_H

@@ -1004,11 +1004,28 @@ void DataManipulator::ImportERIS3Data(QString filename)
             if( lId >= 0 ){
                 int lIdx = road->indexOfLane(lId);
                 if( lIdx >= 0 ){
-                    road->lanes[lIdx]->laneWidth = tmpPathWidth[i];
-                    road->lanes[lIdx]->speedInfo = tmpPathSpeedLimit[i];
+                    if( tmpPathWidth.size() > i ){
+                        road->lanes[lIdx]->laneWidth = tmpPathWidth[i];
+                    }
+                    else{
+                        road->lanes[lIdx]->laneWidth = 2.7;
+                    }
+                    if( tmpPathSpeedLimit.size() > i ){
+                        road->lanes[lIdx]->speedInfo = tmpPathSpeedLimit[i];
+                    }
+                    else{
+                        road->lanes[lIdx]->speedInfo = 40.0;
+                    }
                     road->lanes[lIdx]->actualSpeed = road->lanes[lIdx]->speedInfo;
-                    road->lanes[lIdx]->automaticDrivingEnabled = tmpPathAutomaticDriving[i];
-                    road->lanes[lIdx]->driverErrorProb = tmpPathDriverErrorProb[i];
+                    if( tmpPathAutomaticDriving.size() > i ){
+                        road->lanes[lIdx]->automaticDrivingEnabled = tmpPathAutomaticDriving[i];
+                    }
+                    else{
+                        road->lanes[lIdx]->automaticDrivingEnabled = false;
+                    }
+                    if( tmpPathDriverErrorProb.size() > i ){
+                        road->lanes[lIdx]->driverErrorProb = 0.0;
+                    }
 
                     if( road->lanes[lIdx]->connectedNode >= 0 ){
                         road->SetNodeRelatedLane( road->lanes[lIdx]->connectedNode, lId );
@@ -1116,7 +1133,7 @@ void DataManipulator::ImportERIS3Data(QString filename)
             }
 
             if( i + 1 == tmpTSIDs.size() ){
-                qDebug() << "Lanes created.";
+                qDebug() << "Traffic Signals created.";
             }
         }
 
@@ -1132,8 +1149,17 @@ void DataManipulator::ImportERIS3Data(QString filename)
     bool ret;
 
     // Set Next and Previous Lanes
+
+    qDebug() << "Set Next and Previous Lanes.";
+
     ret = road->CheckLaneConnectionFull();
+
+    qDebug() << "CheckLaneConnectionFull: ret = " << ret;
+
     if( ret == true ){
+
+        int maxInter = 10;
+        int iter = 0;
 
         while(1){
 
@@ -1174,6 +1200,12 @@ void DataManipulator::ImportERIS3Data(QString filename)
             if( CNAllSet == true ){
                 break;
             }
+
+            iter++;
+            if( iter >= maxInter ){
+                qDebug() << "iter exceed max; failed to set data.";
+                break;
+            }
         }
 
         for(int i=0;i<road->lanes.size();++i){
@@ -1189,23 +1221,225 @@ void DataManipulator::ImportERIS3Data(QString filename)
     }
 
 
+    // Check related node data in Lane
+
+    road->CheckLaneRelatedNodeAllLanes();
+
+
     // Calculate Stop Point Data
+
+    qDebug() << "Calculate Stop Point Data.";
+
     road->CheckAllStopLineCrossLane();
 
 
     // Calculate Lane Cross Points
+
+    qDebug() << "Calculate Lane Cross Points.";
+
     road->CheckLaneCrossPoints();
 
 
     // Create WP and Boundary WP Check
+
+    qDebug() << "Create WP and Boundary WP Check.";
+
     road->CreateWPData();
 
 
+    // Check WPNode info again
+    while(1){
+
+        int nChecked = 0;
+
+        for(int i=0;i<road->lanes.size();++i){
+
+            if( road->lanes[i]->sWPInNode <= 0 && road->lanes[i]->sWPNodeDir < 0 &&
+                  road->lanes[i]->eWPInNode >=0 && road->lanes[i]->eWPNodeDir >= 0 ){
+
+                nChecked++;
+
+                int nIdx = road->indexOfNode( road->lanes[i]->eWPInNode );
+                if( nIdx >= 0 ){
+                    for(int j=0;j<road->nodes[nIdx]->legInfo.size();++j){
+                        if( road->nodes[nIdx]->legInfo[j]->legID == road->lanes[i]->eWPNodeDir ){
+                            road->lanes[i]->sWPInNode = road->nodes[nIdx]->legInfo[j]->connectedNode;
+                            road->lanes[i]->sWPNodeDir = road->nodes[nIdx]->legInfo[j]->connectedNodeOutDirect;
+                            break;
+                        }
+                    }
+                }
+            }
+            else if( road->lanes[i]->eWPInNode <= 0 && road->lanes[i]->eWPNodeDir < 0 &&
+                  road->lanes[i]->sWPInNode >=0 && road->lanes[i]->sWPNodeDir >= 0 ){
+
+                nChecked++;
+
+                int nIdx = road->indexOfNode( road->lanes[i]->sWPInNode );
+                if( nIdx >= 0 ){
+                    for(int j=0;j<road->nodes[nIdx]->legInfo.size();++j){
+                        if( road->nodes[nIdx]->legInfo[j]->legID == road->lanes[i]->sWPNodeDir ){
+                            road->lanes[i]->eWPInNode = road->nodes[nIdx]->legInfo[j]->connectingNode;
+                            road->lanes[i]->eWPNodeDir = road->nodes[nIdx]->legInfo[j]->connectingNodeInDirect;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        for(int i=0;i<road->lanes.size();++i){
+
+            if( road->lanes[i]->sWPInNode < 0 && road->lanes[i]->sWPNodeDir < 0 &&
+                  road->lanes[i]->eWPInNode <0 && road->lanes[i]->eWPNodeDir < 0 ){
+
+                nChecked++;
+
+                bool isSet = false;
+                if( road->lanes[i]->nextLanes.size() > 0 ){
+                    for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
+                        int nlIdx = road->indexOfLane( road->lanes[i]->nextLanes[j] );
+                        if( nlIdx >= 0){
+
+                            if( road->lanes[nlIdx]->sWPBoundary == false ){
+
+                                road->lanes[i]->sWPInNode = road->lanes[nlIdx]->sWPInNode;
+                                road->lanes[i]->sWPNodeDir = road->lanes[nlIdx]->sWPNodeDir;
+
+                                road->lanes[i]->eWPInNode = road->lanes[nlIdx]->eWPInNode;
+                                road->lanes[i]->eWPNodeDir = road->lanes[nlIdx]->eWPNodeDir;
+
+                                isSet = true;
+                            }
+                            else{
+
+                                road->lanes[i]->eWPInNode = road->lanes[nlIdx]->sWPInNode;
+                                road->lanes[i]->eWPNodeDir = road->lanes[nlIdx]->sWPNodeDir;
+
+                                int nIdx = road->indexOfNode( road->lanes[i]->eWPInNode );
+                                if( nIdx >= 0 ){
+                                    for(int k=0;k<road->nodes[nIdx]->legInfo.size();++k){
+                                        if( road->nodes[nIdx]->legInfo[k]->legID == road->lanes[i]->eWPNodeDir ){
+                                            road->lanes[i]->sWPInNode = road->nodes[nIdx]->legInfo[k]->connectedNode;
+                                            road->lanes[i]->sWPNodeDir = road->nodes[nIdx]->legInfo[k]->connectedNodeOutDirect;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                isSet = true;
+                            }
+                            break;
+                        }
+                    }
+                }
+                if( isSet == true ){
+                    continue;
+                }
+
+                if( road->lanes[i]->previousLanes.size() > 0 ){
+                    for(int j=0;j<road->lanes[i]->previousLanes.size();++j){
+                        int plIdx = road->indexOfLane( road->lanes[i]->previousLanes[j] );
+                        if( plIdx >= 0){
+
+                            if( road->lanes[plIdx]->eWPBoundary == false ){
+
+                                road->lanes[i]->sWPInNode = road->lanes[plIdx]->sWPInNode;
+                                road->lanes[i]->sWPNodeDir = road->lanes[plIdx]->sWPNodeDir;
+
+                                road->lanes[i]->eWPInNode = road->lanes[plIdx]->eWPInNode;
+                                road->lanes[i]->eWPNodeDir = road->lanes[plIdx]->eWPNodeDir;
+
+                                isSet = true;
+                            }
+                            else{
+
+                                road->lanes[i]->sWPInNode = road->lanes[plIdx]->eWPInNode;
+                                road->lanes[i]->sWPNodeDir = road->lanes[plIdx]->eWPNodeDir;
+
+                                int nIdx = road->indexOfNode( road->lanes[i]->sWPInNode );
+                                if( nIdx >= 0 ){
+                                    for(int k=0;k<road->nodes[nIdx]->legInfo.size();++k){
+                                        if( road->nodes[nIdx]->legInfo[k]->legID == road->lanes[i]->sWPNodeDir ){
+                                            road->lanes[i]->eWPInNode = road->nodes[nIdx]->legInfo[k]->connectingNode;
+                                            road->lanes[i]->eWPNodeDir = road->nodes[nIdx]->legInfo[k]->connectingNodeInDirect;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                isSet = true;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        for(int i=0;i<road->lanes.size();++i){
+
+            if( road->lanes[i]->sWPInNode >= 0 && road->lanes[i]->sWPInNode == road->lanes[i]->eWPInNode &&
+                   road->lanes[i]->sWPNodeDir >= 0 && road->lanes[i]->eWPNodeDir < 0 ){
+
+                nChecked++;
+
+                if( road->lanes[i]->nextLanes.size() > 0 ){
+                    for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
+                        int nlIdx = road->indexOfLane( road->lanes[i]->nextLanes[j] );
+                        if( nlIdx >= 0){
+                            if( road->lanes[nlIdx]->eWPNodeDir >= 0 ){
+                                road->lanes[i]->eWPNodeDir = road->lanes[nlIdx]->eWPNodeDir;
+                            }
+                            if( road->lanes[nlIdx]->sWPNodeDir < 0 ){
+                                road->lanes[nlIdx]->sWPNodeDir = road->lanes[i]->sWPNodeDir;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if( road->lanes[i]->sWPInNode >= 0 && road->lanes[i]->sWPInNode == road->lanes[i]->eWPInNode &&
+                   road->lanes[i]->sWPNodeDir < 0 && road->lanes[i]->eWPNodeDir >= 0 ){
+
+                nChecked++;
+
+                if( road->lanes[i]->previousLanes.size() > 0 ){
+                    for(int j=0;j<road->lanes[i]->previousLanes.size();++j){
+                        int plIdx = road->indexOfLane( road->lanes[i]->previousLanes[j] );
+                        if( plIdx >= 0){
+                            if( road->lanes[plIdx]->sWPNodeDir >= 0 ){
+                                road->lanes[i]->sWPNodeDir = road->lanes[plIdx]->sWPNodeDir;
+                            }
+                            if( road->lanes[plIdx]->eWPNodeDir < 0 ){
+                                road->lanes[plIdx]->eWPNodeDir = road->lanes[i]->eWPNodeDir;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if( nChecked == 0 ){
+            break;
+        }
+    }
+
+    road->CheckLaneRelatedNodeAllLanes();
+
+
+
     // Set Lane List
+
+    qDebug() << "Set Lane List.";
+
     road->SetAllLaneLists();
 
 
     // Set Turn Direction Info
+
+    qDebug() << "Set Turn Direction Info.";
+
     {
         QList<int> nodeList;
         for(int i=0;i<road->nodes.size();++i){

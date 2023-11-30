@@ -138,11 +138,18 @@ void ODRouteEditor::SetCurrentODRouteData(int oNode,bool routTableSetFlag)
     disconnect( cbDestnation, SIGNAL(currentIndexChanged(QString)), this, SLOT(SetCurrentODRouteDataForDestination(QString)) );
 
     cbDestnation->clear();
-    QStringList destNodeList;
+
+    QList<int> destNodeIDs;
     for(int i=0;i<road->nodes.size();++i){
         if( road->nodes[i]->isDestinationNode == true && road->nodes[i]->id != currentOriginNode ){
-            destNodeList.append( QString("Node %1").arg( road->nodes[i]->id ) );
+            destNodeIDs.append( road->nodes[i]->id );
         }
+    }
+    std::sort( destNodeIDs.begin(), destNodeIDs.end() );
+
+    QStringList destNodeList;
+    for(int i=0;i<destNodeIDs.size();++i){
+            destNodeList.append( QString("Node %1").arg( destNodeIDs[i] ) );
     }
     cbDestnation->addItems( destNodeList );
 
@@ -329,6 +336,9 @@ void ODRouteEditor::ApplyData()
         }
 
         for(int j=0;j<trafficVolumeTable->rowCount();++j){
+            if( !trafficVolumeTable->item(j,0) ){
+                continue;
+            }
             if( trafficVolumeTable->item(j,0)->text().toInt() != i + 1 ){
                 continue;
             }
@@ -342,13 +352,19 @@ void ODRouteEditor::ApplyData()
 
                 tv->vehicleKind = k - 1;
 
-                QString valStr = trafficVolumeTable->item(j,k)->text();
-                if( valStr.isNull() == true || valStr.isEmpty() == true ){
+                if( !trafficVolumeTable->item(j,k) ){
                     tv->trafficVolume = 0;
                 }
                 else{
-                    tv->trafficVolume = valStr.toInt();
+                    QString valStr = trafficVolumeTable->item(j,k)->text();
+                    if( valStr.isNull() == true || valStr.isEmpty() == true ){
+                        tv->trafficVolume = 0;
+                    }
+                    else{
+                        tv->trafficVolume = valStr.toInt();
+                    }
                 }
+
 
                 qDebug() << "vehicleKind =" << tv->vehicleKind << " trafficVolume = " << tv->trafficVolume;
 

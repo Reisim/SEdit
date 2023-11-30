@@ -29,6 +29,8 @@
 #include <QScrollArea>
 #include <QDebug>
 
+#include <QUdpSocket>
+
 #include "roadinfo.h"
 #include "settingdialog.h"
 
@@ -46,9 +48,10 @@ public:
     QSpinBox *slIDSB;
     QSpinBox *pedestLaneIDSB;
     QSpinBox *pedestLaneSectionSB;
-
+    QSpinBox *soIDSB;
 
     SettingDialog *setDlg;
+
 
 
 signals:
@@ -57,6 +60,9 @@ signals:
     void DestinationNodeChanged(int,bool);
     void OriginNodeChanged(int,bool);
     void ResetLaneListIndex();
+    void UpdateGraphic();
+    void ChangeSelectionRequest(int,int);
+
 
 public slots:
     void ChangeNodeInfo(int);
@@ -65,6 +71,7 @@ public slots:
     void ChangeStopLineInfo(int);
     void ChangeTabPage(int);
     void ChangeVisibilityODRoute(int);
+    void ChangeStaticObjInfo(int);
 
     void CBOriginNodeChanged(bool);
     void CBDestinationNodeChanged(bool);
@@ -73,8 +80,11 @@ public slots:
     void ActualSpeedChanged(int);
     void AutomaticDrivingEnableFlagChanged(bool);
     void DriverErrorProbChanged(double);
+    void LaneWidthChanged(double);
     void EditLaneData();
     void CheckRelatedNode();
+    void LaneEdgePosChanged();
+    void GetLaneHeightFromUE();
 
     void SetDefaultTSPattern();
     void SetTSPattern(int ndIdx,int tsIdx);
@@ -82,12 +92,15 @@ public slots:
     void TSPatternAddRowClicked();
     void TSPatternDelRowClicked();
     void TSPatternApplyClicked();
+    void TSPatternCopyClicked();
 
     void ChangePedestLaneInfo(int);
     void ChangePedestLaneInfo(int,int);
     void PedestLaneApplyClicked();
     void SetPedestLaneTrafficVolume(int);
+    void GetPedestLaneHeightFromUE();
 
+    void EditStaticObjectData();
 
 private:
 
@@ -104,18 +117,35 @@ private:
     QSpinBox *laneActualSpeed;
     QCheckBox *laneAutomaticDrivingEnabled;
     QDoubleSpinBox *laneDriverErrorProb;
+    QDoubleSpinBox *laneWidth;
+
     QLabel *laneInfo;
     QPushButton *editLaneData;
     QPushButton *checkRelatedNode;
     QScrollArea *laneInfoScrollArea;
+    QPushButton *updateLaneShapeBtn;
+    QPushButton *getHeightFromUEBtn;
+
+    QDoubleSpinBox *laneStartX;
+    QDoubleSpinBox *laneStartY;
+    QDoubleSpinBox *laneStartZ;
+    QDoubleSpinBox *laneStartDir;
+    QDoubleSpinBox *laneEndX;
+    QDoubleSpinBox *laneEndY;
+    QDoubleSpinBox *laneEndZ;
+    QDoubleSpinBox *laneEndDir;
 
     QWidget *trafficSignalPage;
     QLabel *tsInfo;
+    QScrollArea *tsInfoScrollArea;
     QTableWidget *tsDisplayPattern;
     QPushButton *addRowDisplayPattern;
     QPushButton *delRowDisplayPattern;
     QPushButton *applyDisplayPattern;
     QSpinBox *tsStartOffset;
+    QCheckBox *tsIsSensorType;
+    QSpinBox *tsChangeTimeBySensor;
+    QPushButton *copyDisplayPattern;
 
     QWidget *stopLinePage;
     QLabel *slInfo;
@@ -125,9 +155,17 @@ private:
     QCheckBox *cbIsCrossWalk;
     QDoubleSpinBox *pedestLaneWidth;
     QDoubleSpinBox *pedestRunOutProb;
+    QDoubleSpinBox *pedestMarginToRoad;
     QComboBox *pedestRunOutDirect;
     QTableWidget *pedestLaneTrafficVolume;
     QPushButton *applyPedestLaneDataChange;
+    QPushButton *getPedestHeightFromUEBtn;
+
+    QWidget *staticObjPage;
+    QLabel *soInfo;
+    QPushButton *editStaticObject;
+
+    QCheckBox *cbChangeSelectionBySpinbox;
 };
 
 #endif // OBJECTPROPERTY_H

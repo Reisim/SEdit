@@ -161,6 +161,18 @@ void GraphicCanvas::SetPedestLaneLabelVisibility(bool b)
     update();
 }
 
+void GraphicCanvas::SetStaticObjectVisibility(bool b)
+{
+    showStaticObjectFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetStaticObjectLabelVisibility(bool b)
+{
+    showStaticObjectLabelsFlag = b;
+    update();
+}
+
 void GraphicCanvas::SetProjectionOrthogonal(bool b)
 {
     isOrthogonal = b;
@@ -224,6 +236,11 @@ void GraphicCanvas::SetPedestLaneSelection(bool b)
     selectPedestLaneFlag = b;
 }
 
+void GraphicCanvas::SetStaticObjectSelection(bool b)
+{
+    selectStaticObjectFlag = b;
+}
+
 void GraphicCanvas::SetLaneColorBySpeedLimitFlag(bool b)
 {
     colorLaneBySpeedLimitFlag = b;
@@ -233,5 +250,22 @@ void GraphicCanvas::SetLaneColorBySpeedLimitFlag(bool b)
 void GraphicCanvas::SetLaneColorByActualSpeedFlag(bool b)
 {
     colorLaneByActualSpeedFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetLaneColorByODDFlag(bool b)
+{
+    colorLaneByODDFlag = b;
+    update();
+}
+
+void GraphicCanvas::ChangeSelectionRequest(int kind,int id)
+{
+    selectedObj.selObjKind.clear();
+    selectedObj.selObjID.clear();
+
+    selectedObj.selObjKind.append( kind );
+    selectedObj.selObjID.append( id );
+
     update();
 }

@@ -129,10 +129,30 @@ void RoadObjectProperty::ChangeLaneInfo(int id)
     connect( laneDriverErrorProb, SIGNAL(valueChanged(double)), this, SLOT(DriverErrorProbChanged(double)) );
     //qDebug() << "driverErrorProb = " << road->lanes[lIdx]->driverErrorProb;
 
+    disconnect( laneWidth, SIGNAL(valueChanged(double)), this, SLOT(LaneWidthChanged(double)) );
+    laneWidth->setValue( road->lanes[lIdx]->laneWidth );
+    connect( laneWidth, SIGNAL(valueChanged(double)), this, SLOT(LaneWidthChanged(double)) );
+
 
     laneInfo->setText( infoStr );
     laneInfo->setAlignment( Qt::AlignTop );
     laneInfo->setFixedSize( laneInfo->sizeHint() );
+
+    laneStartX->setValue( road->lanes[lIdx]->shape.pos.first()->x() );
+    laneStartY->setValue( road->lanes[lIdx]->shape.pos.first()->y() );
+    laneStartZ->setValue( road->lanes[lIdx]->shape.pos.first()->z() );
+    float dirs = atan2( road->lanes[lIdx]->shape.derivative.first()->y(), road->lanes[lIdx]->shape.derivative.first()->x() )  * 57.3;
+    laneStartDir->setValue( dirs );
+
+    laneEndX->setValue( road->lanes[lIdx]->shape.pos.last()->x() );
+    laneEndY->setValue( road->lanes[lIdx]->shape.pos.last()->y() );
+    laneEndZ->setValue( road->lanes[lIdx]->shape.pos.last()->z() );
+    float dire = atan2( road->lanes[lIdx]->shape.derivative.last()->y(), road->lanes[lIdx]->shape.derivative.last()->x() ) * 57.3;
+    laneEndDir->setValue( dire );
+
+    if( cbChangeSelectionBySpinbox->isChecked() == true ){
+        emit ChangeSelectionRequest(2,id);
+    }
 }
 
 
@@ -145,6 +165,8 @@ void RoadObjectProperty::SpeedLimitChanged(int val)
     }
 
     road->lanes[lIdx]->speedInfo = val;
+
+    emit UpdateGraphic();
 }
 
 
@@ -157,6 +179,8 @@ void RoadObjectProperty::ActualSpeedChanged(int val)
     }
 
     road->lanes[lIdx]->actualSpeed = val;
+
+    emit UpdateGraphic();
 }
 
 
@@ -169,6 +193,20 @@ void RoadObjectProperty::AutomaticDrivingEnableFlagChanged(bool b)
     }
 
     road->lanes[lIdx]->automaticDrivingEnabled = b;
+}
+
+
+void RoadObjectProperty::LaneWidthChanged(double w)
+{
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx < 0 ){
+        return;
+    }
+
+    road->lanes[lIdx]->laneWidth = w;
+
+    emit UpdateGraphic();
 }
 
 
@@ -291,6 +329,8 @@ void RoadObjectProperty::EditLaneData()
             ChangeLaneInfo( laneID );
         }
     }
+
+    emit UpdateGraphic();
 }
 
 void RoadObjectProperty::CheckRelatedNode()
@@ -299,6 +339,166 @@ void RoadObjectProperty::CheckRelatedNode()
 
     int laneID = laneIDSB->value();
     road->CheckLaneRelatedNode( laneID );
+
+    emit UpdateGraphic();
 }
 
 
+void RoadObjectProperty::LaneEdgePosChanged()
+{
+    qDebug() << "[RoadObjectProperty::LaneEdgePosChanged]";
+
+    float xe = laneEndX->value();
+    float ye = laneEndY->value();
+    float ze = laneEndZ->value();
+
+    float dxe = cos( laneEndDir->value() * 0.017452 );
+    float dye = sin( laneEndDir->value() * 0.017452 );
+
+
+    float xs = laneStartX->value();
+    float ys = laneStartY->value();
+    float zs = laneStartZ->value();
+
+    float dxs = cos( laneStartDir->value() * 0.017452 );
+    float dys = sin( laneStartDir->value() * 0.017452 );
+
+
+    int laneID = laneIDSB->value();
+    int lidx = road->indexOfLane( laneID );
+
+    for(int i=0;i<road->lanes[lidx]->nextLanes.size();++i){
+
+        int nidx = road->indexOfLane( road->lanes[lidx]->nextLanes[i] );
+
+        road->lanes[nidx]->shape.pos.first()->setX( xe );
+        road->lanes[nidx]->shape.pos.first()->setY( ye );
+        road->lanes[nidx]->shape.pos.first()->setZ( ze );
+
+        road->lanes[nidx]->shape.derivative.first()->setX( dxe );
+        road->lanes[nidx]->shape.derivative.first()->setY( dye );
+
+        road->CalculateShape( &(road->lanes[nidx]->shape) );
+    }
+
+    for(int i=0;i<road->lanes[lidx]->previousLanes.size();++i){
+
+        int pidx = road->indexOfLane( road->lanes[lidx]->previousLanes[i] );
+
+        road->lanes[pidx]->shape.pos.last()->setX( xs );
+        road->lanes[pidx]->shape.pos.last()->setY( ys );
+        road->lanes[pidx]->shape.pos.last()->setZ( zs );
+
+        road->lanes[pidx]->shape.derivative.last()->setX( dxs );
+        road->lanes[pidx]->shape.derivative.last()->setY( dys );
+
+        road->CalculateShape( &(road->lanes[pidx]->shape) );
+    }
+
+    road->lanes[lidx]->shape.pos.first()->setX( xs );
+    road->lanes[lidx]->shape.pos.first()->setY( ys );
+    road->lanes[lidx]->shape.pos.first()->setZ( zs );
+
+    road->lanes[lidx]->shape.derivative.first()->setX( dxs );
+    road->lanes[lidx]->shape.derivative.first()->setY( dys );
+
+    road->lanes[lidx]->shape.pos.last()->setX( xe );
+    road->lanes[lidx]->shape.pos.last()->setY( ye );
+    road->lanes[lidx]->shape.pos.last()->setZ( ze );
+
+    road->lanes[lidx]->shape.derivative.last()->setX( dxe );
+    road->lanes[lidx]->shape.derivative.last()->setY( dye );
+
+    road->CalculateShape( &(road->lanes[lidx]->shape) );
+
+    if( road->updateCPEveryOperation == true ){
+        road->CheckLaneCrossPoints();
+        road->CheckAllStopLineCrossLane();
+    }
+
+    if( road->updateWPDataEveryOperation == true ){
+        road->CreateWPData();
+    }
+
+    emit UpdateGraphic();
+
+    ChangeLaneInfo( laneID );
+}
+
+
+void RoadObjectProperty::GetLaneHeightFromUE()
+{
+    int laneID = laneIDSB->value();
+    int lIdx = road->indexOfLane( laneID );
+    if( lIdx < 0 ){
+        return;
+    }
+
+    QUdpSocket sock;
+    QUdpSocket rsock;
+
+    rsock.bind( QHostAddress::Any , 58000 );
+
+    float xe = laneEndX->value();
+    float ye = laneEndY->value();
+    float ze = laneEndZ->value();
+
+    float xs = laneStartX->value();
+    float ys = laneStartY->value();
+    float zs = laneStartZ->value();
+
+    for(int i=0;i<2;++i){
+
+        char sendData[100];
+        sendData[0] = 'G';
+        sendData[1] = 'H';
+        sendData[2] = 'R';
+
+        if( i == 0 ){
+            float x = xs;
+            float y = ys;
+            float z = zs;
+
+            memcpy( &(sendData[3]) , &x, sizeof(float) );
+            memcpy( &(sendData[7]) , &y, sizeof(float) );
+            memcpy( &(sendData[11]), &z, sizeof(float) );
+        }
+        else if( i == 1 ){
+            float x = xe;
+            float y = ye;
+            float z = ze;
+
+            memcpy( &(sendData[3]) , &x, sizeof(float) );
+            memcpy( &(sendData[7]) , &y, sizeof(float) );
+            memcpy( &(sendData[11]), &z, sizeof(float) );
+        }
+
+
+        //qDebug() << "[GetHeightDataFromUE]";
+        //qDebug() << "  send data : x = " << x << " y = " << y << " z = " << z;
+
+        sock.writeDatagram( sendData, 15, QHostAddress("192.168.1.102"), 56000 );
+
+        char recvData[10];
+        while(1){
+            int ret = rsock.readDatagram(recvData,10);
+            if( ret >= 8 ){
+                int n = 0;
+                memcpy(&n, &(recvData[0]), sizeof(int) );
+
+                float zue = 0.0;
+                memcpy(&zue, &(recvData[4]), sizeof(float) );
+
+                if( i == 0 ){
+                    laneStartZ->setValue( zue * 0.01 );
+                }
+                else{
+                    laneEndZ->setValue( zue * 0.01 );
+                }
+                break;
+            }
+        }
+    }
+
+    LaneEdgePosChanged();
+}

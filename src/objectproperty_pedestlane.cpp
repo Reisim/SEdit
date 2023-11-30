@@ -55,6 +55,8 @@ void RoadObjectProperty::ChangePedestLaneInfo(int pedestLaneID, int pedestLanePo
         pedestLaneWidth->setValue( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->width );
         cbIsCrossWalk->setChecked( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->isCrossWalk );
         pedestRunOutProb->setValue( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->runOutProb );
+        pedestMarginToRoad->setValue( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->marginToRoadForRunOut );
+
         if( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->runOutDirect == 1 ){
             pedestRunOutDirect->setCurrentIndex( 0 );
         }
@@ -84,6 +86,10 @@ void RoadObjectProperty::ChangePedestLaneInfo(int pedestLaneID, int pedestLanePo
         tHeight = pedestLaneTrafficVolume->sizeHint().height() + 100;
     }
     pedestLaneTrafficVolume->setFixedHeight( tHeight );
+
+    if( cbChangeSelectionBySpinbox->isChecked() == true ){
+        emit ChangeSelectionRequest(7,pedestLaneID);
+    }
 }
 
 
@@ -115,6 +121,7 @@ void RoadObjectProperty::PedestLaneApplyClicked()
 
     road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->width = pedestLaneWidth->value();
     road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->runOutProb = pedestRunOutProb->value();
+    road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->marginToRoadForRunOut = pedestMarginToRoad->value();
 
     if( pedestRunOutDirect->currentIndex() == 0 ){
         road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->runOutDirect = 1;
@@ -126,11 +133,16 @@ void RoadObjectProperty::PedestLaneApplyClicked()
 
     int nPedKind = setDlg->GetPedestrianKindNum();
     if( road->pedestLanes[plIdx]->trafficVolume.size() < nPedKind ){
-        road->pedestLanes[plIdx]->trafficVolume.reserve( nPedKind );
+        int nAdd = nPedKind - road->pedestLanes[plIdx]->trafficVolume.size();
+        for(int i=0;i<nAdd;++i){
+            road->pedestLanes[plIdx]->trafficVolume.append(0);
+        }
     }
     for(int i=0;i<nPedKind;++i){
         road->pedestLanes[plIdx]->trafficVolume[i] = pedestLaneTrafficVolume->item(i,1)->text().trimmed().toInt();
     }
+
+    UpdateGraphic();
 }
 
 
@@ -169,9 +181,66 @@ void RoadObjectProperty::SetPedestLaneTrafficVolume(int id)
 
 
         QTableWidgetItem *itemVolume = new QTableWidgetItem();
-        itemVolume->setText( QString("%1").arg( road->pedestLanes[plIdx]->trafficVolume[i] ) );
+        if(road->pedestLanes[plIdx]->trafficVolume.size() > i ){
+            itemVolume->setText( QString("%1").arg( road->pedestLanes[plIdx]->trafficVolume[i] ) );
+        }
+        else{
+            itemVolume->setText( 0 );
+        }
         pedestLaneTrafficVolume->setItem(i,1,itemVolume);
     }
 }
 
+
+void RoadObjectProperty::GetPedestLaneHeightFromUE()
+{
+    int pedestLaneID = pedestLaneIDSB->value();
+    int plIdx = road->indexOfPedestLane( pedestLaneID );
+    if( plIdx < 0 ){
+        return;
+    }
+
+    QUdpSocket sock;
+    QUdpSocket rsock;
+
+    rsock.bind( QHostAddress::Any , 58000 );
+
+    for(int i=0;i<road->pedestLanes[plIdx]->shape.size();++i){
+
+        char sendData[100];
+        sendData[0] = 'G';
+        sendData[1] = 'H';
+        sendData[2] = 'R';
+
+        float x = road->pedestLanes[plIdx]->shape[i]->pos.x();
+        float y = road->pedestLanes[plIdx]->shape[i]->pos.y();
+        float z = road->pedestLanes[plIdx]->shape[i]->pos.z();
+
+        memcpy( &(sendData[3]) , &x, sizeof(float) );
+        memcpy( &(sendData[7]) , &y, sizeof(float) );
+        memcpy( &(sendData[11]), &z, sizeof(float) );
+
+        //qDebug() << "[GetHeightDataFromUE]";
+        //qDebug() << "  send data : x = " << x << " y = " << y << " z = " << z;
+
+        sock.writeDatagram( sendData, 15, QHostAddress("192.168.1.102"), 56000 );
+
+        char recvData[10];
+        while(1){
+            int ret = rsock.readDatagram(recvData,10);
+            if( ret >= 8 ){
+                int n = 0;
+                memcpy(&n, &(recvData[0]), sizeof(int) );
+
+                float zue = 0.0;
+                memcpy(&zue, &(recvData[4]), sizeof(float) );
+
+                road->pedestLanes[plIdx]->shape[i]->pos.setZ(zue * 0.01);
+
+                //qDebug() << "n = " << n << " zue = " << zue;
+                break;
+            }
+        }
+    }
+}
 

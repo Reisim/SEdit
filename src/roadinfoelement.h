@@ -135,6 +135,8 @@ struct LaneInfo
 
     int startWPID;
     int endWPID;
+
+    bool suspectError;
 };
 
 
@@ -148,6 +150,7 @@ struct PedestrianLaneShapeElement
     int controlPedestSignalID;
     int runOutDirect;
     float runOutProb;
+    float marginToRoadForRunOut;
 };
 
 
@@ -181,6 +184,9 @@ struct TrafficSignalInfo
 
     QList<struct SignalPatternData*> sigPattern;
     int startOffset;
+
+    bool isSensorType;
+    int timeToChangeBySensor;
 };
 
 
@@ -285,6 +291,8 @@ struct NodeInfo
 
     QList<struct StopLineInfo*> stopLines;
 
+    bool suspectError;
+
     QList<int> relatedLanes;
 
     bool isOriginNode;
@@ -306,5 +314,21 @@ struct baseMapImage
     GLuint textureID;
     bool isValid;
 };
+
+
+struct StaticObject
+{
+    int id;
+    float xc;
+    float yc;
+    float zc;
+    float lenx;
+    float leny;
+    float height;
+    float direction;
+    float x[4];
+    float y[4];
+};
+
 
 #endif // ROADINFOELEMENT_H

@@ -68,6 +68,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
 
     colorMapOfLaneSpeedLimit = new QCheckBox("Colored by Speed Limit");
     colorMapOfLaneActualSpeed = new QCheckBox("Colored by Actual Speed");
+    colorODDLanes = new QCheckBox("Color ODD Lanes for Auto-Drive");
 
     laneWidth = new QSpinBox();
     laneWidth->setMinimum(1);
@@ -91,11 +92,18 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showPedestLanes      = new QCheckBox("Pedestrian Lane");
     showPedestLaneLabels = new QCheckBox("Label");
 
+    showStaticObject       = new QCheckBox("Static Object");
+    showStaticObjectLabels = new QCheckBox("Label");
+
     showLabels = new QCheckBox("Labels");
 
     showMapImage = new QCheckBox("Map Image");
     backMapImage = new QCheckBox("Move Back");
 
+    backMapOffsetVal = new QDoubleSpinBox();
+    backMapOffsetVal->setValue( 10.0 );
+    backMapOffsetVal->setDecimals( 1 );
+    backMapOffsetVal->setRange( 0.0, 100.0 );
 
     grid->addWidget( new QLabel("Visilibity:"), row++, 0 );
     grid->addWidget( showNodes, row, 1 );
@@ -118,6 +126,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( manualUpdateOfCP, row++, 2 );
     grid->addWidget( colorMapOfLaneSpeedLimit, row++, 2 );
     grid->addWidget( colorMapOfLaneActualSpeed, row++, 2 );
+    grid->addWidget( colorODDLanes, row++, 2 );
 
     grid->addWidget( showTrafficSignals, row, 1 );
     grid->addWidget( showTrafficSignalLabels, row++, 2 );
@@ -125,10 +134,13 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showStopLineLabels, row++, 2 );
     grid->addWidget( showPedestLanes, row, 1 );
     grid->addWidget( showPedestLaneLabels, row++, 2 );
+    grid->addWidget( showStaticObject, row, 1 );
+    grid->addWidget( showStaticObjectLabels, row++, 2 );
 
     grid->addWidget( showLabels, row++, 1 );
     grid->addWidget( showMapImage, row, 1 );
     grid->addWidget( backMapImage, row++, 2 );
+    grid->addWidget( backMapOffsetVal, row++, 2 );
 
 
     selectNode          = new QCheckBox("Node");
@@ -136,6 +148,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     selectTrafficSignal = new QCheckBox("Traffic Signal");
     selectStopLine      = new QCheckBox("Stop Line");
     selectPedestLane    = new QCheckBox("Pedestrian Lane");
+    selectStaticObject  = new QCheckBox("Static Object");
 
 
     grid->addWidget( new QLabel("Selection:"), row++, 0 );
@@ -144,6 +157,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( selectTrafficSignal, row++, 1 );
     grid->addWidget( selectStopLine, row++, 1 );
     grid->addWidget( selectPedestLane, row++, 1 );
+    grid->addWidget( selectStaticObject, row++, 1 );
 
 
     InitSetting();
@@ -177,6 +191,7 @@ void DisplayControl::InitSetting()
     showLaneLabels->setChecked(true);
     colorMapOfLaneSpeedLimit->setChecked(false);
     colorMapOfLaneActualSpeed->setChecked(false);
+    colorODDLanes->setChecked(false);
 
     showTrafficSignals->setChecked(true);
     showTrafficSignalLabels->setChecked(true);
@@ -186,6 +201,9 @@ void DisplayControl::InitSetting()
 
     showPedestLanes->setChecked(true);
     showPedestLaneLabels->setChecked(true);
+
+    showStaticObject->setChecked(true);
+    showStaticObjectLabels->setChecked(true);
 
     showLabels->setChecked(true);
 
@@ -197,6 +215,7 @@ void DisplayControl::InitSetting()
     selectTrafficSignal->setChecked(true);
     selectStopLine->setChecked(true);
     selectPedestLane->setChecked(true);
+    selectStaticObject->setChecked(true);
 }
 
 

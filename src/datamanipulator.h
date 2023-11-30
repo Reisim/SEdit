@@ -42,10 +42,6 @@ public:
     SettingDialog *setDlg;
 
 
-    int insertMode;
-    int insertNode1;
-    int insertNode2;
-
     QStringList operationHistory;
 
     void UndoOperation();
@@ -53,6 +49,7 @@ public:
     void DeleteSelectedObject();
     void MergeSelectedObject();
     void SplitSelectedLane();
+    void SplitSelectedPedestLane();
 
     int CreateNode_4(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
     int CreateNode_3(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
@@ -125,6 +122,8 @@ public slots:
     void StartCreatePedestPath();
     int CreatePedestPath();
 
+    int CreateStaticObject();
+
 
     int CreateNode(float x,float y,int nLeg,QList<int> inlanes,QList<int> outlanes);
     int CreateTrafficSignal(int nodeID,int nodeDir,int type);
@@ -132,6 +131,7 @@ public slots:
 
     void DuplicateNodes();
     void CheckLaneConnectionFull();
+    void FindInconsistentData();
     void CreateWPData();
     void SetODFlagOfTerminalNode();
     void SetAllLaneLists();
@@ -140,9 +140,11 @@ public slots:
     void CheckAllStopLineCrossLane();
     void CheckLaneCrossPoints();
     void CheckCrossPointsOfSelectedLane();
+    void SetLaneHeightOfSelectedLane();
     void ChangeSpeedLimitOfSelectedLanes();
     void ChangeActualSpeedOfSelectedLanes();
     void CheckLaneAndPedestLaneCrossPoint();
+    void SetSignalsNodeByCommand();
 
     void GetConnectionDirection(int nd1,int nd2, int& dir1, int &dir2);
     void InsertNode_4x1_noTS();
@@ -151,6 +153,7 @@ public slots:
     void InsertNode_3Lx2_noTS();
     void InsertNode_3Rx1_noTS();
     void InsertNode_3Rx2_noTS();
+    void CheckRouteChangeByInsertNode(int, QStringList);
 
     void ImportERIS3Data(QString filename);
     void ImportERIS3TrafficSignalData(QString);
@@ -160,6 +163,7 @@ public slots:
     void SearchNode();
     void SearchLane();
     void SearchTrafficSignal();
+    void SearchStaticObject();
     void MoveXY();
     void SetNodePos();
     void SelectAllLanes();

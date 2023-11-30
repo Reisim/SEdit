@@ -73,6 +73,8 @@ MainWindow::MainWindow(QWidget *parent)
     //-------------------------
     dispCtrl = new DisplayControl();
 
+    canvas->dispCtrl = dispCtrl;
+
     connect( dispCtrl->OrthogonalView, SIGNAL(toggled(bool)), canvas, SLOT(SetProjectionOrthogonal(bool)) );
     connect( dispCtrl, SIGNAL(ViewMoveTo(float,float)), canvas, SLOT(MoveTo(float,float)) );
     connect( dispCtrl->resetRotate, SIGNAL(clicked()), canvas, SLOT(ResetRotate()) );
@@ -95,15 +97,19 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->showStopLineLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineLabelVisibility(bool)) );
     connect( dispCtrl->showPedestLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneVisibility(bool)) );
     connect( dispCtrl->showPedestLaneLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneLabelVisibility(bool)) );
+    connect( dispCtrl->showStaticObject, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectVisibility(bool)) );
+    connect( dispCtrl->showStaticObjectLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectLabelVisibility(bool)) );
     connect( dispCtrl->showLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetLabelVisibility(bool)) );
     connect( dispCtrl->colorMapOfLaneSpeedLimit, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorBySpeedLimitFlag(bool)) );
     connect( dispCtrl->colorMapOfLaneActualSpeed, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorByActualSpeedFlag(bool)) );
+    connect( dispCtrl->colorODDLanes, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorByODDFlag(bool)) );
 
     connect( dispCtrl->selectNode, SIGNAL(toggled(bool)), canvas, SLOT(SetNodeSelection(bool)) );
     connect( dispCtrl->selectLane, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneSelection(bool)) );
     connect( dispCtrl->selectTrafficSignal, SIGNAL(toggled(bool)), canvas, SLOT(SetTrafficSignalSelection(bool)) );
     connect( dispCtrl->selectStopLine, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineSelection(bool)) );
     connect( dispCtrl->selectPedestLane, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneSelection(bool)) );
+    connect( dispCtrl->selectStaticObject, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectSelection(bool)) );
 
     dispCtrl->road = road;
     dispCtrl->move(50,50);
@@ -125,6 +131,8 @@ MainWindow::MainWindow(QWidget *parent)
     roadObjProp->setDlg  = setDlg;
     canvas->roadProperty = roadObjProp;
     dtManip->roadObjProp = roadObjProp;
+    connect( roadObjProp, SIGNAL(ChangeSelectionRequest(int,int)), canvas, SLOT(ChangeSelectionRequest(int,int)) );
+
 
     //-------------------------
     odRoute = new ODRouteEditor();
@@ -142,6 +150,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect( roadObjProp, SIGNAL(DestinationNodeChanged(int,bool)), odRoute, SLOT(SetCurrentODRouteData(int,bool)) );
     connect( roadObjProp, SIGNAL(OriginNodeChanged(int,bool)), odRoute, SLOT(SetCurrentODRouteData(int,bool)) );
     connect( roadObjProp, SIGNAL(ResetLaneListIndex()), canvas, SLOT(ResetLaneListIndex()) );
+    connect( roadObjProp, SIGNAL(UpdateGraphic()), canvas, SLOT(update()) );
 
     connect( odRoute, SIGNAL(ShowMessageStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)) );
     connect( odRoute, SIGNAL(SetNodePickMode(int,int)), canvas, SLOT(SetNodePickMode(int,int)) );
@@ -252,7 +261,21 @@ MainWindow::MainWindow(QWidget *parent)
     connect( showSettingDialogAct, SIGNAL(triggered()), setDlg, SLOT(show()) );
     toolMenu->addAction( showSettingDialogAct );
 
+    toolMenu->addSeparator();
 
+    QAction* showDisplayControlWidget = new QAction( tr("&Show Display Control Dialog"), this );
+    connect( showDisplayControlWidget, SIGNAL(triggered()), dispCtrl, SLOT(show()) );
+    toolMenu->addAction( showDisplayControlWidget );
+
+    QAction* showObjectPropertyWidget = new QAction( tr("&Show Object Property Dialog"), this );
+    connect( showObjectPropertyWidget, SIGNAL(triggered()), roadObjProp, SLOT(show()) );
+    toolMenu->addAction( showObjectPropertyWidget );
+
+    toolMenu->addSeparator();
+
+    QAction* getHeightFromUE = new QAction( tr("&Get Height Data From UE"), this );
+    connect( getHeightFromUE, SIGNAL(triggered()), this, SLOT(GetHeightDataFromUE()) );
+    toolMenu->addAction( getHeightFromUE );
 
 
     //
@@ -448,6 +471,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect( createPedestLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createPedestLane );
 
+    QAction *createStaticObj = new QAction();
+    createStaticObj->setText("Static Object");
+    connect( createStaticObj, SIGNAL(triggered()),dtManip,SLOT(CreateStaticObject()));
+    createObjectPopup->addAction( createStaticObj );
+
 
     //
     insertNodePopup = new QMenu();
@@ -462,6 +490,11 @@ MainWindow::MainWindow(QWidget *parent)
     utilityPopup->addAction( createNode_duplicate );
 
     utilityPopup->addSeparator();
+
+    QAction *findInconsistent = new QAction();
+    findInconsistent->setText("Find Inconsistent Data");
+    connect( findInconsistent, SIGNAL(triggered()),dtManip,SLOT(FindInconsistentData()));
+    utilityPopup->addAction( findInconsistent );
 
     QAction *checkLaneConnect = new QAction();
     checkLaneConnect->setText("Check Lane Connection");
@@ -517,6 +550,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect( checkCPOfSelectedLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( checkCPOfSelectedLane );
 
+    QAction *setPathHeightSelectedLane = new QAction();
+    setPathHeightSelectedLane->setText("Set Lane Height of Selected Lane");
+    connect( setPathHeightSelectedLane, SIGNAL(triggered()),dtManip,SLOT(SetLaneHeightOfSelectedLane()));
+    connect( setPathHeightSelectedLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( setPathHeightSelectedLane );
+
     QAction *changeSpeedLimitOfSelectedLanes = new QAction();
     changeSpeedLimitOfSelectedLanes->setText("Change Speed Limit of Selected Lane");
     connect( changeSpeedLimitOfSelectedLanes, SIGNAL(triggered()),dtManip,SLOT(ChangeSpeedLimitOfSelectedLanes()));
@@ -534,6 +573,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect( checkCPOfLaneAndPedestLane, SIGNAL(triggered()),dtManip,SLOT(CheckLaneAndPedestLaneCrossPoint()));
     connect( checkCPOfLaneAndPedestLane, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     utilityPopup->addAction( checkCPOfLaneAndPedestLane );
+
+    utilityPopup->addSeparator();
+
+    QAction *setSignalNodes = new QAction();
+    setSignalNodes->setText("Set Signals of Node by Command");
+    connect( setSignalNodes, SIGNAL(triggered()),dtManip,SLOT(SetSignalsNodeByCommand()));
+    connect( setSignalNodes, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    utilityPopup->addAction( setSignalNodes );
 
     utilityPopup->addSeparator();
 
@@ -923,10 +970,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         }
         else if( key == Qt::Key_D ){
             dtManip->SplitSelectedLane();
+            dtManip->SplitSelectedPedestLane();
         }
         else if( key == Qt::Key_I ){
 
-            int checkInsertCondition = 0;
             bool selectedIsAllLane = true;
             for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
                 if( canvas->selectedObj.selObjKind[i] != canvas->SEL_LANE ){
@@ -958,11 +1005,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
             if( relNodes.size() != 2 ){
                 return;
             }
-
-
-            dtManip->insertMode = checkInsertCondition;
-            dtManip->insertNode1 = canvas->selectedObj.selObjID[0];
-            dtManip->insertNode2 = canvas->selectedObj.selObjID[1];
 
             insertNodePopup->clear();
 
@@ -1226,4 +1268,115 @@ void MainWindow::UpdateStatusBar(QString message)
     statusBar()->showMessage(message);
 }
 
+
+void MainWindow::GetHeightDataFromUE()
+{
+    if(!(dtManip->road)){
+        return;
+    }
+
+    QUdpSocket sock;
+    QUdpSocket rsock;
+
+    rsock.bind( QHostAddress::Any , 58000 );
+
+    for( int i=0;i<dtManip->road->wps.size();++i ){
+
+        qDebug() << "WP: " << (i+1) << " / " << dtManip->road->wps.size();
+
+        char sendData[100];
+        sendData[0] = 'G';
+        sendData[1] = 'H';
+        sendData[2] = 'R';
+
+        float x = dtManip->road->wps[i]->pos.x();
+        float y = dtManip->road->wps[i]->pos.y();
+        float z = dtManip->road->wps[i]->pos.z();
+
+        memcpy( &(sendData[3]) , &x, sizeof(float) );
+        memcpy( &(sendData[7]) , &y, sizeof(float) );
+        memcpy( &(sendData[11]), &z, sizeof(float) );
+
+        //qDebug() << "[GetHeightDataFromUE]";
+        //qDebug() << "  send data : x = " << x << " y = " << y << " z = " << z;
+
+        sock.writeDatagram( sendData, 15, QHostAddress("192.168.1.102"), 56000 );
+
+        char recvData[10];
+        while(1){
+            int ret = rsock.readDatagram(recvData,10);
+            if( ret >= 8 ){
+                int n = 0;
+                memcpy(&n, &(recvData[0]), sizeof(int) );
+
+                float zue = 0.0;
+                memcpy(&zue, &(recvData[4]), sizeof(float) );
+
+                dtManip->road->wps[i]->pos.setZ(zue * 0.01);
+
+                //qDebug() << "n = " << n << " zue = " << zue;
+                break;
+            }
+        }
+    }
+
+    for(int i=0;i<dtManip->road->lanes.size();++i){
+
+        int sWP = dtManip->road->lanes[i]->startWPID;
+        int swpIdx = dtManip->road->indexOfWP( sWP );
+        float sWPz = dtManip->road->wps[swpIdx]->pos.z();
+
+        int eWP = dtManip->road->lanes[i]->endWPID;
+        int ewpIdx = dtManip->road->indexOfWP( eWP );
+        float eWPz = dtManip->road->wps[ewpIdx]->pos.z();
+
+        dtManip->road->lanes[i]->shape.pos.first()->setZ( sWPz );
+        dtManip->road->lanes[i]->shape.pos.last()->setZ( eWPz );
+
+        dtManip->road->CalculateShape( &(dtManip->road->lanes[i]->shape) );
+    }
+
+    for( int i=0;i<dtManip->road->pedestLanes.size();++i ){
+
+        qDebug() << "PedestLane: " << (i+1) << " / " << dtManip->road->pedestLanes.size();
+
+        for(int j=0;j<dtManip->road->pedestLanes[i]->shape.size();++j){
+
+            char sendData[100];
+            sendData[0] = 'G';
+            sendData[1] = 'H';
+            sendData[2] = 'R';
+
+            float x = dtManip->road->pedestLanes[i]->shape[j]->pos.x();
+            float y = dtManip->road->pedestLanes[i]->shape[j]->pos.y();
+            float z = dtManip->road->pedestLanes[i]->shape[j]->pos.z();
+
+            memcpy( &(sendData[3]) , &x, sizeof(float) );
+            memcpy( &(sendData[7]) , &y, sizeof(float) );
+            memcpy( &(sendData[11]), &z, sizeof(float) );
+
+            //qDebug() << "[GetHeightDataFromUE]";
+            //qDebug() << "  send data : x = " << x << " y = " << y << " z = " << z;
+
+            sock.writeDatagram( sendData, 15, QHostAddress("192.168.1.102"), 56000 );
+
+            char recvData[10];
+            while(1){
+                int ret = rsock.readDatagram(recvData,10);
+                if( ret >= 8 ){
+                    int n = 0;
+                    memcpy(&n, &(recvData[0]), sizeof(int) );
+
+                    float zue = 0.0;
+                    memcpy(&zue, &(recvData[4]), sizeof(float) );
+
+                    dtManip->road->pedestLanes[i]->shape[j]->pos.setZ(zue * 0.01);
+
+                    //qDebug() << "n = " << n << " zue = " << zue;
+                    break;
+                }
+            }
+        }
+    }
+}
 

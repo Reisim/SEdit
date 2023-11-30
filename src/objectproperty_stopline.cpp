@@ -54,4 +54,8 @@ void RoadObjectProperty::ChangeStopLineInfo(int id)
     slInfo->setText( infoStr );
     slInfo->setAlignment( Qt::AlignTop );
 
+    if( cbChangeSelectionBySpinbox->isChecked() == true ){
+        emit ChangeSelectionRequest(6,id);
+    }
+
 }

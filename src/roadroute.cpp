@@ -734,11 +734,23 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
         showDetail = true;
     }
 
+    QFile dFile("route_cal_check.txt");
+    bool outDFile = false;
+    QTextStream dOut;
+    if( dFile.open(QIODevice::WriteOnly | QIODevice::Text) ){
+        outDFile = true;
+        dOut.setDevice( &dFile );
+    }
 
     qDebug() << "[" << hIdx << "]" << "[RoadInfo::GetLaneListForRoute]";
     qDebug() << "[" << hIdx << "]" << "  origNodeId = " << origNodeId << " destNodeId = " << destNodeId;
     qDebug() << "[" << hIdx << "]" << "  route.size() = " << nodes[ndIdx]->odData[n]->route.size();
 
+    if( outDFile == true ){
+        dOut << "[" << hIdx << "]" << "[RoadInfo::GetLaneListForRoute]" << "\n";
+        dOut << "[" << hIdx << "]" << "  origNodeId = " << origNodeId << " destNodeId = " << destNodeId << "\n";
+        dOut << "[" << hIdx << "]" << "  route.size() = " << nodes[ndIdx]->odData[n]->route.size() << "\n";
+    }
 
     for(int m=0;m<nodes[ndIdx]->odData[n]->route.size();++m){
 
@@ -773,6 +785,16 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
             }
         }
 
+        if( outDFile == true ){
+            dOut << " checking route " << (m+1) << " / " << nodes[ndIdx]->odData[n]->route.size() << "\n";
+            for(int i=0;i<nodes[ndIdx]->odData[n]->route[m]->nodeList.size();++i){
+                dOut << "[" << i << "]: "
+                         << " In:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->inDir
+                         << " Nd:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->node
+                         << " Out:" << nodes[ndIdx]->odData[n]->route[m]->nodeList[i]->outDir << "\n";
+            }
+        }
+
 
         int currentDestNodeIndex = nodes[ndIdx]->odData[n]->route[m]->nodeList.size() - 1;
 
@@ -795,6 +817,10 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                 qDebug() << " tmpDestNodeId = " << tmpDestNodeId << " destInDir = " << destInDir;
             }
 
+            if( outDFile == true ){
+                dOut << " tmpDestNodeId = " << tmpDestNodeId << " destInDir = " << destInDir << "\n";
+            }
+
             QList<int> topLanes;
             for(int i=0;i<nodes[destNdIdx]->relatedLanes.size();++i ){
 
@@ -805,6 +831,12 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
     //            qDebug() << " eWPNodeDir  = " << lanes[lIdx]->eWPNodeDir;
     //            qDebug() << " eWPBoundary = " << lanes[lIdx]->eWPBoundary;
 
+                if( outDFile == true ){
+                    dOut << " eWPInNode   = " << lanes[lIdx]->eWPInNode << "\n";
+                    dOut<< " sWPInNode   = " << lanes[lIdx]->sWPInNode << "\n";
+                    dOut << " eWPNodeDir  = " << lanes[lIdx]->eWPNodeDir << "\n";
+                    dOut << " eWPBoundary = " << lanes[lIdx]->eWPBoundary << "\n";
+                }
 
                 if( lanes[lIdx]->eWPInNode != lanes[lIdx]->sWPInNode &&
                         lanes[lIdx]->eWPInNode == tmpDestNodeId &&
@@ -814,6 +846,10 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                     if( topLanes.indexOf(nodes[destNdIdx]->relatedLanes[i]) < 0 ){
                         topLanes.append( nodes[destNdIdx]->relatedLanes[i] );
     //                    qDebug() << "Add this lane to topLanes";
+
+                        if( outDFile == true ){
+                            dOut << "Add this lane to topLanes\n";
+                        }
                     }
                 }
             }
@@ -822,6 +858,13 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                 qDebug() << "  topLanes = " << topLanes;
             }
 
+            if( outDFile == true ){
+                dOut << "  topLanes = ";
+                for(int i=0;i<topLanes.size();++i){
+                    dOut << " " << topLanes[i];
+                }
+                dOut << "\n";
+            }
 
             struct RouteData *rt = new struct RouteData;
             for(int i=0;i<=currentDestNodeIndex;++i){
@@ -842,6 +885,16 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                 }
             }
 
+            if( outDFile == true ){
+                dOut << "[Search]: \n";
+                for(int i=0;i<rt->nodeList.size();++i){
+                    dOut << "[" << i << "]: "
+                             << " In:" << rt->nodeList[i]->inDir
+                             << " Nd:" << rt->nodeList[i]->node
+                             << " Out:" << rt->nodeList[i]->outDir << "\n";
+                }
+            }
+
 
             QList<struct RouteLaneData*> tmpRouteLanes;
 
@@ -852,10 +905,18 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                     qDebug() << " checking topLane = " << topLanes[k];
                 }
 
+                if( outDFile == true ){
+                    dOut << " checking topLane = " << topLanes[k] << "\n";
+                }
+
                 ClearSearchHelper(hIdx);
 
                 if( showDetail == true ){
                     qDebug() << " start search";
+                }
+
+                if( outDFile == true ){
+                    dOut << " start search\n";
                 }
 
                 ForwardTreeSearchForRouteLaneList( rt, -1, topLanes[k], hIdx);
@@ -864,6 +925,9 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                     qDebug() << " end search";
                 }
 
+                if( outDFile == true ){
+                    dOut << " end search\n";
+                }
 
                 struct RouteLaneData *rLanes = new struct RouteLaneData;
 
@@ -882,6 +946,10 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                         qDebug() << " treeSeachHelper size = " << treeSeachHelper[hIdx].size();
                     }
 
+                    if( outDFile == true ){
+                        dOut << " treeSeachHelper size = " << treeSeachHelper[hIdx].size() << "\n";
+                    }
+
                     for(int l=0;l<treeSeachHelper[hIdx].size();++l){
 
                         if( treeSeachHelper[hIdx][l]->isEnd == false ){
@@ -896,6 +964,10 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                                 qDebug() << "Last Lane = " << extractedLanes.last();
                             }
 
+                            if( outDFile == true ){
+                                dOut << "Last Lane = " << extractedLanes.last() << "\n";
+                            }
+
                             int lastLaneIdx = indexOfLane( extractedLanes.last() );
 
                             if( showDetail == true ){
@@ -903,9 +975,19 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                                 qDebug() << "origNodeId = " << origNodeId;
                             }
 
+                            if( outDFile == true ){
+                                dOut << "sWPInNode = " << lanes[lastLaneIdx]->sWPInNode << "\n";
+                                dOut<< "origNodeId = " << origNodeId << "\n";
+                            }
+
+
                             if( lanes[lastLaneIdx]->sWPInNode == origNodeId ){
                                 reachOrigin = true;
                                 qDebug() << "Reached Origin Node";
+
+                                if( outDFile == true ){
+                                    dOut << "Reached Origin Node\n";
+                                }
                             }
 
                             if( rLanes->startNode < 0 || rLanes->startNode == lanes[lastLaneIdx]->sWPInNode ){
@@ -971,6 +1053,12 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                 qDebug() << " farON = " << farON
                          << " farONIndex = " << farONIndex
                          << " currentDestNodeIndex = " << currentDestNodeIndex;
+            }
+
+            if( outDFile == true ){
+                dOut << " farON = " << farON
+                         << " farONIndex = " << farONIndex
+                         << " currentDestNodeIndex = " << currentDestNodeIndex << "\n";
             }
 
 
@@ -1119,6 +1207,32 @@ void RoadInfo::GetLaneListForRoute(int origNodeId,int destNodeId,int hIdx)
                          << nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->laneList[j];
             }
         }
+
+
+        if( outDFile == true ){
+            dOut << "[" << hIdx << "]" << " Route Lane List from ON = "
+                     << nodes[ndIdx]->odData[n]->route[m]->nodeList.first()->node << " to DN = "
+                     << nodes[ndIdx]->odData[n]->route[m]->nodeList.last()->node << "\n";
+
+            for(int i=0;i<nodes[ndIdx]->odData[n]->route[m]->routeLaneLists.size();i++){
+
+                dOut << "[" << hIdx << "]" << "  ND: "
+                         << nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->startNode << " -> "
+                         << nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->goalNode << "\n";
+
+                for(int j=0;j<nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->laneList.size();++j){
+                    dOut << "[" << hIdx << "]" << "    List[" << j << "]: ";
+                    for(int k=0;k<nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->laneList[j].size();++k){
+                        dOut << " " << nodes[ndIdx]->odData[n]->route[m]->routeLaneLists[i]->laneList[j][k];
+                    }
+                    dOut << "\n";
+                }
+            }
+        }
+    }
+
+    if( outDFile == true ){
+        dFile.close();
     }
 }
 

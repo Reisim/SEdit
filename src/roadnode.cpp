@@ -660,7 +660,6 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
 
         if( nodes[i]->hasTS == true ){
 
-
             // Check Traffic Signal Data
             for(int k=nodes[i]->trafficSignals.size()-1;k>=0;k--){
                 int tdID = nodes[i]->trafficSignals[k]->id;
@@ -860,14 +859,14 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
                         qDebug() << "Cross Product of Dir[" << nodes[i]->legInfo[k]->legID << "] = " << y;
                     }
 
-                    if( y > 0.5 ){
+                    if( y > 0.2 ){
                         nodes[i]->legInfo[j]->leftTurnLegID.append( nodes[i]->legInfo[k]->legID );
 
                         if( verbose == true ){
                             qDebug() << " -> Left";
                         }
                     }
-                    else if( y < -0.5 ){
+                    else if( y < -0.2 ){
                         nodes[i]->legInfo[j]->rightTurnLegID.append( nodes[i]->legInfo[k]->legID );
 
                         if( verbose == true ){
@@ -905,51 +904,60 @@ void RoadInfo::SetTurnDirectionInfo(QList<int> nodeList, bool verbose)
         }
         else{
 
-
             for(int j=0;j<nodes[i]->legInfo.size();++j){
 
                 if( nodes[i]->legInfo[j]->nLaneIn == 0 || nodes[i]->legInfo[j]->inWPs.size() == 0 ){
                     continue;
                 }
 
-
                 float ct = cos( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
                 float st = sin( (nodes[i]->legInfo[j]->angle + 180.0) * 0.017452 );
-
 
                 // Set oncoming Direction
                 QList<int> yieldDir;
                 for(int k=0;k<nodes[i]->stopLines.size();++k){
-                    yieldDir.append( nodes[i]->stopLines[k]->relatedNodeDir );
+                    if( yieldDir.indexOf( nodes[i]->stopLines[k]->relatedNodeDir ) < 0 ){
+                        yieldDir.append( nodes[i]->stopLines[k]->relatedNodeDir );
+                    }
                 }
 
-                int idx = yieldDir.indexOf( nodes[i]->legInfo[j]->legID );
-                if( idx >= 0 ){
-                    yieldDir.removeAt( idx );
-                    if( yieldDir.size() > 0 ){
-                        nodes[i]->legInfo[j]->oncomingLegID = yieldDir.first();
+                if( yieldDir.size() == 0 || yieldDir.size() * 2 != nodes[i]->legInfo.size() ){
+
+                    int ocd = (nodes[i]->legInfo[j]->legID + 2) % 4;
+                    if( ocd < nodes[i]->legInfo.size() ){
+                        nodes[i]->legInfo[j]->oncomingLegID = ocd;
                     }
+
                 }
                 else{
-                    int maxDir = -1;
-                    float maxIP = 0.0;
-                    for(int k=0;k<nodes[i]->legInfo.size();++k){
-                        if( j == k ){
-                            continue;
-                        }
-                        if( yieldDir.indexOf(nodes[i]->legInfo[k]->legID) < 0 ){
-
-                            float cp = cos( nodes[i]->legInfo[k]->angle * 0.017452 );
-                            float sp = sin( nodes[i]->legInfo[k]->angle * 0.017452 );
-                            float ip = cp * ct + sp * st;
-                            if( maxDir < 0 || maxIP < ip ){
-                                maxDir = k;
-                                maxIP = ip;
-                            }
+                    int idx = yieldDir.indexOf( nodes[i]->legInfo[j]->legID );
+                    if( idx >= 0 ){
+                        yieldDir.removeAt( idx );
+                        if( yieldDir.size() > 0 ){
+                            nodes[i]->legInfo[j]->oncomingLegID = yieldDir.first();
                         }
                     }
-                    if( maxDir >= 0 ){
-                        nodes[i]->legInfo[j]->oncomingLegID = nodes[i]->legInfo[maxDir]->legID;
+                    else{
+                        int maxDir = -1;
+                        float maxIP = 0.0;
+                        for(int k=0;k<nodes[i]->legInfo.size();++k){
+                            if( j == k ){
+                                continue;
+                            }
+                            if( yieldDir.indexOf(nodes[i]->legInfo[k]->legID) < 0 ){
+
+                                float cp = cos( nodes[i]->legInfo[k]->angle * 0.017452 );
+                                float sp = sin( nodes[i]->legInfo[k]->angle * 0.017452 );
+                                float ip = cp * ct + sp * st;
+                                if( maxDir < 0 || maxIP < ip ){
+                                    maxDir = k;
+                                    maxIP = ip;
+                                }
+                            }
+                        }
+                        if( maxDir >= 0 ){
+                            nodes[i]->legInfo[j]->oncomingLegID = nodes[i]->legInfo[maxDir]->legID;
+                        }
                     }
                 }
 

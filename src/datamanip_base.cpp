@@ -13,15 +13,15 @@
 
 #include "datamanipulator.h"
 #include <QInputDialog>
+#include <QDialog>
+#include <QInputDialog>
 
 
 DataManipulator::DataManipulator(QObject *parent) : QObject(parent)
 {
     canvas = NULL;
 
-    insertMode = 0;
-    insertNode1 = -1;
-    insertNode2 = -1;
+
 }
 
 
@@ -1403,9 +1403,49 @@ void DataManipulator::MergeSelectedObject()
                 mergeCase = 7;
             }
 
+            if( road->lanes[slidx]->eWPInNode == road->lanes[slidx]->sWPInNode &&
+                     road->lanes[elidx]->eWPInNode == road->lanes[elidx]->sWPInNode &&
+                     road->lanes[slidx]->eWPInNode != road->lanes[elidx]->sWPInNode ){
+                mergeCase = 10;
+            }
+
+
             qDebug() << "Merge Lanes: mergeCase = " << mergeCase;
 
-            if( mergeCase == 7 ){
+            if( mergeCase == 10 ){
+
+                int eWPinNode    = road->lanes[elidx]->sWPInNode;
+                int eWPinDir     = road->lanes[elidx]->sWPNodeDir;
+                bool eWPBoundary = road->lanes[elidx]->eWPBoundary;
+
+                int sWPinNode    = road->lanes[slidx]->eWPInNode;
+                int sWPinDir     = road->lanes[slidx]->eWPNodeDir;
+                int sWPBoundary  = road->lanes[slidx]->eWPBoundary;
+
+                QVector4D startPoint;
+                QVector4D endPoint;
+
+                endPoint.setX( road->lanes[elidx]->shape.pos.first()->x() );
+                endPoint.setY( road->lanes[elidx]->shape.pos.first()->y() );
+                endPoint.setZ( road->lanes[elidx]->shape.pos.first()->z() );
+                endPoint.setW( road->lanes[elidx]->shape.angles.first() );
+
+                startPoint.setX( road->lanes[slidx]->shape.pos.last()->x() );
+                startPoint.setY( road->lanes[slidx]->shape.pos.last()->y() );
+                startPoint.setZ( road->lanes[slidx]->shape.pos.last()->z() );
+                startPoint.setW( road->lanes[slidx]->shape.angles.last() );
+
+                int lId = road->CreateLane( -1, startPoint, sWPinNode, sWPinDir, sWPBoundary, endPoint, eWPinNode, eWPinDir, eWPBoundary );
+
+                road->SetNodeRelatedLane( eWPinNode, lId );
+                if( eWPinNode != sWPinNode ){
+                    road->SetNodeRelatedLane( sWPinNode, lId );
+                }
+
+                road->CheckLaneConnectionFull();
+
+            }
+            else if( mergeCase == 7 ){
 
                 int eWPinNode    = road->lanes[elidx]->eWPInNode;
                 int eWPinDir     = road->lanes[elidx]->eWPNodeDir;
@@ -1533,6 +1573,13 @@ void DataManipulator::CheckLaneConnectionFull()
 }
 
 
+void DataManipulator::FindInconsistentData()
+{
+    road->FindInconsistentData();
+    canvas->update();
+}
+
+
 void DataManipulator::CreateWPData()
 {
     road->CheckLaneConnectionFull();
@@ -1594,6 +1641,94 @@ void DataManipulator::CheckLaneCrossPoints()
 void DataManipulator::CheckLaneAndPedestLaneCrossPoint()
 {
     road->CheckPedestLaneCrossPoints();
+}
+
+
+void DataManipulator::SetLaneHeightOfSelectedLane()
+{
+    qDebug() << "[DataManipulator::SetLaneHeightOfSelectedLane]";
+
+    if( canvas->selectedObj.selObjKind.size() == 0 ){
+        return;
+    }
+
+    double height = QInputDialog::getDouble(NULL , "Set Height", "Height value");
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i ){
+
+        if( canvas->selectedObj.selObjKind[i] != canvas->SEL_LANE ){
+            continue;
+        }
+
+        int lIdx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lIdx < 0 ){
+            continue;
+        }
+
+        for(int j=0;j<road->lanes[lIdx]->shape.pos.size();++j){
+            road->lanes[lIdx]->shape.pos[j]->setZ( height );
+        }
+
+        for(int n=0;n<road->lanes[lIdx]->nextLanes.size();++n){
+            int npath = road->lanes[lIdx]->nextLanes[n];
+
+            bool isSelected = false;
+            for(int m=0;m<canvas->selectedObj.selObjKind.size();++m ){
+                if( canvas->selectedObj.selObjKind[m] == canvas->SEL_LANE &&
+                        canvas->selectedObj.selObjID[m] == npath ){
+                     isSelected = true;
+                     break;
+                }
+            }
+            if( isSelected == true ){
+                continue;
+            }
+
+            int nlIdx = road->indexOfLane( npath );
+            if( nlIdx < 0 ){
+                continue;
+            }
+
+            int ndiv = road->lanes[nlIdx]->shape.pos.size();
+            float he = road->lanes[nlIdx]->shape.pos.last()->z() - height;
+            for(int m = 0;m < ndiv;++m){
+                float h = height + he * m / (ndiv - 1);
+                road->lanes[nlIdx]->shape.pos[m]->setZ( h );
+            }
+        }
+
+
+        for(int n=0;n<road->lanes[lIdx]->previousLanes.size();++n){
+            int npath = road->lanes[lIdx]->previousLanes[n];
+
+            bool isSelected = false;
+            for(int m=0;m<canvas->selectedObj.selObjKind.size();++m ){
+                if( canvas->selectedObj.selObjKind[m] == canvas->SEL_LANE &&
+                        canvas->selectedObj.selObjID[m] == npath ){
+                     isSelected = true;
+                     break;
+                }
+            }
+            if( isSelected == true ){
+                continue;
+            }
+
+            int nlIdx = road->indexOfLane( npath );
+            if( nlIdx < 0 ){
+                continue;
+            }
+
+            int ndiv = road->lanes[nlIdx]->shape.pos.size();
+            float he = road->lanes[nlIdx]->shape.pos.first()->z() - height;
+            for(int m = 0;m < ndiv;++m){
+                float h = height + he * (ndiv - 1 - m) / (ndiv - 1);
+                road->lanes[nlIdx]->shape.pos[m]->setZ( h );
+            }
+        }
+    }
+
+    UpdateStatusBar(QString("Lane Height Changed."));
+    canvas->update();
 }
 
 
@@ -1802,6 +1937,34 @@ void DataManipulator::SearchTrafficSignal()
 }
 
 
+void DataManipulator::SearchStaticObject()
+{
+    int soId = QInputDialog::getInt(NULL,"Find Static Object","StaticObj ID");
+
+    int idx = road->indexOfStaticObject( soId );
+
+    if( idx >= 0 ){
+
+        float x = road->staticObj[idx]->xc;
+        float y = road->staticObj[idx]->yc;
+
+        canvas->ResetRotate();
+        canvas->MoveTo( x, y );
+
+        canvas->selectedObj.selObjKind.clear();
+        canvas->selectedObj.selObjID.clear();
+
+        canvas->selectedObj.selObjKind.append( canvas->SEL_STATIC_OBJECT );
+        canvas->selectedObj.selObjID.append( soId );
+
+        roadObjProp->ChangeTabPage(5);
+        roadObjProp->ChangeStaticObjInfo(soId);
+
+        canvas->update();
+    }
+}
+
+
 void DataManipulator::MoveXY()
 {
     QString xyTxt = QInputDialog::getText(NULL,"Enter Coordinate","X,Y");
@@ -1996,9 +2159,6 @@ void DataManipulator::SplitSelectedLane()
         }
     }
 
-    canvas->selectedObj.selObjKind.clear();
-    canvas->selectedObj.selObjID.clear();
-
     qDebug() << "targetLanes: " << targetLanes;
 
     QList<int> containNodes;
@@ -2017,4 +2177,196 @@ void DataManipulator::SplitSelectedLane()
     }
 
     canvas->update();
+}
+
+void DataManipulator::SplitSelectedPedestLane()
+{
+    qDebug() << "[SplitSelectedPedestLane]";
+
+    qDebug() << "selObjKind.size = " << canvas->selectedObj.selObjKind.size();
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+
+        qDebug() << "selObjKind = " << canvas->selectedObj.selObjKind[i];
+
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_PEDEST_LANE_POINT ){
+
+            int modID = canvas->selectedObj.selObjID[i];
+            int laneID = modID / 100;
+            int sectIdx = modID - laneID * 100;
+
+            qDebug() << "laneID = " << laneID << " sectIdx = " << sectIdx;
+
+            road->DividePedestLaneHalf( laneID, sectIdx );
+        }
+    }
+
+    canvas->selectedObj.selObjKind.clear();
+    canvas->selectedObj.selObjID.clear();
+
+    canvas->update();
+}
+
+
+void DataManipulator::SetSignalsNodeByCommand()
+{
+    qDebug() << "[SetSignalsNodeByCommand]";
+    if( canvas->selectedObj.selObjKind.size() != 1 ||
+            canvas->selectedObj.selObjKind.at(0) != canvas->SEL_NODE ){
+        qDebug() << "SetSignalsNodeByCommand accepts only one node selection";
+        return;
+    }
+
+    int ndID = canvas->selectedObj.selObjID.at(0);
+    int nIdx = road->indexOfNode(ndID);
+    if( nIdx < 0 ){
+        qDebug() << "No Node data found: ID= " << ndID;
+        return;
+    }
+
+    if( road->nodes[nIdx]->hasTS == false ){
+        qDebug() << "Not Signalized Intersection";
+        return;
+    }
+
+    int nCross = road->nodes[nIdx]->nLeg;
+    if( nCross < 2 ){
+        qDebug() << "Not Intersection";
+        return;
+    }
+
+    QDialog *dialog = new QDialog();
+
+
+    QGridLayout *gLay = new QGridLayout();
+    for(int i=0;i<nCross;++i){
+        QLabel *lbl = new QLabel;
+        lbl->setText( QString("Dir %1").arg(i) );
+        gLay->addWidget( lbl , i, 0 );
+    }
+    gLay->addWidget( new QLabel("Offset[s]") , nCross, 0 );
+
+    QList<QLineEdit*> tsForDir;
+    for(int i=0;i<nCross;++i){
+        QLineEdit *le = new QLineEdit();
+        le->setFixedWidth( 300 );
+        tsForDir.append( le );
+        gLay->addWidget( le , i, 1 );
+    }
+
+    QSpinBox *sbOffset = new QSpinBox();
+    sbOffset->setRange(0,300);
+    sbOffset->setValue(0);
+    gLay->addWidget( sbOffset , nCross, 1 );
+
+
+    QPushButton *okBtn = new QPushButton("Accept");
+    okBtn->setIcon(QIcon(":/images/accept.png"));
+
+    QPushButton *cancelBtn = new QPushButton("Cancel");
+    cancelBtn->setIcon(QIcon(":/images/delete.png"));
+
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(accept()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(reject()));
+    connect( okBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+    connect( cancelBtn, SIGNAL(clicked()), dialog, SLOT(close()));
+
+    QHBoxLayout *btnLay = new QHBoxLayout();
+    btnLay->addStretch(1);
+    btnLay->addWidget( okBtn );
+    btnLay->addSpacing(50);
+    btnLay->addWidget( cancelBtn );
+    btnLay->addStretch(1);
+
+    QVBoxLayout *mLay = new QVBoxLayout();
+    mLay->addLayout( gLay );
+    mLay->addLayout( btnLay );
+
+    dialog->setLayout( mLay );
+    dialog->exec();
+
+    if( dialog->result() == QDialog::Accepted ){
+
+        qDebug() << "size of tsForDir = " << tsForDir.size();
+
+        for(int i=0;i<nCross;++i){
+
+            QString tsCom = tsForDir[i]->text();
+
+            qDebug() << "Com for TS[" << i << "] = " << tsCom;
+
+            if( tsCom.isNull() == true || tsCom.isEmpty() == true || tsCom.contains(";") == false ){
+                qDebug() << "No Data Set for Dir " << i;
+                continue;
+            }
+
+            int tsIdx = -1;
+            for(int j=0;j<road->nodes[nIdx]->trafficSignals.size();++j){
+                if( road->nodes[nIdx]->trafficSignals[j]->type != 0 ){
+                    continue;
+                }
+                if( road->nodes[nIdx]->trafficSignals[j]->controlNodeDirection == i ){
+                    tsIdx = j;
+                    break;
+                }
+            }
+            if( tsIdx < 0 ){
+                qDebug() << "No Signal for this direction. Dir = " << i;
+                continue;
+            }
+
+            qDebug() << "Set Dir " << i << " , TS index = " << tsIdx << " ID = " << road->nodes[nIdx]->trafficSignals[tsIdx]->id;
+
+            for(int k=0;k<road->nodes[nIdx]->trafficSignals[tsIdx]->sigPattern.size();++k){
+                delete road->nodes[nIdx]->trafficSignals[tsIdx]->sigPattern[k];
+            }
+            road->nodes[nIdx]->trafficSignals[tsIdx]->sigPattern.clear();
+
+            road->nodes[nIdx]->trafficSignals[tsIdx]->startOffset = sbOffset->value();
+
+
+            QStringList divCom = tsCom.split("/");
+            for(int j=0;j<divCom.size();++j){
+
+                QStringList divComSub = QString( divCom[j] ).trimmed().split(";");
+
+                QStringList sigPat = QString( divComSub[0] ).trimmed().split("_");
+                int duration = QString( divComSub[1] ).trimmed().toInt();
+
+                struct SignalPatternData *sp = new struct SignalPatternData;
+
+                int sigVal = 0;
+                if( sigPat.contains("G") == true ){
+                    sigVal += 1;
+                }
+                if( sigPat.contains("A") == true || sigPat.contains("Y") == true ){
+                    sigVal += 2;
+                }
+                if( sigPat.contains("R") == true ){
+                    sigVal += 4;
+                }
+                if( sigPat.contains("<") == true ){
+                    sigVal += 8;
+                }
+                if( sigPat.contains("^") == true ){
+                    sigVal += 16;
+                }
+                if( sigPat.contains(">") == true ){
+                    sigVal += 32;
+                }
+
+                sp->signal = sigVal;
+                sp->duration = duration;
+
+                qDebug() << " Cycle " << j << " , sigVal = " << sigVal << " duration = " << duration;
+
+                road->nodes[nIdx]->trafficSignals[tsIdx]->sigPattern.append( sp );
+
+                qDebug() << " size of sigPattern = " << road->nodes[nIdx]->trafficSignals[tsIdx]->sigPattern.size();
+
+            }
+
+            roadObjProp->ChangeTrafficSignalInfo( road->nodes[nIdx]->trafficSignals[tsIdx]->id );
+        }
+    }
 }

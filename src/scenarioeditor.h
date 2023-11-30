@@ -213,6 +213,7 @@ public:
 
 
 private:
+    bool applyEnableFlag;
 
     QString currentScenarioFile;
 
@@ -314,6 +315,21 @@ private:
     QSpinBox *saUDPPortSB;
     QLineEdit *saUDPSendData;
     QCheckBox *saRepeatSend;
+
+    QWidget *saAgentErrorWidget;
+    QSpinBox *saAgentErrorTargetID;
+    QComboBox *saAgentErrorType;
+    QDoubleSpinBox *saAgentErrorDuration;
+
+    QWidget *saDisposeAgentWidget;
+    QSpinBox *saDisposeAgentTargetID;
+
+    QWidget *saResetErrorWidget;
+    QSpinBox *saResetErrorTargetID;
+
+    QCheckBox *saResetRecognitionError;
+    QCheckBox *saResetDecisionError;
+    QCheckBox *saResetViolation;
 
 
     //---------- vehicle actions

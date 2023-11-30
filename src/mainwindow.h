@@ -27,6 +27,8 @@
 #include <QFileDialog>
 #include <QStatusBar>
 
+#include <QUdpSocket>
+
 #include "graphiccanvas.h"
 #include "settingdialog.h"
 #include "roadinfo.h"
@@ -84,6 +86,7 @@ public slots:
 
     void SetTrafficDirection(int dir);
     void WrapWinModified(){ setWindowModified(true); }
+    void GetHeightDataFromUE();
 
 
 private:

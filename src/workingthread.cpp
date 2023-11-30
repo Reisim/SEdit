@@ -49,6 +49,9 @@ void WorkingThread::run()
                 nProcessed++;
 
                 int lIdx = road->indexOfLane( road->nodes[ndIdx]->relatedLanes.at(j) );
+                if( lIdx < 0 ){
+                    continue;
+                }
                 if( road->lanes[lIdx]->sWPInNode != road->lanes[lIdx]->eWPInNode ){
                     continue;
                 }
@@ -60,6 +63,9 @@ void WorkingThread::run()
                     }
 
                     int clIdx = road->indexOfLane( road->nodes[ndIdx]->relatedLanes.at(k) );
+                    if( clIdx < 0 ){
+                        continue;
+                    }
                     if( road->lanes[clIdx]->sWPInNode != road->lanes[clIdx]->eWPInNode ){
                         continue;
                     }

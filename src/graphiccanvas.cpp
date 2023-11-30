@@ -103,12 +103,14 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
     showTrafficSignalsFlag = true;
     showStopLinesFlag      = true;
     showPedestLaneFlag     = true;
+    showStaticObjectFlag   = true;
 
     showNodeLabelsFlag          = true;
     showLaneLabelsFlag          = true;
     showTrafficSignalLabelsFlag = true;
     showStopLineLabelsFlag      = true;
     showPedestLaneLabelsFlag    = true;
+    showStaticObjectLabelsFlag  = true;
     showLabelsFlag              = true;
 
     selectNodeFlag          = true;
@@ -116,6 +118,7 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
     selectTrafficSignalFlag = true;
     selectStopLineFlag      = true;
     selectPedestLaneFlag    = true;
+    selectStaticObjectFlag  = true;
 
     LaneListFlag           = false;
     laneListIndex          = 0;
@@ -150,6 +153,11 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
     createSL->setText("Stop Line");
     addObjToNodePopup->addAction( createSL );
 
+    lastImageLoadFolder = QString();
+
+    dispCtrl = NULL;
+
+    QueryPerformanceCounter(&start);
 
     setMouseTracking(true);
 }
@@ -570,6 +578,95 @@ void GraphicCanvas::initializeGL()
     }
 
 
+    // Box
+    boxPoly.isValid = false;
+    ret = boxPoly.array.create();
+    if( !ret ){
+        qDebug() << "   boxPoly.array.create failed.";
+    }
+    boxPoly.array.bind();
+    boxPoly.buffer = new QOpenGLBuffer();
+    ret = boxPoly.buffer->create();
+    if( !ret ){
+        qDebug() << "   boxPoly.buffer.create failed.";
+    }
+    else{
+        ret = boxPoly.buffer->bind();
+        if( !ret ){
+            qDebug() << "   boxPoly.buffer.bind failed.";
+        }
+        else{
+
+            float x[8];
+            float y[8];
+            float z[8];
+
+            x[0] =  1.0;   y[0] =  1.0;  z[0] = 0.0;
+            x[1] = -1.0;   y[1] =  1.0;  z[1] = 0.0;
+            x[2] = -1.0;   y[2] =  1.0;  z[2] = 1.0;
+            x[3] =  1.0;   y[3] =  1.0;  z[3] = 1.0;
+            x[4] =  1.0;   y[4] = -1.0;  z[4] = 0.0;
+            x[5] = -1.0;   y[5] = -1.0;  z[5] = 0.0;
+            x[6] = -1.0;   y[6] = -1.0;  z[6] = 1.0;
+            x[7] =  1.0;   y[7] = -1.0;  z[7] = 1.0;
+
+
+            //left
+            boxPoly.vertex << x[3] << y[3] << z[3] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[0] << y[0] << z[0] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[1] << y[1] << z[1] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[2] << y[2] << z[2] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+
+
+            // top
+            boxPoly.vertex << x[6] << y[6] << z[6] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[7] << y[7] << z[7] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[3] << y[3] << z[3] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[2] << y[2] << z[2] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+
+
+            //right
+            boxPoly.vertex << x[6] << y[6] << z[6] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[5] << y[5] << z[5] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[4] << y[4] << z[4] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[7] << y[7] << z[7] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+
+
+            // front
+            boxPoly.vertex << x[3] << y[3] << z[3] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[7] << y[7] << z[7] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[4] << y[4] << z[4] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[0] << y[0] << z[0] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+
+
+            // back
+            boxPoly.vertex << x[1] << y[1] << z[1] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[5] << y[5] << z[5] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[6] << y[6] << z[6] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+            boxPoly.vertex << x[2] << y[2] << z[2] << 0.0f << 0.0f << 0.2f << 0.2f << 0.7f;
+
+
+
+            boxPoly.buffer->setUsagePattern( QOpenGLBuffer::StaticDraw );
+            boxPoly.buffer->allocate( boxPoly.vertex.constData(), boxPoly.vertex.size() * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 0 );
+            program->setAttributeBuffer( 0, GL_FLOAT, 0, 3, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 1 );
+            program->setAttributeBuffer( 1, GL_FLOAT, 3 * sizeof(GLfloat) , 2, 8 * sizeof(GLfloat) );
+
+            program->enableAttributeArray( 2 );
+            program->setAttributeBuffer( 2, GL_FLOAT, 5 * sizeof(GLfloat) , 3, 8 * sizeof(GLfloat) );
+
+            boxPoly.buffer->release();
+            boxPoly.array.release();
+
+            boxPoly.isValid = true;
+        }
+    }
+
+
     //
     // Vehicle
     vhclPoly.isValid = false;
@@ -620,6 +717,18 @@ void GraphicCanvas::initializeGL()
 
 void GraphicCanvas::paintGL()
 {
+    makeCurrent();
+
+    // Restrict Frame Rate 20FPS => 1000/20=50[msec]
+
+    QueryPerformanceCounter(&end);
+    double calTime = static_cast<double>(end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;  // [msec]
+    if( calTime < 50.0 ){
+        return;
+    }
+    start = end;
+
+
     if( nodePickModeFlag == true || pedestPathPointPickFlag == true ){
         glClearColor( 0.3451, 0.3843, 0.4336, 1.0 );
     }
@@ -680,6 +789,9 @@ void GraphicCanvas::paintGL()
             float mapZ = -1.0;
             if( backMapImageFlag == true ){
                 mapZ = -25.0;
+                if( dispCtrl ){
+                    mapZ = dispCtrl->backMapOffsetVal->value() * (-1.0);
+                }
             }
             model2World.setTranslation( QVector3D( mapImageMng->baseMapImages[i]->x,
                                                    mapImageMng->baseMapImages[i]->y,
@@ -708,6 +820,117 @@ void GraphicCanvas::paintGL()
     }
 
     model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
+
+
+    // Static Object
+    if( boxPoly.isValid == true && road != NULL && showStaticObjectFlag == true ){
+
+        for(int i=0;i<road->staticObj.size();++i){
+
+            boxPoly.array.bind();
+
+            model2World.setTranslation( QVector3D( road->staticObj[i]->xc, road->staticObj[i]->yc, road->staticObj[i]->zc) );
+
+            float angle = road->staticObj[i]->direction * 0.017452;
+            model2World.setRotation( QQuaternion( cos(angle), 0.0, 0.0, sin(angle) ) );
+
+            float sx = road->staticObj[i]->lenx;
+            float sy = road->staticObj[i]->leny;
+            float sz = road->staticObj[i]->height;
+            model2World.setScale( QVector3D(sx,sy,sz) );
+
+            program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+            program->setUniformValue( u_isText, 0 );
+            program->setUniformValue( u_useTex, 2 );
+            program->setUniformValue( u_vColor, QVector4D( 0.65, 0.65, 0.65, 1.0 ) );
+
+            glLineWidth(1.0);
+            glDrawArrays(GL_QUADS, 0, boxPoly.vertex.size() / 8 );
+
+            bool isSelected = false;
+            if( selectedObj.selObjKind.size() > 0){
+                if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_STATIC_OBJECT ){
+                    if( selectedObj.selObjID[0] == road->staticObj[i]->id ){
+                        isSelected = true;
+                    }
+                }
+            }
+
+            if( isSelected == true ){
+                glLineWidth(3.0);
+                program->setUniformValue( u_vColor, QVector4D(1.0, 0.0, 0.0, 1.0) );
+            }
+            else{
+                glLineWidth(1.0);
+                program->setUniformValue( u_vColor, QVector4D(1.0, 1.0, 1.0, 1.0) );
+
+            }
+            glDrawArrays(GL_LINE_STRIP, 0, boxPoly.vertex.size() / 8 );
+
+            boxPoly.array.release();
+
+            if( textPoly.isTextValid == true && showLabelsFlag == true && showStaticObjectLabelsFlag == true ){
+
+                textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
+
+                program->setUniformValue( u_useTex, 100 );
+                program->setUniformValue( u_isText, 100 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 1.0, 1.0, 1.0 ) );
+
+                char str[50];
+                sprintf(str,"SO[%d]",road->staticObj[i]->id);
+
+                model2World.setTranslation( QVector3D( road->staticObj[i]->xc,
+                                                       road->staticObj[i]->yc,
+                                                       road->staticObj[i]->zc + road->staticObj[i]->height + 1.0) );
+
+                QQuaternion letterQuat = cameraQuat.conjugated();
+                model2World.setRotation( letterQuat );
+                model2World.setScale( QVector3D(1.0,1.0,1.0) );
+
+                program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                glActiveTexture( GL_TEXTURE0 );
+
+                float x = 0.0;
+                float y = 0.0;
+                float scale = FONT_SCALE;
+
+                for(unsigned int c=0;c<strlen(str);++c ){
+
+                    Character* ch = Characters[ str[c] ];
+
+                    GLfloat xpos = x + ch->Bearing.width() * scale;
+                    GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
+                    program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                    float w = ch->Size.width() * scale;
+                    float h = ch->Size.height() * scale;
+
+                    QVector<GLfloat> fontPoly;
+                    fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                    fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                    fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                    fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                    textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
+
+                    glBindTexture( GL_TEXTURE_2D, ch->TextureID );
+
+                    glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+
+                    x += ( ch->Advance >> 6 ) * scale;
+                }
+
+                textPoly.textBuffer->release();
+                textPoly.textArray.release();
+            }
+        }
+
+    }
+
 
     // WP
     if( circlePoly.isValid == true && road != NULL && showLanesFlag == true ){
@@ -983,6 +1206,7 @@ void GraphicCanvas::paintGL()
             if( textPoly.isTextValid == true ){
 
                 textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
 
                 program->setUniformValue( u_useTex, 100 );
                 program->setUniformValue( u_isText, 100 );
@@ -1032,8 +1256,19 @@ void GraphicCanvas::paintGL()
                         Character* ch = Characters[ str[c] ];
 
                         GLfloat xpos = x + ch->Bearing.width() * scale;
-                        GLfloat ypos = y;
+                        GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                         program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        float w = ch->Size.width() * scale;
+                        float h = ch->Size.height() * scale;
+
+                        QVector<GLfloat> fontPoly;
+                        fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                        textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1043,6 +1278,7 @@ void GraphicCanvas::paintGL()
                     }
                 }
 
+                textPoly.textBuffer->release();
                 textPoly.textArray.release();
             }
         }
@@ -1072,6 +1308,7 @@ void GraphicCanvas::paintGL()
             if( textPoly.isTextValid == true ){
 
                 textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
 
                 program->setUniformValue( u_useTex, 100 );
                 program->setUniformValue( u_isText, 100 );
@@ -1102,8 +1339,19 @@ void GraphicCanvas::paintGL()
                         Character* ch = Characters[ str[c] ];
 
                         GLfloat xpos = x + ch->Bearing.width() * scale;
-                        GLfloat ypos = y;
+                        GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                         program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        float w = ch->Size.width() * scale;
+                        float h = ch->Size.height() * scale;
+
+                        QVector<GLfloat> fontPoly;
+                        fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                        textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1113,6 +1361,7 @@ void GraphicCanvas::paintGL()
                     }
                 }
 
+                textPoly.textBuffer->release();
                 textPoly.textArray.release();
             }
         }
@@ -1166,6 +1415,7 @@ void GraphicCanvas::paintGL()
             if( textPoly.isTextValid == true ){
 
                 textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
 
                 program->setUniformValue( u_useTex, 100 );
                 program->setUniformValue( u_isText, 100 );
@@ -1196,8 +1446,19 @@ void GraphicCanvas::paintGL()
                         Character* ch = Characters[ str[c] ];
 
                         GLfloat xpos = x + ch->Bearing.width() * scale;
-                        GLfloat ypos = y;
+                        GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                         program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                        float w = ch->Size.width() * scale;
+                        float h = ch->Size.height() * scale;
+
+                        QVector<GLfloat> fontPoly;
+                        fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                        fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                        textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1207,6 +1468,7 @@ void GraphicCanvas::paintGL()
                     }
                 }
 
+                textPoly.textBuffer->release();
                 textPoly.textArray.release();
             }
 
@@ -1268,6 +1530,7 @@ void GraphicCanvas::paintGL()
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1298,8 +1561,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1309,6 +1583,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
             }
@@ -1338,6 +1613,7 @@ void GraphicCanvas::paintGL()
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1368,8 +1644,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1379,6 +1666,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
             }
@@ -1408,13 +1696,15 @@ void GraphicCanvas::paintGL()
                 program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 1.0, 1.0 ) );
 
                 glLineWidth(1.0);
-                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+//                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 4 * 6 );
 
                 vhclPoly.array.release();
 
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1445,8 +1735,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1456,6 +1757,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
 
@@ -1609,6 +1911,7 @@ void GraphicCanvas::paintGL()
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1639,8 +1942,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1650,6 +1964,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
             }
@@ -1679,6 +1994,7 @@ void GraphicCanvas::paintGL()
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1709,8 +2025,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1720,6 +2047,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
             }
@@ -1749,13 +2077,15 @@ void GraphicCanvas::paintGL()
                 program->setUniformValue( u_vColor, QVector4D( 0.0, 0.0, 1.0, 1.0 ) );
 
                 glLineWidth(1.0);
-                glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+                //glDrawArrays(GL_TRIANGLE_FAN, 0, NODE_CIRCLE_DIV );
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 4 * 6 );
 
                 vhclPoly.array.release();
 
                 if( textPoly.isTextValid == true ){
 
                     textPoly.textArray.bind();
+                    textPoly.textBuffer->bind();
 
                     program->setUniformValue( u_useTex, 100 );
                     program->setUniformValue( u_isText, 100 );
@@ -1786,8 +2116,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -1797,6 +2138,7 @@ void GraphicCanvas::paintGL()
                         }
                     }
 
+                    textPoly.textBuffer->release();
                     textPoly.textArray.release();
                 }
 
@@ -2007,6 +2349,11 @@ void GraphicCanvas::paintGL()
                 glLineWidth( laneDrawWidth * 2 );
                 program->setUniformValue( u_vColor, QVector4D( 1.0, 0.5, 0.5, 1.0 ) );
             }
+            else if( road->lanes[i]->suspectError == true ){
+                program->setUniformValue( u_useTex, 2 );
+                glLineWidth( laneDrawWidth * 3 );
+                program->setUniformValue( u_vColor, QVector4D( 1.0, 0.0, 0.0, 1.0 ) );
+            }
             else{
 
                 if( isRelatedLane == true ){
@@ -2016,7 +2363,17 @@ void GraphicCanvas::paintGL()
                 }
                 else{
 
-                    if( colorLaneByActualSpeedFlag == true ){
+                    if( colorLaneByODDFlag == true && road->lanes[i]->automaticDrivingEnabled == true ){
+
+                        float r = 0.7;
+                        float g = 0.2;
+                        float b = 0.1;
+
+                        program->setUniformValue( u_useTex, 2 );
+                        glLineWidth( laneDrawWidth );
+                        program->setUniformValue( u_vColor, QVector4D( r, g, b, 1.0 ) );
+                    }
+                    else if( colorLaneByActualSpeedFlag == true ){
 
                         float r = 1.0;
                         float g = 1.0;
@@ -2096,18 +2453,19 @@ void GraphicCanvas::paintGL()
                 glDrawArrays(GL_LINES, 0, 2 );
             }
 
-            glLineWidth(2.0);
+            glLineWidth(3.0);
 
             if( road->lanes[i]->previousLanes.size() == 0 ){
 
                 float c = road->lanes[i]->shape.derivative.first()->x();
                 float s = road->lanes[i]->shape.derivative.first()->y();
 
-                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.first()->x() - s * 1.25,
-                                                       road->lanes[i]->shape.pos.first()->y() + c * 1.25,
+                float wd = road->lanes[i]->laneWidth * 0.5;
+                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.first()->x() - s * wd,
+                                                       road->lanes[i]->shape.pos.first()->y() + c * wd,
                                                        road->lanes[i]->shape.pos.first()->z()) );
 
-                model2World.setScale( QVector3D(2.5,1.0,1.0) );
+                model2World.setScale( QVector3D( road->lanes[i]->laneWidth ,1.0,1.0) );
 
                 float angle = atan2( -c, s );
                 model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
@@ -2122,11 +2480,12 @@ void GraphicCanvas::paintGL()
                 float c = road->lanes[i]->shape.derivative.last()->x();
                 float s = road->lanes[i]->shape.derivative.last()->y();
 
-                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.last()->x() - s * 1.25,
-                                                       road->lanes[i]->shape.pos.last()->y() + c * 1.25,
+                float wd = road->lanes[i]->laneWidth * 0.5;
+                model2World.setTranslation( QVector3D( road->lanes[i]->shape.pos.last()->x() - s * wd,
+                                                       road->lanes[i]->shape.pos.last()->y() + c * wd,
                                                        road->lanes[i]->shape.pos.last()->z()) );
 
-                model2World.setScale( QVector3D(2.5,1.0,1.0) );
+                model2World.setScale( QVector3D( road->lanes[i]->laneWidth ,1.0,1.0) );
 
                 float angle = atan2( -c, s );
                 model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
@@ -2272,6 +2631,7 @@ void GraphicCanvas::paintGL()
             if( textPoly.isTextValid == true ){
 
                 textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
 
                 program->setUniformValue( u_useTex, 100 );
                 program->setUniformValue( u_isText, 100 );
@@ -2304,8 +2664,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2316,6 +2687,7 @@ void GraphicCanvas::paintGL()
                     }
                 }
 
+                textPoly.textBuffer->release();
                 textPoly.textArray.release();
             }
         }
@@ -2378,6 +2750,12 @@ void GraphicCanvas::paintGL()
 
                 if( isSelected == true ){
                     glLineWidth(8.0);
+                }
+                else if( road->nodes[i]->suspectError == true ){
+                    glLineWidth(15.0);
+                    program->setUniformValue( u_useTex, 2 );
+                    program->setUniformValue( u_isText, 0 );
+                    program->setUniformValue( u_vColor, QVector4D( 1.0, 0.0, 0.0, 1.0 ) );
                 }
                 else{
                     glLineWidth(3.0);
@@ -2666,6 +3044,7 @@ void GraphicCanvas::paintGL()
             if( textPoly.isTextValid == true ){
 
                 textPoly.textArray.bind();
+                textPoly.textBuffer->bind();
 
                 program->setUniformValue( u_useTex, 100 );
                 program->setUniformValue( u_isText, 100 );
@@ -2698,8 +3077,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2740,8 +3130,19 @@ void GraphicCanvas::paintGL()
                                 Character* ch = Characters[ str[c] ];
 
                                 GLfloat xpos = x + ch->Bearing.width() * scale;
-                                GLfloat ypos = y;
+                                GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                                 program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                                float w = ch->Size.width() * scale;
+                                float h = ch->Size.height() * scale;
+
+                                QVector<GLfloat> fontPoly;
+                                fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                                textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2787,8 +3188,19 @@ void GraphicCanvas::paintGL()
                                 Character* ch = Characters[ str[c] ];
 
                                 GLfloat xpos = x + ch->Bearing.width() * scale;
-                                GLfloat ypos = y;
+                                GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                                 program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                                float w = ch->Size.width() * scale;
+                                float h = ch->Size.height() * scale;
+
+                                QVector<GLfloat> fontPoly;
+                                fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                                textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2838,8 +3250,19 @@ void GraphicCanvas::paintGL()
                                 Character* ch = Characters[ str[c] ];
 
                                 GLfloat xpos = x + ch->Bearing.width() * scale;
-                                GLfloat ypos = y;
+                                GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                                 program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                                float w = ch->Size.width() * scale;
+                                float h = ch->Size.height() * scale;
+
+                                QVector<GLfloat> fontPoly;
+                                fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                                fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                                textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2851,6 +3274,7 @@ void GraphicCanvas::paintGL()
                     }
                 }
 
+                textPoly.textBuffer->release();
                 textPoly.textArray.release();
             }
         }
@@ -2949,6 +3373,7 @@ void GraphicCanvas::paintGL()
     if( textPoly.isTextValid == true ){
 
         textPoly.textArray.bind();
+        textPoly.textBuffer->bind();
 
         program->setUniformValue( u_useTex, 100 );
         program->setUniformValue( u_isText, 100 );
@@ -2986,8 +3411,19 @@ void GraphicCanvas::paintGL()
                 Character* ch = Characters[ str[c] ];
 
                 GLfloat xpos = x + ch->Bearing.width() * scale;
-                GLfloat ypos = y;
+                GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                 program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                float w = ch->Size.width() * scale;
+                float h = ch->Size.height() * scale;
+
+                QVector<GLfloat> fontPoly;
+                fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -2997,6 +3433,7 @@ void GraphicCanvas::paintGL()
             }
         }
 
+        textPoly.textBuffer->release();
         textPoly.textArray.release();
     }
 
@@ -3074,7 +3511,7 @@ void GraphicCanvas::paintGL()
                 for(int n=0;n<road->pedestLanes.size();++n){
 
                     bool isSelected = false;
-                    int isPointSelected = -1;
+                    QList<int> isPointSelected;
                     for(int i=0;i<selectedObj.selObjKind.size();++i){
                         if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_PEDEST_LANE ){
                             if( selectedObj.selObjID[i] == road->pedestLanes[n]->id ){
@@ -3091,8 +3528,7 @@ void GraphicCanvas::paintGL()
 
                             if( pedestLaneID == road->pedestLanes[n]->id ){
                                 isSelected = true;
-                                isPointSelected = pedestLanePointIndex;
-                                break;
+                                isPointSelected.append( pedestLanePointIndex );
                             }
                         }
                     }
@@ -3104,7 +3540,7 @@ void GraphicCanvas::paintGL()
                         program->setUniformValue( u_useTex, 2 );
                         program->setUniformValue( u_isText, 0 );
 
-                        if( i == isPointSelected ){
+                        if( isPointSelected.indexOf(i) >= 0 ){
                             glLineWidth(3.0);
                             program->setUniformValue( u_vColor, QVector4D( 0.6, 0.2, 1.0, 1.0  ) );
                         }
@@ -3139,6 +3575,97 @@ void GraphicCanvas::paintGL()
                         linePoly.array.release();
                     }
 
+                    for(int i=0;i<road->pedestLanes[n]->shape.size()-1;++i){
+
+                        linePoly.array.bind();
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_isText, 0 );
+
+                        glLineWidth(2.0);
+                        program->setUniformValue( u_vColor, QVector4D( 0.3, 0.8, 1.0, 1.0  ) );
+
+                        float angle = road->pedestLanes[n]->shape[i]->angleToNextPos;
+
+                        float ct = cos(angle);
+                        float st = sin(angle);
+
+                        // Left side
+                        QVector3D offset;
+                        offset.setX(  -st * road->pedestLanes[n]->shape[i]->width * 0.5 );
+                        offset.setY( ct * road->pedestLanes[n]->shape[i]->width * 0.5 );
+                        offset.setZ( 0.0 ) ;
+
+                        model2World.setTranslation( road->pedestLanes[n]->shape[i]->pos + offset );
+
+                        float len = road->pedestLanes[n]->shape[i]->distanceToNextPos;
+                        model2World.setScale( QVector3D(len,1.0,1.0) );
+
+                        model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        glDrawArrays(GL_LINES, 0, 2 );
+
+                        // Right side
+                        offset.setX( st * road->pedestLanes[n]->shape[i]->width * 0.5 );
+                        offset.setY( -ct * road->pedestLanes[n]->shape[i]->width * 0.5 );
+                        offset.setZ( 0.0);
+
+                        model2World.setTranslation( road->pedestLanes[n]->shape[i]->pos + offset );
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        glDrawArrays(GL_LINES, 0, 2 );
+
+                        linePoly.array.release();
+                    }
+
+                    for(int i=0;i<road->pedestLanes[n]->shape.size()-1;++i){
+
+                        if( road->pedestLanes[n]->shape[i]->runOutProb < 0.001 ||
+                                road->pedestLanes[n]->shape[i]->marginToRoadForRunOut < 0.001 ){
+                            continue;
+                        }
+
+                        linePoly.array.bind();
+
+                        program->setUniformValue( u_useTex, 2 );
+                        program->setUniformValue( u_isText, 0 );
+
+                        glLineWidth(3.0);
+                        program->setUniformValue( u_vColor, QVector4D( 0.94, 0.80, 0.1, 1.0  ) );
+
+                        float angle = road->pedestLanes[n]->shape[i]->angleToNextPos;
+
+                        float ct = cos(angle);
+                        float st = sin(angle);
+
+                        QVector3D offset;
+                        float s = road->pedestLanes[n]->shape[i]->width * 0.5 + road->pedestLanes[n]->shape[i]->marginToRoadForRunOut;
+                        if( road->pedestLanes[n]->shape[i]->runOutDirect == 1 ){
+                            // Left side
+                            offset.setX(  -st * s );
+                            offset.setY( ct * s );
+                            offset.setZ( 0.0 ) ;
+                        }
+                        else{
+                            // Right side
+                            offset.setX( st * s );
+                            offset.setY( -ct * s );
+                            offset.setZ( 0.0);
+                        }
+
+                        model2World.setTranslation( road->pedestLanes[n]->shape[i]->pos + offset );
+
+                        float len = road->pedestLanes[n]->shape[i]->distanceToNextPos;
+                        model2World.setScale( QVector3D(len,1.0,1.0) );
+
+                        model2World.setRotation( QQuaternion( cos(angle*0.5), 0.0 , 0.0 , sin(angle*0.5) ) );
+                        program->setUniformValue( u_modelToCamera,  world2camera * model2World.getWorldMatrix() );
+
+                        glDrawArrays(GL_LINES, 0, 2 );
+
+                        linePoly.array.release();
+                    }
 
                     if( circlePoly.isValid == true ){
 
@@ -3167,6 +3694,7 @@ void GraphicCanvas::paintGL()
                     if( textPoly.isTextValid == true && showPedestLaneLabelsFlag == true && showLabelsFlag == true ){
 
                         textPoly.textArray.bind();
+                        textPoly.textBuffer->bind();
 
                         program->setUniformValue( u_useTex, 100 );
                         program->setUniformValue( u_isText, 100 );
@@ -3196,8 +3724,19 @@ void GraphicCanvas::paintGL()
                             Character* ch = Characters[ str[c] ];
 
                             GLfloat xpos = x + ch->Bearing.width() * scale;
-                            GLfloat ypos = y;
+                            GLfloat ypos = y - (ch->Size.height() - ch->Bearing.height()) * scale;
                             program->setUniformValue( u_letterPos, QVector3D(xpos, ypos, 0.0) );
+
+                            float w = ch->Size.width() * scale;
+                            float h = ch->Size.height() * scale;
+
+                            QVector<GLfloat> fontPoly;
+                            fontPoly << 0.0 <<  h   << 2.0 << 0.0 << 0.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly << 0.0 << 0.0  << 2.0 << 0.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  << 0.0  << 2.0 << 1.0 << 1.0 << 0.0 << 0.0 << 0.0;
+                            fontPoly <<  w  <<  h   << 2.0 << 1.0 << 0.0 << 0.0 << 0.0 << 0.0;
+
+                            textPoly.textBuffer->write( 0, fontPoly.constData(), fontPoly.size() * sizeof(GLfloat) );
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
@@ -3206,6 +3745,7 @@ void GraphicCanvas::paintGL()
                             x += ( ch->Advance >> 6 ) * scale;
                         }
 
+                        textPoly.textBuffer->release();
                         textPoly.textArray.release();
                     }
                 }
@@ -3213,6 +3753,9 @@ void GraphicCanvas::paintGL()
         }
 
 
+        //
+        //  Line Objects
+        //
         model2World.setScale( QVector3D(1.0, 1.0, 1.0) );
 
         for(int i=0;i<lineObj.size();++i){
@@ -3520,7 +4063,7 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
         qDebug() << "Failed.";
         bool found = false;
 
-        QStringList divTestName = testname.split("/");
+        QStringList divTestName = testname.replace("\\","/").split("/");
         QString imageFileName = QString( divTestName.last() );
 
         for(int i=0;i<imageFilePathFolders.size();++i){
@@ -3537,6 +4080,7 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
                 continue;
             }
             else{
+                qDebug() << "alt. = " << tmpImageFilePath;
                 bmi->path = PathToFile;
                 found = true;
                 break;
@@ -3564,10 +4108,14 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
                 return;
             }
             else{
+                qDebug() << "alt. = " << tmpImageFilePath;
                 bmi->path = newImageFilePath;
                 imageFilePathFolders.append( newImageFilePath );
             }
         }
+    }
+    else{
+        qDebug() << "Loaded: " << testname;
     }
 
 
@@ -3577,22 +4125,37 @@ void GraphicCanvas::LoadMapImage(struct baseMapImage* bmi)
     int wi = map.width();
     int hi = map.height();
 
+    //qDebug() << "width = " << wi << " height = " << hi;
+
+
     bmi->halfWidth = wi * 0.5;
     bmi->halfHeight = hi * 0.5;
 
     int wi2 = 2;
-    while( wi2 <= wi )
+    while( wi2 * 2 <= wi )
         wi2 *= 2;
 
     if( wi2 > 2048 )
         wi2 = 2048;
 
     int hi2 = 2;
-    while( hi2 <= hi )
+    while( hi2 * 2 <= hi )
             hi2 *= 2;
 
     if( hi2 > 2048 )
         hi2 = 2048;
+
+
+    // Make resolution squar size
+    if( hi2 < wi2 ){
+        hi2 = wi2;
+    }
+    else if( hi2 > wi2 ){
+        wi2 = hi2;
+    }
+
+    //qDebug() << "mod width = " << wi2 << " mod height = " << hi2;
+
 
     GLubyte *bits;
     int tsz = wi2 * hi2 * 4;

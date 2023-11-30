@@ -49,6 +49,8 @@ int RoadInfo::CreateLane(int assignId,
 
     lane->id = cId;
 
+    lane->laneWidth = 3.0;
+
     lane->shape.pos.append( new QVector3D( startPoint ) );
     lane->shape.pos.append( new QVector3D( endPoint ) );
     lane->shape.derivative.append( new QVector2D(cos(startPoint.w()), sin(startPoint.w())) );
@@ -1575,11 +1577,13 @@ bool RoadInfo::CheckLaneConnectionFull()
             lanes[i]->connectedNodeInDirect  = lanes[i]->sWPNodeDir;
 
             int ndIdx = indexOfNode( lanes[i]->eWPInNode );
-            for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
-                if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->sWPNodeDir ){
-                    lanes[i]->departureNode          = nodes[ndIdx]->legInfo[j]->connectedNode;
-                    lanes[i]->departureNodeOutDirect = nodes[ndIdx]->legInfo[j]->connectedNodeOutDirect;
-                    break;
+            if( ndIdx >= 0 ){
+                for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                    if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->sWPNodeDir ){
+                        lanes[i]->departureNode          = nodes[ndIdx]->legInfo[j]->connectedNode;
+                        lanes[i]->departureNodeOutDirect = nodes[ndIdx]->legInfo[j]->connectedNodeOutDirect;
+                        break;
+                    }
                 }
             }
         }
@@ -1616,6 +1620,14 @@ void RoadInfo::ClearLanes()
 
     for(int i=0;i<allLaneIDs.size();++i){
         DeleteLane( allLaneIDs[i] );
+    }
+}
+
+
+void RoadInfo::CheckLaneRelatedNodeAllLanes()
+{
+    for(int i=0;i<lanes.size();++i){
+        CheckLaneRelatedNode( lanes[i]->id );
     }
 }
 
@@ -1770,6 +1782,79 @@ void RoadInfo::CutLanesByLine(QPointF p1, QPointF p2)
     }
 
     CPs.clear();
+
+
+    for(int i=0;i<pedestLanes.size();++i){
+
+        qDebug() << "Check PedestLane " << pedestLanes[i]->id;
+
+        for(int j=0;j<pedestLanes[i]->shape.size()-1;++j){
+
+            qDebug() << " sect = " << j;
+
+            float x1 = pedestLanes[i]->shape[j]->pos.x();
+            float y1 = pedestLanes[i]->shape[j]->pos.y();
+            float ct = cos( pedestLanes[i]->shape[j]->angleToNextPos );
+            float st = sin( pedestLanes[i]->shape[j]->angleToNextPos );
+
+            float rx1 = p1.x() - x1;
+            float ry1 = p1.y() - y1;
+            float rx2 = p2.x() - x1;
+            float ry2 = p2.y() - y1;
+
+            float cp1 = rx1 * (-st) + ry1 * ct;
+            float cp2 = rx2 * (-st) + ry2 * ct;
+
+            qDebug() << " cp1 = " << cp1 << " cp2 = " << cp2;
+
+            if( cp1 * cp2 > 0.0 ){
+                continue;
+            }
+
+            float ip1 = rx1 * ct + ry1 * st;
+            float ip2 = rx2 * ct + ry2 * st;
+            float ipL = (ip1 >= ip2 ? ip1 : ip2);
+            float ipS = (ip1 < ip2 ? ip1 : ip2);
+            float a = (ip1 >= ip2 ? fabs(cp1) : fabs(cp2));
+            float b = (ip1 >= ip2 ? fabs(cp2) : fabs(cp1));
+
+            qDebug() << " ip1 = " << ip1 << " ip2 = " << ip2;
+            qDebug() << " ipL = " << ipL << " ipS = " << ipS;
+            qDebug() << " a = " << a << " b = " << b;
+
+            if( fabs(a+b) < 0.1 ){
+                continue;
+            }
+
+            if( ipL < 0.0 ){
+                continue;
+            }
+            if( ipS > pedestLanes[i]->shape[j]->distanceToNextPos ){
+                continue;
+            }
+
+            float D = ipL - ipS;
+            float L = ipS + D * b / (a + b);
+
+            qDebug() << " L = " << L << " distanceToNextPos = " << pedestLanes[i]->shape[j]->distanceToNextPos;
+
+            if( L < 0.0 || L > pedestLanes[i]->shape[j]->distanceToNextPos ){
+                continue;
+            }
+
+            QVector3D atPoint;
+
+            atPoint.setX( x1 + ct * L );
+            atPoint.setY( y1 + st * L );
+            atPoint.setZ( pedestLanes[i]->shape[j]->pos.z() + (pedestLanes[i]->shape[j+1]->pos.z() - pedestLanes[i]->shape[j]->pos.z()) * L / pedestLanes[i]->shape[j]->distanceToNextPos );
+
+            qDebug() << "Divide Pedest-Lane " << pedestLanes[i]->id << ", sect = " << j
+                     << " at " << atPoint;
+
+            DividePedestLaneAtPos(pedestLanes[i]->id, j, atPoint);
+            break;
+        }
+    }
 }
 
 

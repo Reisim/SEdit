@@ -140,6 +140,10 @@ void RoadObjectProperty::ChangeNodeInfo(int id)
     }
 
     emit ResetLaneListIndex();
+
+    if( cbChangeSelectionBySpinbox->isChecked() == true ){
+        emit ChangeSelectionRequest(1,id);
+    }
 }
 
 

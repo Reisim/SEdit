@@ -61,8 +61,10 @@ int RoadInfo::CreatePedestLane(int assignId, QList<QVector3D *> posData)
 
         ple->runOutProb = 0.0;
         ple->runOutDirect = 1;   // 1 for Left, -1 for Right
+        ple->marginToRoadForRunOut = 0.0;
 
         ple->isCrossWalk = false;
+        ple->controlPedestSignalID = -1;
 
         ple->angleToNextPos = 0.0;
         ple->distanceToNextPos = 0.0;
@@ -132,7 +134,7 @@ void RoadInfo::MovePedestLane(int id, float moveX, float moveY)
 {
     int index = indexOfPedestLane(id);
     if( index < 0 ){
-        qDebug() << "[MovePedestLanePoint] cannot find index of id = " << id;
+        qDebug() << "[MovePedestLane] cannot find index of id = " << id;
         return;
     }
 
@@ -309,6 +311,7 @@ void RoadInfo::FindPedestSignalFroCrossWalk()
         for(int j=0;j<pedestLanes[i]->shape.size();++j){
 
             if( pedestLanes[i]->shape[j]->isCrossWalk == false ){
+                pedestLanes[i]->shape[j]->controlPedestSignalID = -1;
                 continue;
             }
 
@@ -487,5 +490,86 @@ bool RoadInfo::CheckPedestLaneCrossPoints()
     delete [] wt;
 
     return ret;
+}
+
+
+void RoadInfo::DividePedestLaneHalf(int id,int sect)
+{
+    qDebug() << "[RoadInfo::DividePedestLaneHalf] id = " << id << " sect=" << sect;
+
+    int index = indexOfPedestLane(id);
+    if( index < 0 ){
+        qDebug() << "[DividePedestLaneHalf] cannot find index of id = " << id;
+        return;
+    }
+    if( sect < 0 || sect >= pedestLanes[index]->shape.size() - 1 ){
+        qDebug() << "[DividePedestLaneHalf] sect = " << sect << ": invalid index for pedestLanes.shape ; size = " << pedestLanes[index]->shape.size();
+        return;
+    }
+
+    struct PedestrianLaneShapeElement *plse = new struct PedestrianLaneShapeElement;
+
+    plse->pos = (pedestLanes[index]->shape[sect]->pos + pedestLanes[index]->shape[sect+1]->pos) / 2;
+    plse->angleToNextPos = pedestLanes[index]->shape[sect]->angleToNextPos;
+    plse->width = pedestLanes[index]->shape[sect]->width;
+    plse->isCrossWalk = false;
+    plse->controlPedestSignalID = -1;
+    plse->runOutDirect = 0;
+    plse->runOutProb = 0.0;
+    plse->marginToRoadForRunOut = 0.0;
+
+    pedestLanes[index]->shape.insert(sect+1, plse);
+
+    UpdatePedestLaneShapeParams(id);
+}
+
+void RoadInfo::DividePedestLaneAtPos(int id, int sect, QVector3D atPoint)
+{
+    qDebug() << "[RoadInfo::DividePedestLaneAtPos] id = " << id << " sect=" << sect;
+
+    int index = indexOfPedestLane(id);
+    if( index < 0 ){
+        qDebug() << "[DividePedestLaneAtPos] cannot find index of id = " << id;
+        return;
+    }
+    if( sect < 0 || sect >= pedestLanes[index]->shape.size() - 1 ){
+        qDebug() << "[DividePedestLaneAtPos] sect = " << sect << ": invalid index for pedestLanes.shape ; size = " << pedestLanes[index]->shape.size();
+        return;
+    }
+
+    struct PedestrianLaneShapeElement *plse = new struct PedestrianLaneShapeElement;
+
+    plse->pos = atPoint;
+    plse->angleToNextPos = pedestLanes[index]->shape[sect]->angleToNextPos;
+    plse->width = pedestLanes[index]->shape[sect]->width;
+    plse->isCrossWalk = false;
+    plse->controlPedestSignalID = -1;
+    plse->runOutDirect = 0;
+    plse->runOutProb = 0.0;
+    plse->marginToRoadForRunOut = 0.0;
+
+    pedestLanes[index]->shape.insert(sect+1, plse);
+
+    UpdatePedestLaneShapeParams(id);
+}
+
+void RoadInfo::ChangePedestLaneWidthByWheel(int id, int sect, float diff)
+{
+    qDebug() << "[RoadInfo::ChangePedestLaneWidthByWheel] id = " << id << " sect=" << sect;
+
+    int index = indexOfPedestLane(id);
+    if( index < 0 ){
+        qDebug() << "[ChangePedestLaneWidthByWheel] cannot find index of id = " << id;
+        return;
+    }
+    if( sect < 0 || sect >= pedestLanes[index]->shape.size() - 1 ){
+        qDebug() << "[ChangePedestLaneWidthByWheel] sect = " << sect << ": invalid index for pedestLanes.shape ; size = " << pedestLanes[index]->shape.size();
+        return;
+    }
+
+    pedestLanes[index]->shape[sect]->width += diff;
+    if( pedestLanes[index]->shape[sect]->width < 0.5 ){
+        pedestLanes[index]->shape[sect]->width = 0.5;
+    }
 }
 

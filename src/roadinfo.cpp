@@ -159,6 +159,19 @@ int RoadInfo::indexOfPedestLane(int id)
 }
 
 
+int RoadInfo::indexOfStaticObject(int id)
+{
+    int index = -1;
+    for(int i=0;i<staticObj.size();++i){
+        if( staticObj[i]->id == id ){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+
 void RoadInfo::ClearAllData()
 {
     ClearWPs();
@@ -199,3 +212,192 @@ void RoadInfo::ClearLaneShape(LaneShapeInfo *s)
 }
 
 
+void RoadInfo::FindInconsistentData()
+{
+    for(int i=0;i<nodes.size();++i){
+
+        nodes[i]->suspectError = false;
+
+        if( nodes[i]->nLeg != nodes[i]->legInfo.size() ){
+            nodes[i]->nLeg = nodes[i]->legInfo.size();
+        }
+
+        if( nodes[i]->nLeg > 2 && nodes[i]->stopLines.size() == 0 ){
+            nodes[i]->suspectError = true;
+        }
+    }
+
+    for(int i=0;i<lanes.size();++i){
+
+        if( lanes[i]->eWPInNode < 0  ){
+            for(int j=0;j<lanes[i]->nextLanes.size();++j){
+                int nIdx = indexOfLane(lanes[i]->nextLanes[j]);
+                if( nIdx >= 0 ){
+                    if( lanes[nIdx]->eWPInNode >= 0 ){
+                        lanes[i]->eWPInNode = lanes[nIdx]->eWPInNode;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( lanes[i]->eWPNodeDir < 0  ){
+            for(int j=0;j<lanes[i]->nextLanes.size();++j){
+                int nIdx = indexOfLane(lanes[i]->nextLanes[j]);
+                if( nIdx >= 0 ){
+                    if( lanes[i]->eWPInNode == lanes[nIdx]->eWPInNode &&
+                            lanes[nIdx]->eWPNodeDir >= 0 ){
+                        lanes[i]->eWPNodeDir = lanes[nIdx]->eWPNodeDir;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( lanes[i]->sWPInNode < 0  ){
+            for(int j=0;j<lanes[i]->previousLanes.size();++j){
+                int pIdx = indexOfLane(lanes[i]->previousLanes[j]);
+                if( pIdx >= 0 ){
+                    if( lanes[pIdx]->sWPInNode >= 0 ){
+                        lanes[i]->sWPInNode = lanes[pIdx]->sWPInNode;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( lanes[i]->sWPNodeDir < 0  ){
+            for(int j=0;j<lanes[i]->previousLanes.size();++j){
+                int pIdx = indexOfLane(lanes[i]->previousLanes[j]);
+                if( pIdx >= 0 ){
+                    if( lanes[i]->sWPInNode == lanes[pIdx]->sWPInNode &&
+                            lanes[pIdx]->sWPNodeDir >= 0 ){
+                        lanes[i]->sWPNodeDir = lanes[pIdx]->sWPNodeDir;
+                        break;
+                    }
+                }
+            }
+        }
+
+    }
+
+
+    for(int i=0;i<lanes.size();++i){
+
+        lanes[i]->suspectError = false;
+
+        if( lanes[i]->sWPNodeDir < 0 || lanes[i]->eWPNodeDir < 0 ){
+            lanes[i]->suspectError = true;
+        }
+
+        if( lanes[i]->sWPInNode == lanes[i]->eWPInNode ){
+
+            if( lanes[i]->sWPNodeDir == lanes[i]->eWPNodeDir ){
+                lanes[i]->suspectError = true;
+            }
+
+            for(int j=0;j<lanes[i]->nextLanes.size();++j){
+                int nIdx = indexOfLane(lanes[i]->nextLanes[j]);
+                if( nIdx >= 0 ){
+                    if( lanes[nIdx]->eWPInNode != lanes[nIdx]->sWPInNode &&
+                            lanes[i]->eWPInNode != lanes[nIdx]->sWPInNode ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                    else if( lanes[nIdx]->eWPInNode != lanes[nIdx]->sWPInNode &&
+                            lanes[i]->eWPInNode == lanes[nIdx]->sWPInNode &&
+                            lanes[nIdx]->sWPNodeDir != lanes[i]->eWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                    else if( lanes[nIdx]->eWPInNode == lanes[nIdx]->sWPInNode &&
+                             lanes[nIdx]->sWPInNode == lanes[i]->sWPInNode &&
+                             lanes[nIdx]->sWPNodeDir != lanes[i]->sWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                }
+            }
+
+            for(int j=0;j<lanes[i]->previousLanes.size();++j){
+                int pIdx = indexOfLane(lanes[i]->previousLanes[j]);
+                if( pIdx >= 0 ){
+                    if( lanes[pIdx]->eWPInNode != lanes[pIdx]->sWPInNode &&
+                            lanes[i]->sWPInNode != lanes[pIdx]->eWPInNode ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[pIdx]->eWPInNode != lanes[pIdx]->sWPInNode &&
+                            lanes[i]->sWPInNode == lanes[pIdx]->eWPInNode &&
+                            lanes[pIdx]->eWPNodeDir != lanes[i]->sWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[pIdx]->eWPInNode == lanes[pIdx]->sWPInNode &&
+                             lanes[pIdx]->sWPInNode == lanes[i]->sWPInNode &&
+                             lanes[pIdx]->eWPNodeDir != lanes[i]->eWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[i]->sWPBoundary == true && lanes[pIdx]->eWPBoundary == false ){
+                        lanes[i]->suspectError = true;
+                    }
+                }
+            }
+        }
+        else{
+
+            for(int j=0;j<lanes[i]->nextLanes.size();++j){
+                int nIdx = indexOfLane(lanes[i]->nextLanes[j]);
+                if( nIdx >= 0 ){
+                    if( lanes[nIdx]->eWPInNode == lanes[i]->eWPInNode &&
+                            lanes[nIdx]->sWPInNode == lanes[i]->sWPInNode &&
+                            ( lanes[nIdx]->eWPNodeDir != lanes[i]->eWPNodeDir ||
+                              lanes[nIdx]->sWPNodeDir != lanes[i]->sWPNodeDir ) ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                    else if( lanes[nIdx]->eWPInNode != lanes[i]->eWPInNode &&
+                             lanes[nIdx]->sWPInNode != lanes[i]->eWPInNode ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                    else if( lanes[nIdx]->eWPInNode != lanes[i]->eWPInNode &&
+                             lanes[nIdx]->sWPInNode == lanes[i]->eWPInNode &&
+                             lanes[nIdx]->sWPNodeDir != lanes[i]->eWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[nIdx]->suspectError = true;
+                    }
+                }
+            }
+
+            for(int j=0;j<lanes[i]->previousLanes.size();++j){
+                int pIdx = indexOfLane(lanes[i]->previousLanes[j]);
+                if( pIdx >= 0 ){
+                    if( lanes[pIdx]->eWPInNode == lanes[i]->eWPInNode &&
+                            lanes[pIdx]->sWPInNode == lanes[i]->sWPInNode &&
+                            ( lanes[pIdx]->eWPNodeDir != lanes[i]->eWPNodeDir ||
+                              lanes[pIdx]->sWPNodeDir != lanes[i]->sWPNodeDir ) ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[pIdx]->eWPInNode != lanes[i]->eWPInNode &&
+                             lanes[pIdx]->eWPInNode != lanes[i]->sWPInNode ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[pIdx]->eWPInNode != lanes[i]->eWPInNode &&
+                             lanes[pIdx]->eWPInNode == lanes[i]->sWPInNode &&
+                             lanes[pIdx]->eWPNodeDir != lanes[i]->sWPNodeDir ){
+                        lanes[i]->suspectError = true;
+                        lanes[pIdx]->suspectError = true;
+                    }
+                    else if( lanes[i]->sWPBoundary == true && lanes[pIdx]->eWPBoundary == false ){
+                        lanes[i]->suspectError = true;
+                    }
+                }
+            }
+
+        }
+    }
+}

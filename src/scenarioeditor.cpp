@@ -31,6 +31,9 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     setDlg = s;
     road   = r;
 
+    applyEnableFlag = false;
+
+
     //----- Graph Dialog
     speedProfileGraph = new GraphDialog();
     speedProfileGraph->Initialize(0);
@@ -234,7 +237,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     AND_OR_Items << "AND" << "OR";
     AND_OR->addItems(AND_OR_Items);
     AND_OR->setFixedSize( AND_OR->sizeHint() );
-
+    connect(AND_OR,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *cndDataGrid = new QGridLayout();
 
@@ -244,6 +247,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     //----- No trigger
     noTrigger = new QCheckBox("No Trigger");
+    connect(noTrigger,SIGNAL(stateChanged(int)),this,SLOT(ApplyDataClicked()));
 
     cndDataGrid->addWidget( noTrigger, row, 0 );
     row++;
@@ -251,12 +255,14 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     //----- Time trigger
     timeTrigger = new QCheckBox("Time Trigger");
+    connect(timeTrigger,SIGNAL(stateChanged(int)),this,SLOT(ApplyDataClicked()));
 
     ttMinSB = new QSpinBox();
     ttMinSB->setMinimum(0);
     ttMinSB->setMaximum(59);
     ttMinSB->setValue(0);
     ttMinSB->setSuffix("[min]");
+    connect(ttMinSB,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     ttSecSB = new QDoubleSpinBox();
     ttSecSB->setMinimum(0.0);
@@ -264,6 +270,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttSecSB->setSingleStep(0.01);
     ttSecSB->setValue(0.0);
     ttSecSB->setSuffix("[sec]");
+    connect(ttSecSB,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     QHBoxLayout *ttSBLayout = new QHBoxLayout();
     ttSBLayout->addWidget( ttMinSB );
@@ -273,6 +280,9 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttRelative = new QRadioButton("Time from appear");
     ttAbsolute = new QRadioButton("Absolute Time");
     ttAbsolute->setChecked( true );
+    connect(ttRelative,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+    connect(ttAbsolute,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
 
     ttRadioGroup = new QButtonGroup();
     ttRadioGroup->addButton( ttAbsolute );
@@ -302,6 +312,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ptX->setMaximum( 1.0e6 );
     ptX->setPrefix("X:");
     ptX->setSuffix("[m]");
+    connect(ptX,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ptY = new QDoubleSpinBox();
     ptY->setSingleStep(0.05);
@@ -310,6 +321,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ptY->setMaximum( 1.0e6 );
     ptY->setPrefix("Y:");
     ptY->setSuffix("[m]");
+    connect(ptY,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ptPsi = new QDoubleSpinBox();
     ptPsi->setSingleStep(0.05);
@@ -318,6 +330,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ptPsi->setMaximum(  180.0 );
     ptPsi->setPrefix("Pass Direction:");
     ptPsi->setSuffix("[deg]");
+    connect(ptPsi,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ptWidth = new QDoubleSpinBox();
     ptWidth->setSingleStep(0.05);
@@ -326,11 +339,13 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ptWidth->setMaximum( 100.0 );
     ptWidth->setPrefix("Width:");
     ptWidth->setSuffix("[m]");
+    connect(ptWidth,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ptTargetID = new QSpinBox();
     ptTargetID->setMinimum( -1 );
     ptTargetID->setMaximum( 100000 );
     ptTargetID->setValue( -1 );
+    connect(ptTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     ptSelPosition = new QPushButton();
     ptSelPosition->setIcon( QIcon(":images/Flag_blue.png") );
@@ -377,10 +392,13 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vtSpeed->setMinimum( 0.0 );
     vtSpeed->setMaximum( 200.0 );
     vtSpeed->setSuffix("[km/h]");
+    connect(vtSpeed,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vtSlower = new QRadioButton("Slower");
     vtHigher = new QRadioButton("Faster");
     vtHigher->setChecked( true );
+    connect(vtSlower,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+    connect(vtHigher,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vtRadioGroup = new QButtonGroup();
     vtRadioGroup->addButton( vtHigher );
@@ -396,6 +414,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vtTargetID->setMinimum( -1 );
     vtTargetID->setMaximum( 100000 );
     vtTargetID->setValue( -1 );
+    connect(vtTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     QHBoxLayout *vtTargetLayout = new QHBoxLayout();
     vtTargetLayout->addWidget( new QLabel("Target Object ID:") );
@@ -420,6 +439,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttcX->setMaximum( 1.0e6 );
     ttcX->setPrefix("X:");
     ttcX->setSuffix("[m]");
+    connect(ttcX,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ttcY = new QDoubleSpinBox();
     ttcY->setSingleStep(0.05);
@@ -428,6 +448,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttcY->setMaximum( 1.0e6 );
     ttcY->setPrefix("Y:");
     ttcY->setSuffix("[m]");
+    connect(ttcY,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ttcSelPosition = new QPushButton();
     ttcSelPosition->setIcon( QIcon(":images/Flag_blue.png") );
@@ -439,12 +460,14 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttcTargetID->setMinimum( -1 );
     ttcTargetID->setMaximum( 100000 );
     ttcTargetID->setValue( -1 );
+    connect(ttcTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     ttcCalObjectID = new QSpinBox();
     ttcCalObjectID->setMinimum( -1 );
     ttcCalObjectID->setMaximum( 100000 );
     ttcCalObjectID->setValue( -1 );
     ttcCalObjectID->setFixedWidth( ttcCalObjectID->sizeHint().width() );
+    connect(ttcCalObjectID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     ttcVal = new QDoubleSpinBox();
     ttcVal->setSingleStep(0.01);
@@ -453,10 +476,13 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ttcVal->setMaximum( 1000 );
     ttcVal->setPrefix("TTC:");
     ttcVal->setSuffix("[sec]");
+    connect(ttcVal,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     ttcObject = new QRadioButton("Calculate TTC to Object");
     ttcPoint = new QRadioButton("Calculate TTC to Point");
     ttcPoint->setChecked( true );
+    connect(ttcObject,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+    connect(ttcPoint,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     ttcRadioGroup = new QButtonGroup();
     ttcRadioGroup->addButton( ttcObject );
@@ -504,6 +530,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     // External Trigger
     externalTrigger = new QCheckBox("External Trigger");
+    connect(externalTrigger,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     etKeys = new QComboBox();
     QStringList etKeyStrs;
@@ -513,6 +540,8 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     etKeyStrs << "Num6" << "Num7" << "Num8" << "Num9";
     etKeys->addItems( etKeyStrs );
     etKeys->setCurrentIndex( 0 );
+    connect(etKeys,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
+
 
     etKeys->setFixedWidth( etKeys->sizeHint().width() );
 
@@ -534,7 +563,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     sysActSelCB = new QComboBox();
     QStringList saSelCBStrs;
-    saSelCBStrs << "Teleportation" << "Change Traffic Signal" << "Change Speed Info" << "Send UDP Data";
+    saSelCBStrs << "Teleportation" << "Change Traffic Signal" << "Change Speed Info" << "Send UDP Data" << "Agent Error" << "Dispose Agent" << "Reset Agent Error";
     sysActSelCB->addItems( saSelCBStrs );
     sysActSelCB->setFixedSize( sysActSelCB->sizeHint() );
     connect( sysActSelCB, SIGNAL(currentIndexChanged(int)),this,SLOT(ChangeSystemActSeletion(int)));
@@ -552,6 +581,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saMoveToX->setSingleStep( 0.01 );
     saMoveToX->setPrefix("X:");
     saMoveToX->setSuffix("[m]");
+    connect(saMoveToX,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     saMoveToY = new QDoubleSpinBox();
     saMoveToY->setMinimum( -1.0e6 );
@@ -560,6 +590,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saMoveToY->setSingleStep( 0.01 );
     saMoveToY->setPrefix("X:");
     saMoveToY->setSuffix("[m]");
+    connect(saMoveToY,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     saMoveToPsi = new QDoubleSpinBox();
     saMoveToPsi->setMinimum( -180.0 );
@@ -568,18 +599,21 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saMoveToPsi->setSingleStep( 0.01 );
     saMoveToPsi->setPrefix("Orientation:");
     saMoveToPsi->setSuffix("[deg]");
+    connect(saMoveToPsi,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     saMoveToNearLaneID = new QSpinBox();
     saMoveToNearLaneID->setMinimum( -1 );
     saMoveToNearLaneID->setMaximum( 100000 );
     saMoveToNearLaneID->setValue( -1 );
     saMoveToNearLaneID->setPrefix("Nearest Lane ID: ");
+    connect(saMoveToNearLaneID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     saMoveToTargetID = new QSpinBox();
     saMoveToTargetID->setMinimum( 0 );
     saMoveToTargetID->setMaximum( 100000 );
     saMoveToTargetID->setValue( 0 );
     saMoveToTargetID->setPrefix("Target Object ID: ");
+    connect(saMoveToTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     saMoveToPick = new QPushButton();
     saMoveToPick->setIcon( QIcon(":images/Flag_blue.png") );
@@ -594,8 +628,13 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( saMoveToSetToNearestLane, SIGNAL(clicked(bool)), this, SLOT(SetToNearestLane()) );
 
     saMoveToWithSurroundingVehicles = new QCheckBox("Move Surrounding Objects together");
-    saMoveToOnlyOnce                = new QCheckBox("Teleport only once");
-    saMoveToClearLateralOffset      = new QCheckBox("Clear Lateral Offset");
+    connect(saMoveToWithSurroundingVehicles,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
+    saMoveToOnlyOnce = new QCheckBox("Teleport only once");
+    connect(saMoveToOnlyOnce,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
+    saMoveToClearLateralOffset = new QCheckBox("Clear Lateral Offset");
+    connect(saMoveToClearLateralOffset,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *saTeleportGrid = new QGridLayout();
     row = 0;
@@ -644,12 +683,14 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saChangeTSTargetTSID->setMaximum( 100000 );
     saChangeTSTargetTSID->setValue( 0 );
     saChangeTSTargetTSID->setPrefix("Target TS ID: ");
+    connect(saChangeTSTargetTSID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     saChangeTSChangeToIndex = new QSpinBox();
     saChangeTSChangeToIndex->setMinimum( 0 );
     saChangeTSChangeToIndex->setMaximum( 100000 );
     saChangeTSChangeToIndex->setValue( 0 );
     saChangeTSChangeToIndex->setPrefix("Signal Display Index: ");
+    connect(saChangeTSChangeToIndex,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     saChangeTSPickTS = new QPushButton();
     saChangeTSPickTS->setIcon( QIcon(":images/Flag_blue.png") );
@@ -658,8 +699,10 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( saChangeTSPickTS, SIGNAL(clicked(bool)), this, SLOT(SetPickMode()) );
 
     saChangeTSSystemDown = new QCheckBox("Display OFF");
-    saChangeTSApplyAll   = new QCheckBox("Apply to All Signals");
+    connect(saChangeTSSystemDown,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
+    saChangeTSApplyAll   = new QCheckBox("Apply to All Signals");
+    connect(saChangeTSApplyAll,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *saChangeTSGrid = new QGridLayout();
     row = 0;
@@ -694,7 +737,10 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saChangeSpeedInfoWidget->hide();
 
     saChangeSpeedInfoSpeedLimit = new QCheckBox("Change Speed Limit");
+    connect(saChangeSpeedInfoSpeedLimit,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
     saChangeSpeedInfoActualSpeed = new QCheckBox("Change Actual Speed");
+    connect(saChangeSpeedInfoActualSpeed,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     saChangeSpeedInfoSpeedVal = new QDoubleSpinBox();
     saChangeSpeedInfoSpeedVal->setMinimum( 0.0 );
@@ -703,11 +749,13 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     saChangeSpeedInfoSpeedVal->setSingleStep( 0.01 );
     saChangeSpeedInfoSpeedVal->setPrefix("Change to :");
     saChangeSpeedInfoSpeedVal->setSuffix("[km/h]");
+    connect(saChangeSpeedInfoSpeedVal,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     saChangeSpeedInfoTargetLanes = new QLineEdit();
     QRegExp laneListRegex ("^?([0-9]+)(,[0-9]+)*$");
     QRegExpValidator *laneListValidator = new QRegExpValidator(laneListRegex, this);
     saChangeSpeedInfoTargetLanes->setValidator( laneListValidator );
+    connect(saChangeSpeedInfoTargetLanes,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     saChangeSpeedInfoPickLane = new QPushButton();
     saChangeSpeedInfoPickLane->setIcon( QIcon(":images/Flag_blue.png") );
@@ -742,7 +790,6 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
         maxWidth = saChangeSpeedInfoWidget->sizeHint().width();
     }
 
-
     //--------
     saSendUDPWidget = new QWidget();
     saSendUDPWidget->hide();
@@ -757,15 +804,19 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     QRegExpValidator *saIPValidator = new QRegExpValidator(saIPRegex, this);
     saUDPIPAddr->setValidator( saIPValidator );
     saUDPIPAddr->setInputMask("000.000.000.000");
+    connect(saUDPIPAddr,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     saUDPPortSB = new QSpinBox();
     saUDPPortSB->setMinimum( 0 );
     saUDPPortSB->setMaximum( 100000 );
     saUDPPortSB->setValue( 3000 );
+    connect(saUDPPortSB,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     saUDPSendData = new QLineEdit();
+    connect(saUDPSendData,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     saRepeatSend = new QCheckBox("Repeat sedning the data");
+    connect(saRepeatSend,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *saSendUDPGrid = new QGridLayout();
     saSendUDPGrid->addWidget( new QLabel("IP-Address"), 0 , 0 );
@@ -789,12 +840,124 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
         maxWidth = saSendUDPWidget->sizeHint().width();
     }
 
+    //--------
+    saAgentErrorWidget = new QWidget();
+    saAgentErrorWidget->hide();
+
+    saAgentErrorTargetID = new QSpinBox();
+    saAgentErrorTargetID->setMinimum( 0 );
+    saAgentErrorTargetID->setMaximum( 100000 );
+    saAgentErrorTargetID->setValue( 0 );
+    connect(saAgentErrorTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
+
+    saAgentErrorType = new QComboBox();
+    QStringList saAgentErrorTypeStrs;
+    saAgentErrorTypeStrs << "Sight Off" << "Signal Violation" << "Omit Safety Confirmation";
+    saAgentErrorType->addItems( saAgentErrorTypeStrs );
+    saAgentErrorType->setFixedSize( saAgentErrorType->sizeHint() );
+    connect(saAgentErrorType,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
+
+    saAgentErrorDuration = new QDoubleSpinBox();
+    saAgentErrorDuration->setMinimum( 0.0 );
+    saAgentErrorDuration->setMaximum( 250.0 );
+    saAgentErrorDuration->setValue( 0 );
+    saAgentErrorDuration->setSingleStep( 0.05 );
+    saAgentErrorDuration->setSuffix("[s]");
+    connect(saAgentErrorDuration,SIGNAL(currentIndexChanged(double)),this,SLOT(ApplyDataClicked()));
+
+
+    QGridLayout *saAgentErrorGrid = new QGridLayout();
+    saAgentErrorGrid->addWidget( new QLabel("Target Agent ID"), 0 , 0 );
+    saAgentErrorGrid->addWidget( saAgentErrorTargetID, 0 , 1 );
+    saAgentErrorGrid->addWidget( new QLabel("Agent Error Type"), 1 , 0 );
+    saAgentErrorGrid->addWidget( saAgentErrorType, 1 , 1 );
+    saAgentErrorGrid->addWidget( new QLabel("Duration of Error"), 2 , 0 );
+    saAgentErrorGrid->addWidget( saAgentErrorDuration, 2 , 1 );
+
+    saAgentErrorGrid->setRowStretch( 3, 1 );
+
+    saAgentErrorWidget->setLayout( saAgentErrorGrid );
+
+    if( maxHeight < saAgentErrorWidget->sizeHint().height() ){
+        maxHeight = saAgentErrorWidget->sizeHint().height();
+    }
+    if( maxWidth < saAgentErrorWidget->sizeHint().width() ){
+        maxWidth = saAgentErrorWidget->sizeHint().width();
+    }
+
 
     //--------
-    sysActDataGrid->addWidget( saTeleportWidget,            1 , 1 );
+    saDisposeAgentWidget = new QWidget();
+    saDisposeAgentWidget->hide();
+
+    saDisposeAgentTargetID = new QSpinBox();
+    saDisposeAgentTargetID->setMinimum( 0 );
+    saDisposeAgentTargetID->setMaximum( 100000 );
+    saDisposeAgentTargetID->setValue( 0 );
+    connect(saDisposeAgentTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
+
+    QGridLayout *saDisposeAgentGrid = new QGridLayout();
+    saDisposeAgentGrid->addWidget( new QLabel("Target Agent ID"), 0 , 0 );
+    saDisposeAgentGrid->addWidget( saDisposeAgentTargetID, 0 , 1 );
+    saDisposeAgentGrid->setRowStretch( 1, 1 );
+
+    saDisposeAgentWidget->setLayout( saDisposeAgentGrid );
+
+    if( maxHeight < saDisposeAgentWidget->sizeHint().height() ){
+        maxHeight = saDisposeAgentWidget->sizeHint().height();
+    }
+    if( maxWidth < saDisposeAgentWidget->sizeHint().width() ){
+        maxWidth = saDisposeAgentWidget->sizeHint().width();
+    }
+
+
+    //--------
+    saResetErrorWidget = new QWidget();
+    saResetErrorWidget->hide();
+
+    saResetErrorTargetID = new QSpinBox();
+    saResetErrorTargetID->setMinimum( 0 );
+    saResetErrorTargetID->setMaximum( 100000 );
+    saResetErrorTargetID->setValue( 0 );
+    connect(saResetErrorTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
+
+    saResetRecognitionError = new QCheckBox();
+    connect(saResetRecognitionError,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
+    saResetDecisionError = new QCheckBox();
+    connect(saResetDecisionError,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
+    saResetViolation = new QCheckBox();
+    connect(saResetViolation,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
+
+    QGridLayout *saResetErrorGrid = new QGridLayout();
+    saResetErrorGrid->addWidget( new QLabel("Target Agent ID"), 0 , 0 );
+    saResetErrorGrid->addWidget( saResetErrorTargetID, 0 , 1 );
+    saResetErrorGrid->addWidget( new QLabel("Reset Recognition Error"), 1 , 0 );
+    saResetErrorGrid->addWidget( saResetRecognitionError, 1 , 1 );
+    saResetErrorGrid->addWidget( new QLabel("Reset Judgement Error"), 2 , 0 );
+    saResetErrorGrid->addWidget( saResetDecisionError, 2 , 1 );
+    saResetErrorGrid->addWidget( new QLabel("Reset Violation"), 3 , 0 );
+    saResetErrorGrid->addWidget( saResetViolation, 3 , 1 );
+    saResetErrorGrid->setRowStretch( 4, 1 );
+
+    saResetErrorWidget->setLayout( saResetErrorGrid );
+
+    if( maxHeight < saResetErrorWidget->sizeHint().height() ){
+        maxHeight = saResetErrorWidget->sizeHint().height();
+    }
+    if( maxWidth < saResetErrorWidget->sizeHint().width() ){
+        maxWidth = saResetErrorWidget->sizeHint().width();
+    }
+
+    //--------
+    sysActDataGrid->addWidget( saTeleportWidget,        1 , 1 );
     sysActDataGrid->addWidget( saChangeTSWidget,        2 , 1 );
     sysActDataGrid->addWidget( saChangeSpeedInfoWidget, 3 , 1 );
     sysActDataGrid->addWidget( saSendUDPWidget,         4 , 1 );
+    sysActDataGrid->addWidget( saAgentErrorWidget,      5 , 1 );
+    sysActDataGrid->addWidget( saDisposeAgentWidget,    6 , 1 );
+    sysActDataGrid->addWidget( saResetErrorWidget,      7 , 1 );
     sysActDataGrid->setColumnStretch(2,1);
 
 
@@ -822,6 +985,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaAppearX->setSingleStep( 0.01 );
     vaAppearX->setPrefix("X:");
     vaAppearX->setSuffix("[m]");
+    connect(vaAppearX,SIGNAL(currentIndexChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaAppearY = new QDoubleSpinBox();
     vaAppearY->setMinimum( -1.0e6 );
@@ -830,6 +994,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaAppearY->setSingleStep( 0.01 );
     vaAppearY->setPrefix("Y:");
     vaAppearY->setSuffix("[m]");
+    connect(vaAppearY,SIGNAL(currentIndexChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaAppearPsi = new QDoubleSpinBox();
     vaAppearPsi->setMinimum( -180.0 );
@@ -838,6 +1003,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaAppearPsi->setSingleStep( 0.01 );
     vaAppearPsi->setPrefix("Orientation:");
     vaAppearPsi->setSuffix("[deg]");
+    connect(vaAppearPsi,SIGNAL(currentIndexChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaAppearSpeed = new QDoubleSpinBox();
     vaAppearSpeed->setMinimum( 0.0 );
@@ -846,18 +1012,21 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaAppearSpeed->setSingleStep( 0.01 );
     vaAppearSpeed->setPrefix("Speed:");
     vaAppearSpeed->setSuffix("[km/h]");
+    connect(vaAppearSpeed,SIGNAL(currentIndexChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaAppearNearLaneID = new QSpinBox();
     vaAppearNearLaneID->setMinimum( -1 );
     vaAppearNearLaneID->setMaximum( 50000 );
     vaAppearNearLaneID->setValue( -1 );
     vaAppearNearLaneID->setPrefix( "Nearest Lane ID : " );
+    connect(vaAppearNearLaneID,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
 
     vaVehicleModelID = new QSpinBox();
     vaVehicleModelID->setMinimum( 0 );
     vaVehicleModelID->setMaximum( setDlg->GetVehicleKindNum() - 1 );
     vaVehicleModelID->setValue( 0 );
     vaVehicleModelID->setPrefix( "Vehicle Model ID : " );
+    connect(vaVehicleModelID,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
 
     vaAppearPick = new QPushButton();
     vaAppearPick->setIcon( QIcon(":images/Flag_blue.png") );
@@ -872,9 +1041,11 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( vaAppearSetToNearestLane, SIGNAL(clicked(bool)), this, SLOT(SetToNearestLane()) );
 
     vaAppearAllowRepeat = new QCheckBox("Appear again");
+    connect(vaAppearAllowRepeat,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vaAppearNodeRoute = new QRadioButton("Node Route");
     vaAppearNodeRoute->setChecked( true );
+    connect(vaAppearNodeRoute,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vaAppearSetNodeRoute = new QPushButton("Set");
     vaAppearSetNodeRoute->setIcon( QIcon(":images/setting.png") );
@@ -889,6 +1060,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( vaAppearClearNodeRoute, SIGNAL(clicked(bool)), this, SLOT(ClearRouteData()) );
 
     vaAppearPathRoute = new QRadioButton("Path Route");
+    connect(vaAppearPathRoute,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vaAppearSetPathRoute = new QPushButton("Set");
     vaAppearSetPathRoute->setIcon( QIcon(":images/setting.png") );
@@ -972,17 +1144,20 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaControlWidget->hide();
 
     vaCtrlChangeControlMode = new QCheckBox("Change Control Mode");
+    connect( vaCtrlChangeControlMode, SIGNAL(toggled(bool)), this, SLOT(ApplyDataClicked()) );
 
     vaCtrlSelControlMode = new QComboBox();
     QStringList ctrlMode;
     ctrlMode<< "Agent Logic" << "Headway Distance Control" << "Speed Profile Control" << "Stop Control";
     vaCtrlSelControlMode->addItems( ctrlMode );
+    connect(vaCtrlSelControlMode,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlTargetID = new QSpinBox();
     vaCtrlTargetID->setMinimum( -1 );
     vaCtrlTargetID->setMaximum( 10000 );
     vaCtrlTargetID->setValue( -1 );
     vaCtrlTargetID->setPrefix("Target Object ID: ");
+    connect(vaCtrlTargetID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlTargetSpeed = new QDoubleSpinBox();
     vaCtrlTargetSpeed->setMinimum( 0.0 );
@@ -990,6 +1165,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaCtrlTargetSpeed->setValue( 60.0 );
     vaCtrlTargetSpeed->setPrefix("Target Speed: ");
     vaCtrlTargetSpeed->setSuffix("[km/h]");
+    connect(vaCtrlTargetSpeed,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlTargetHeadwayTime = new QDoubleSpinBox();
     vaCtrlTargetHeadwayTime->setMinimum( -1.0 );
@@ -997,6 +1173,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaCtrlTargetHeadwayTime->setValue( 1.0 );
     vaCtrlTargetHeadwayTime->setPrefix("Headway Time: ");
     vaCtrlTargetHeadwayTime->setSuffix("[s]");
+    connect(vaCtrlTargetHeadwayTime,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlTargetHeadwayDistance = new QDoubleSpinBox();
     vaCtrlTargetHeadwayDistance->setMinimum( -1.0 );
@@ -1004,6 +1181,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaCtrlTargetHeadwayDistance->setValue( 5.0 );
     vaCtrlTargetHeadwayDistance->setPrefix("Headway Distance: ");
     vaCtrlTargetHeadwayDistance->setSuffix("[m]");
+    connect(vaCtrlTargetHeadwayDistance,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlStopX = new QDoubleSpinBox();
     vaCtrlStopX->setMinimum( -1.0e6 );
@@ -1011,6 +1189,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaCtrlStopX->setValue( 0.0 );
     vaCtrlStopX->setPrefix("X: ");
     vaCtrlStopX->setSuffix("[m]");
+    connect(vaCtrlStopX,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlStopY = new QDoubleSpinBox();
     vaCtrlStopY->setMinimum( -1.0e6 );
@@ -1018,6 +1197,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaCtrlStopY->setValue( 0.0 );
     vaCtrlStopY->setPrefix("Y: ");
     vaCtrlStopY->setSuffix("[m]");
+    connect(vaCtrlStopY,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlSelPosition = new QPushButton();
     vaCtrlSelPosition->setIcon( QIcon(":images/Flag_blue.png") );
@@ -1027,6 +1207,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     vaCtrlSpeedProfile = new QTableWidget();
     vaCtrlSpeedProfile->setColumnCount(2);
+    connect(vaCtrlSpeedProfile,SIGNAL(cellChanged(int,int)),this,SLOT(ApplyDataClicked()));
 
     QStringList tableLabels;
     tableLabels << "Time[s]";
@@ -1056,9 +1237,11 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( showSpeedProfileTableAsGraph, SIGNAL(clicked()), speedProfileGraph, SLOT(show()) );
 
     vaCtrlSteer = new QCheckBox("Steering Input");
+    connect(vaCtrlSteer,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlSteerTable = new QTableWidget();
     vaCtrlSteerTable->setColumnCount(2);
+    connect(vaCtrlSteerTable,SIGNAL(cellChanged(int,int)),this,SLOT(ApplyDataClicked()));
 
     tableLabels.clear();
     tableLabels << "Time[s]";
@@ -1089,9 +1272,11 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
 
     vaCtrlAccelDecel = new QCheckBox("Accel/Brake Input");
+    connect(vaCtrlAccelDecel,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     vaCtrlAccelDecelTable = new QTableWidget();
     vaCtrlAccelDecelTable->setColumnCount(2);
+    connect(vaCtrlAccelDecelTable,SIGNAL(cellChanged(int,int)),this,SLOT(ApplyDataClicked()));
 
     tableLabels.clear();
     tableLabels << "Time[s]";
@@ -1122,6 +1307,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
 
     vaCtrlAllowRepeat = new QCheckBox("Apply again");
+    connect(vaCtrlAllowRepeat,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
 
     QGridLayout *vaControlGrid = new QGridLayout();
@@ -1223,15 +1409,18 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     QRegExpValidator *vaIPValidator = new QRegExpValidator(vaIPRegex, this);
     vaUDPIPAddr->setValidator( vaIPValidator );
     vaUDPIPAddr->setInputMask("000.000.000.000");
+    connect(vaUDPIPAddr,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     vaUDPPortSB = new QSpinBox();
     vaUDPPortSB->setMinimum( 0 );
     vaUDPPortSB->setMaximum( 100000 );
     vaUDPPortSB->setValue( 3000 );
+    connect(vaUDPPortSB,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     vaUDPSendData = new QLineEdit();
 
     vaRepeatSend = new QCheckBox("Repeat sedning the data");
+    connect(vaRepeatSend,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *vaUDPGrid = new QGridLayout();
     vaUDPGrid->addWidget( new QLabel("IP-Address"), 0 , 0 );
@@ -1252,6 +1441,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     vaDisappearWidget->hide();
 
     vaDisappearAppearSoon = new QCheckBox("Apply if appeared again");
+    connect(vaDisappearAppearSoon,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *vaDisappearGrid = new QGridLayout();
     row = 0;
@@ -1307,6 +1497,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paAppearX->setSingleStep( 0.01 );
     paAppearX->setPrefix("X:");
     paAppearX->setSuffix("[m]");
+    connect(paAppearX,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     paAppearY = new QDoubleSpinBox();
     paAppearY->setMinimum( -1.0e6 );
@@ -1315,6 +1506,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paAppearY->setSingleStep( 0.01 );
     paAppearY->setPrefix("Y:");
     paAppearY->setSuffix("[m]");
+    connect(paAppearY,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     paAppearPsi = new QDoubleSpinBox();
     paAppearPsi->setMinimum( -180.0 );
@@ -1323,18 +1515,21 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paAppearPsi->setSingleStep( 0.01 );
     paAppearPsi->setPrefix("Orientation:");
     paAppearPsi->setSuffix("[deg]");
+    connect(paAppearPsi,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     paAppearNearLaneID = new QSpinBox();
     paAppearNearLaneID->setMinimum( -1 );
     paAppearNearLaneID->setMaximum( 50000 );
     paAppearNearLaneID->setValue( -1 );
     paAppearNearLaneID->setPrefix( "Nearest Lane ID : " );
+    connect(paAppearNearLaneID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     paPedestModelID = new QSpinBox();
     paPedestModelID->setMinimum( 0 );
     paPedestModelID->setMaximum( setDlg->GetPedestrianKindNum() - 1 );
     paPedestModelID->setValue( 0 );
     paPedestModelID->setPrefix( "Pedestrian Model ID : " );
+    connect(paPedestModelID,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     paAppearSpeed = new QDoubleSpinBox();
     paAppearSpeed->setMinimum( 0.0 );
@@ -1343,6 +1538,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paAppearSpeed->setSingleStep( 0.01 );
     paAppearSpeed->setPrefix("Speed:");
     paAppearSpeed->setSuffix("[m/s]");
+    connect(paAppearSpeed,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     paAppearPick = new QPushButton();
     paAppearPick->setIcon( QIcon(":images/Flag_blue.png") );
@@ -1351,6 +1547,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     connect( paAppearPick, SIGNAL(clicked(bool)), this, SLOT(SetPickMode()) );
 
     paAppearAllowRepeat = new QCheckBox("Appear again");
+    connect(paAppearAllowRepeat,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     paAppearSetPathRoute = new QPushButton("Set");
     paAppearSetPathRoute->setIcon( QIcon(":images/setting.png") );
@@ -1420,6 +1617,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     ctrlMode.clear();
     ctrlMode<< "Agent Logic" << "Constant Speed" << "Speed Profile Control" << "Run Out into Street";
     paCtrlSelControlMode->addItems( ctrlMode );
+    connect(paCtrlSelControlMode,SIGNAL(currentIndexChanged(int)),this,SLOT(ApplyDataClicked()));
 
     paCtrlTargetSpeed = new QDoubleSpinBox();
     paCtrlTargetSpeed->setMinimum( 0.0 );
@@ -1427,6 +1625,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paCtrlTargetSpeed->setValue( 1.0 );
     paCtrlTargetSpeed->setPrefix("Target Speed: ");
     paCtrlTargetSpeed->setSuffix("[m/s]");
+    connect(paCtrlTargetSpeed,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     addRowPedestSpeedProfileTable = new QPushButton("Add");
     addRowPedestSpeedProfileTable->setIcon( QIcon(":images/Add.png") );
@@ -1447,6 +1646,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
 
     paCtrlSpeedProfile = new QTableWidget();
     paCtrlSpeedProfile->setColumnCount(2);
+    connect(paCtrlSpeedProfile,SIGNAL(cellChanged(int,int)),this,SLOT(ApplyDataClicked()));
 
     tableLabels.clear();
     tableLabels << "Time[s]";
@@ -1466,9 +1666,10 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paCtrlRunOutDirection->setValue( 0.0 );
     paCtrlRunOutDirection->setPrefix("Run-Out Direction: ");
     paCtrlRunOutDirection->setSuffix("[deg]");
+    connect(paCtrlRunOutDirection,SIGNAL(valueChanged(double)),this,SLOT(ApplyDataClicked()));
 
     paCtrlAllowRepeat = new QCheckBox("Apply again");
-
+    connect(paCtrlAllowRepeat,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     paControlGrid->addWidget( paCtrlSelControlMode );
     paControlGrid->addSpacing( 10 );
@@ -1515,15 +1716,19 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     QRegExpValidator *paIPValidator = new QRegExpValidator(paIPRegex, this);
     paUDPIPAddr->setValidator( paIPValidator );
     paUDPIPAddr->setInputMask("000.000.000.000");
+    connect(paUDPIPAddr,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     paUDPPortSB = new QSpinBox();
     paUDPPortSB->setMinimum( 0 );
     paUDPPortSB->setMaximum( 100000 );
     paUDPPortSB->setValue( 3000 );
+    connect(paUDPPortSB,SIGNAL(valueChanged(int)),this,SLOT(ApplyDataClicked()));
 
     paUDPSendData = new QLineEdit();
+    connect(paUDPSendData,SIGNAL(editingFinished()),this,SLOT(ApplyDataClicked()));
 
     paRepeatSend = new QCheckBox("Repeat sedning the data");
+    connect(paRepeatSend,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *paUDPGrid = new QGridLayout();
     paUDPGrid->addWidget( new QLabel("IP-Address"), 0 , 0 );
@@ -1552,6 +1757,7 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     paDisappearWidget->hide();
 
     paDisappearAppearSoon = new QCheckBox("Apply if appeared again");
+    connect(paDisappearAppearSoon,SIGNAL(toggled(bool)),this,SLOT(ApplyDataClicked()));
 
     QGridLayout *paDisappearGrid = new QGridLayout();
     paDisappearGrid->addWidget( paDisappearAppearSoon, 0 , 0 );
@@ -1638,6 +1844,9 @@ ScenarioEditor::ScenarioEditor(SettingDialog *s, RoadInfo *r,QWidget *parent) : 
     mainLay->addStretch( 1 );
 
     setLayout( mainLay );
+
+    qDebug() << "applyEnableFlag = true[4]";
+    applyEnableFlag = true;
 }
 
 
@@ -1721,6 +1930,8 @@ void ScenarioEditor::LoadData()
     UpdateScenarioPedestList();
 
     tabW->setCurrentIndex( 0 );
+
+    setWindowTitle(fileName);
 }
 
 
@@ -1897,8 +2108,9 @@ void ScenarioEditor::SaveData()
 
                 out << "Trigger Data : "
                     << sVehicle[i]->sItem[j]->cond.ttcVal << " , "
-                    << sVehicle[i]->sItem[j]->cond.ttcCalType << " , "
                     << sVehicle[i]->sItem[j]->cond.ttcCalTargetObjID << " , "
+                    << sVehicle[i]->sItem[j]->cond.ttcCalType << " , "
+                    << sVehicle[i]->sItem[j]->cond.ttcCalObjectID << " , "
                     << sVehicle[i]->sItem[j]->cond.ttcCalPosX << " , "
                     << sVehicle[i]->sItem[j]->cond.ttcCalPosY << "\n";
             }
@@ -1997,8 +2209,9 @@ void ScenarioEditor::SaveData()
 
                 out << "Trigger Data : "
                     << sPedest[i]->sItem[j]->cond.ttcVal << " , "
-                    << sPedest[i]->sItem[j]->cond.ttcCalType << " , "
                     << sPedest[i]->sItem[j]->cond.ttcCalTargetObjID << " , "
+                    << sPedest[i]->sItem[j]->cond.ttcCalType << " , "
+                    << sPedest[i]->sItem[j]->cond.ttcCalObjectID << " , "
                     << sPedest[i]->sItem[j]->cond.ttcCalPosX << " , "
                     << sPedest[i]->sItem[j]->cond.ttcCalPosY << "\n";
             }
@@ -2073,6 +2286,8 @@ void ScenarioEditor::SaveAsData()
     }
 
     SaveDataWithFilename( fileName );
+
+    setWindowTitle(fileName);
 }
 
 
@@ -2262,6 +2477,14 @@ void ScenarioEditor::LoadDataWithFilename(QString fileName)
                             cond->ttcCalObjectID    = QString( divLine[3] ).trimmed().toInt();
                             cond->ttcCalPosX        = QString( divLine[4] ).trimmed().toFloat();
                             cond->ttcCalPosY        = QString( divLine[5] ).trimmed().toFloat();
+                        }
+                        else if( divLine.size() == 5 ){
+                            cond->ttcVal            = QString( divLine[0] ).trimmed().toFloat();
+                            cond->ttcCalType        = QString( divLine[1] ).trimmed().toInt();
+                            cond->ttcCalTargetObjID = QString( divLine[2] ).trimmed().toInt();
+                            cond->ttcCalPosX        = QString( divLine[3] ).trimmed().toFloat();
+                            cond->ttcCalPosY        = QString( divLine[4] ).trimmed().toFloat();
+                            cond->ttcCalObjectID    = -1;
                         }
                     }
 
@@ -2668,6 +2891,9 @@ void ScenarioEditor::ChangeSystemActSeletion(int idx)
     idx == 1 ? saChangeTSWidget->show() : saChangeTSWidget->hide();
     idx == 2 ? saChangeSpeedInfoWidget->show() : saChangeSpeedInfoWidget->hide();
     idx == 3 ? saSendUDPWidget->show() : saSendUDPWidget->hide();
+    idx == 4 ? saAgentErrorWidget->show() : saAgentErrorWidget->hide();
+    idx == 5 ? saDisposeAgentWidget->show() : saDisposeAgentWidget->hide();
+    idx == 6 ? saResetErrorWidget->show() : saResetErrorWidget->hide();
 
     this->update();
 }
@@ -2782,6 +3008,10 @@ void ScenarioEditor::UpdateScenarioPedestSlotList()
 
 void ScenarioEditor::ApplyDataClicked()
 {
+    if( applyEnableFlag == false ){
+        return;
+    }
+
     qDebug() << "[ScenarioEditor::ApplyDataClicked]";
 
     int tabIndex = tabW->currentIndex();
@@ -2946,7 +3176,25 @@ void ScenarioEditor::ApplyDataClicked()
 
             sSys[sIdx]->sItem.act.bParams.append( saRepeatSend->isChecked() );
         }
+        else if( sSys[sIdx]->sItem.act.actionType == 4 ){  // Agent Error
 
+            sSys[sIdx]->sItem.act.iParams.append( saAgentErrorTargetID->value() );
+            sSys[sIdx]->sItem.act.iParams.append( saAgentErrorType->currentIndex() );
+            sSys[sIdx]->sItem.act.fParams.append( saAgentErrorDuration->value() );
+
+        }
+        else if( sSys[sIdx]->sItem.act.actionType == 5 ){  // Dispose Agent
+
+            sSys[sIdx]->sItem.act.iParams.append( saDisposeAgentTargetID->value() );
+        }
+        else if( sSys[sIdx]->sItem.act.actionType == 6 ){  // Reset Agent Error
+
+            sSys[sIdx]->sItem.act.iParams.append( saResetErrorTargetID->value() );
+
+            sSys[sIdx]->sItem.act.bParams.append( saResetRecognitionError->isChecked() );
+            sSys[sIdx]->sItem.act.bParams.append( saResetDecisionError->isChecked() );
+            sSys[sIdx]->sItem.act.bParams.append( saResetViolation->isChecked() );
+        }
     }
     else if( tabIndex == 1 ){
         int dIdx = vehicleList->currentRow();
@@ -3162,48 +3410,82 @@ void ScenarioEditor::ApplyDataClicked()
                 sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( vaCtrlStopY->value() );
 
                 int nRow = vaCtrlSpeedProfile->rowCount();
-                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
-
+                int nAdd = 0;
                 for(int i=0;i<nRow;++i){
 
-                    float t = vaCtrlSpeedProfile->item(i,0)->text().toFloat();
-                    float v = vaCtrlSpeedProfile->item(i,1)->text().toFloat();  // [km/h]
+                    QTableWidgetItem *tStrItem = vaCtrlSpeedProfile->item(i,0);
+                    QTableWidgetItem *vStrItem = vaCtrlSpeedProfile->item(i,1);
+                    if( tStrItem != NULL && vStrItem != NULL ){
+                        QString tStr = tStrItem->text();
+                        QString vStr = vStrItem->text();
+                        if( tStr.isNull() == false && tStr.isEmpty() == false && vStr.isNull() == false && vStr.isEmpty() == false ){
+                            float t = tStr.toFloat();
+                            float v = vStr.toFloat();  // [km/h]
 
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( v );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( v );
+
+                            nAdd++;
+                        }
+                    }
                 }
+
+                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nAdd );
             }
 
             if( vaCtrlAccelDecel->isChecked() == true ){
 
                 int nRow = vaCtrlAccelDecelTable->rowCount();
 
-                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
-
+                int nAdd = 0;
                 for(int i=0;i<nRow;++i){
 
-                    float t = vaCtrlAccelDecelTable->item(i,0)->text().toFloat();
-                    float a = vaCtrlAccelDecelTable->item(i,1)->text().toFloat();
+                    QTableWidgetItem *tStrItem = vaCtrlAccelDecelTable->item(i,0);
+                    QTableWidgetItem *vStrItem = vaCtrlAccelDecelTable->item(i,1);
+                    if( tStrItem != NULL && vStrItem != NULL ){
+                        QString tStr = tStrItem->text();
+                        QString vStr = vStrItem->text();
+                        if( tStr.isNull() == false && tStr.isEmpty() == false && vStr.isNull() == false && vStr.isEmpty() == false ){
+                            float t = tStr.toFloat();
+                            float a = vStr.toFloat();
 
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( a );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( a );
+
+                            nAdd++;
+                        }
+                    }
                 }
+
+                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
             }
 
             if( vaCtrlSteer->isChecked() == true ){
 
                 int nRow = vaCtrlSteerTable->rowCount();
 
-                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
+                int nAdd = 0;
 
                 for(int i=0;i<nRow;++i){
 
-                    float t = vaCtrlSteerTable->item(i,0)->text().toFloat();
-                    float a = vaCtrlSteerTable->item(i,1)->text().toFloat();
+                    QTableWidgetItem *tStrItem = vaCtrlSteerTable->item(i,0);
+                    QTableWidgetItem *vStrItem = vaCtrlSteerTable->item(i,1);
+                    if( tStrItem != NULL && vStrItem != NULL ){
+                        QString tStr = tStrItem->text();
+                        QString vStr = vStrItem->text();
+                        if( tStr.isNull() == false && tStr.isEmpty() == false && vStr.isNull() == false && vStr.isEmpty() == false ){
+                            float t = tStr.toFloat();
+                            float a = vStr.toFloat();
 
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
-                    sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( a );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( t );
+                            sVehicle[sIdx]->sItem[rIdx]->act.fParams.append( a );
+
+                            nAdd++;
+                        }
+                    }
                 }
+
+                sVehicle[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
             }
 
             SetDataToGraph(0);
@@ -3404,16 +3686,26 @@ void ScenarioEditor::ApplyDataClicked()
             sPedest[sIdx]->sItem[rIdx]->act.fParams.append( paCtrlRunOutDirection->value() );
 
             int nRow = paCtrlSpeedProfile->rowCount();
-            sPedest[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
-
+            int nAdd = 0;
             for(int i=0;i<nRow;++i){
+                QTableWidgetItem *tStrItem = paCtrlSpeedProfile->item(i,0);
+                QTableWidgetItem *vStrItem = paCtrlSpeedProfile->item(i,1);
+                if( tStrItem != NULL && vStrItem != NULL ){
+                    QString tStr = tStrItem->text();
+                    QString vStr = vStrItem->text();
+                    if( tStr.isNull() == false && tStr.isEmpty() == false && vStr.isNull() == false && vStr.isEmpty() == false ){
+                        float t = tStr.toFloat();
+                        float v = vStr.toFloat();  // [km/h]
 
-                float t = paCtrlSpeedProfile->item(i,0)->text().toFloat();
-                float v = paCtrlSpeedProfile->item(i,1)->text().toFloat();  // [km/h]
+                        sPedest[sIdx]->sItem[rIdx]->act.fParams.append( t );
+                        sPedest[sIdx]->sItem[rIdx]->act.fParams.append( v );
 
-                sPedest[sIdx]->sItem[rIdx]->act.fParams.append( t );
-                sPedest[sIdx]->sItem[rIdx]->act.fParams.append( v );
+                        nAdd++;
+                    }
+                }
             }
+
+            sPedest[sIdx]->sItem[rIdx]->act.iParams.append( nRow );
 
             sPedest[sIdx]->sItem[rIdx]->act.bParams.append( paCtrlAllowRepeat->isChecked() );
         }
@@ -3446,9 +3738,13 @@ void ScenarioEditor::ApplyDataClicked()
 
 void ScenarioEditor::SetScenarioDataToGUI()
 {
-    //qDebug() << "[ScenarioEditor::SetScenarioDataToGUI]";
+    qDebug() << "[ScenarioEditor::SetScenarioDataToGUI]";
+
+    applyEnableFlag = false;
 
     int tabIndex = tabW->currentIndex();
+    qDebug() << "tabIndex = " << tabIndex;
+
     if( tabIndex == 0 ){
         int dIdx = sysList->currentRow();
         if( dIdx < 0 ){
@@ -3621,6 +3917,33 @@ void ScenarioEditor::SetScenarioDataToGUI()
             }
 
         }
+        else if( sSys[sIdx]->sItem.act.actionType == 4 ){  // Agent Error
+            if( sSys[sIdx]->sItem.act.fParams.size() == 1 ){
+                saAgentErrorDuration->setValue( sSys[sIdx]->sItem.act.fParams[0] );
+            }
+
+            if( sSys[sIdx]->sItem.act.iParams.size() == 2 ){
+
+                saAgentErrorTargetID->setValue( sSys[sIdx]->sItem.act.iParams[0] );
+                saAgentErrorType->setCurrentIndex( sSys[sIdx]->sItem.act.iParams[1] );
+            }
+        }
+        else if( sSys[sIdx]->sItem.act.actionType == 5 ){  // Dispose Agent
+            if( sSys[sIdx]->sItem.act.iParams.size() == 1 ){
+                saDisposeAgentTargetID->setValue( sSys[sIdx]->sItem.act.iParams[0] );
+            }
+        }
+        else if( sSys[sIdx]->sItem.act.actionType == 6 ){  // Reset Agent Error
+            if( sSys[sIdx]->sItem.act.iParams.size() == 1 ){
+                saResetErrorTargetID->setValue( sSys[sIdx]->sItem.act.iParams[0] );
+            }
+
+            if( sSys[sIdx]->sItem.act.bParams.size() == 3 ){
+                saResetRecognitionError->setChecked( sSys[sIdx]->sItem.act.bParams[0] );
+                saResetDecisionError->setChecked( sSys[sIdx]->sItem.act.bParams[1] );
+                saResetViolation->setChecked( sSys[sIdx]->sItem.act.bParams[2] );
+            }
+        }
     }
     else if( tabIndex == 1 ){
         int dIdx = vehicleList->currentRow();
@@ -3645,6 +3968,8 @@ void ScenarioEditor::SetScenarioDataToGUI()
         if( sIdx < 0 ){
             return;
         }
+
+        qDebug() << "vehicle id = " << id;
 
         AND_OR->setCurrentIndex( sVehicle[sIdx]->sItem[rIdx]->cond.combination );
 
@@ -3698,6 +4023,10 @@ void ScenarioEditor::SetScenarioDataToGUI()
         vehicleActSelCB->setCurrentIndex( sVehicle[sIdx]->sItem[rIdx]->act.actionType );
 
         if( sVehicle[sIdx]->sItem[rIdx]->act.actionType == 0 ){ // Appear
+
+            qDebug() << "Set Appear Data";
+
+            vaAppearRouteInfo->clear();
 
             if( sVehicle[sIdx]->sItem[rIdx]->act.fParams.size() >= 4 ){
 
@@ -3757,11 +4086,21 @@ void ScenarioEditor::SetScenarioDataToGUI()
         }
         else if( sVehicle[sIdx]->sItem[rIdx]->act.actionType == 1 ){ // Control
 
+            qDebug() << "Set Control Data";
+
 //            qDebug() << "sIdx = " << sIdx;
 //            qDebug() << "rIdx = " << rIdx;
-//            qDebug() << "bParams = " << sVehicle[sIdx]->sItem[rIdx]->act.bParams;
-//            qDebug() << "iParams = " << sVehicle[sIdx]->sItem[rIdx]->act.iParams;
-//            qDebug() << "fParams = " << sVehicle[sIdx]->sItem[rIdx]->act.fParams;
+            qDebug() << "bParams = " << sVehicle[sIdx]->sItem[rIdx]->act.bParams;
+            qDebug() << "iParams = " << sVehicle[sIdx]->sItem[rIdx]->act.iParams;
+            qDebug() << "fParams = " << sVehicle[sIdx]->sItem[rIdx]->act.fParams;
+
+            vaCtrlChangeControlMode->setCheckState( Qt::Unchecked );
+            vaCtrlAccelDecel->setCheckState( Qt::Unchecked );
+            vaCtrlSteer->setCheckState( Qt::Unchecked );
+
+            ClearCtrlTable(0);
+            ClearCtrlTable(1);
+            ClearCtrlTable(2);
 
             if( sVehicle[sIdx]->sItem[rIdx]->act.bParams.size() >= 3 ){
 
@@ -3777,6 +4116,8 @@ void ScenarioEditor::SetScenarioDataToGUI()
             int fParaIdx = 0;
             int iParaIdx = 0;
             if( vaCtrlChangeControlMode->isChecked() == true ){
+
+                qDebug() << "Change Control Mode";
 
                 if( sVehicle[sIdx]->sItem[rIdx]->act.iParams.size() >= 2 ){
                     vaCtrlSelControlMode->setCurrentIndex( sVehicle[sIdx]->sItem[rIdx]->act.iParams[iParaIdx++] );
@@ -3819,15 +4160,16 @@ void ScenarioEditor::SetScenarioDataToGUI()
                     }
                 }
             }
-            else{
-                ClearCtrlTable(0);
-            }
+
 
             if( vaCtrlAccelDecel->isChecked() == true ){
+
+                qDebug() << "Acce/Decel Table: iParaIdx = " << iParaIdx << " fParaIdx = " << fParaIdx;
 
                 if( sVehicle[sIdx]->sItem[rIdx]->act.iParams.size() >= iParaIdx + 1 ){
 
                     int nRow = sVehicle[sIdx]->sItem[rIdx]->act.iParams[iParaIdx++];
+                    qDebug() << "nRow = " << nRow;
 
                     if( sVehicle[sIdx]->sItem[rIdx]->act.fParams.size() >= fParaIdx + 2 * nRow ){
 
@@ -3840,15 +4182,17 @@ void ScenarioEditor::SetScenarioDataToGUI()
                             val.append( sVehicle[sIdx]->sItem[rIdx]->act.fParams[fParaIdx++] );
                         }
 
+                        qDebug() << "SetCtrlDataToTable(1) t = " << t << " val = " << val;
+
                         SetCtrlDataToTable( 1, t, val );
                     }
                 }
             }
-            else{
-                ClearCtrlTable(1);
-            }
+
 
             if( vaCtrlSteer->isChecked() == true ){
+
+                qDebug() << "Steer Table";
 
                 if( sVehicle[sIdx]->sItem[rIdx]->act.iParams.size() >= iParaIdx + 1 ){
 
@@ -3869,11 +4213,11 @@ void ScenarioEditor::SetScenarioDataToGUI()
                     }
                 }
             }
-            else{
-                ClearCtrlTable(2);
-            }
+
         }
         else if( sVehicle[sIdx]->sItem[rIdx]->act.actionType == 2 ){ // UDP
+
+            qDebug() << "Set UDP Data";
 
             if( sVehicle[sIdx]->sItem[rIdx]->act.iParams.size() == 5 ){
                 QString setStr = QString();
@@ -3906,6 +4250,8 @@ void ScenarioEditor::SetScenarioDataToGUI()
             }
         }
         else if( sVehicle[sIdx]->sItem[rIdx]->act.actionType == 3 ){ // Disappear
+
+            qDebug() << "Set Disappear Data";
 
             if( sVehicle[sIdx]->sItem[rIdx]->act.bParams.size() > 0 ){
                 vaDisappearAppearSoon->setChecked( sVehicle[sIdx]->sItem[rIdx]->act.bParams[0] );
@@ -4036,6 +4382,8 @@ void ScenarioEditor::SetScenarioDataToGUI()
                 paCtrlAllowRepeat->setChecked( sPedest[sIdx]->sItem[rIdx]->act.bParams[0] );
             }
 
+            ClearCtrlTable(3);
+
             if( sPedest[sIdx]->sItem[rIdx]->act.iParams[0] == 2 &&
                     sPedest[sIdx]->sItem[rIdx]->act.fParams.size() >= 2 + 2 * nRow ){
 
@@ -4054,9 +4402,6 @@ void ScenarioEditor::SetScenarioDataToGUI()
                 }
 
                 SetCtrlDataToTable( 3, t, val );
-            }
-            else{
-                ClearCtrlTable(3);
             }
         }
         else if( sPedest[sIdx]->sItem[rIdx]->act.actionType == 2 ){ // UDP
@@ -4097,8 +4442,10 @@ void ScenarioEditor::SetScenarioDataToGUI()
                 paDisappearAppearSoon->setChecked( sPedest[sIdx]->sItem[rIdx]->act.bParams[0] );
             }
         }
-
     }
+
+    qDebug() << "applyEnableFlag = true[0]";
+    applyEnableFlag = true;
 }
 
 
@@ -4570,6 +4917,7 @@ void ScenarioEditor::GetPointListPicked(int mode, QList<QPointF> points)
         }
 
         vaAppearRouteInfo->setText( routeStr );
+        ApplyDataClicked();
     }
     else if( mode == 10 ){
 
@@ -4606,6 +4954,7 @@ void ScenarioEditor::GetPointListPicked(int mode, QList<QPointF> points)
         }
 
         paAppearRouteInfo->setText( routeStr );
+        ApplyDataClicked();
     }
     else if( mode == 9 ){
 
@@ -4706,6 +5055,7 @@ void ScenarioEditor::GetPointListPicked(int mode, QList<QPointF> points)
         }
 
         vaAppearRouteInfo->setText( routeStr );
+        ApplyDataClicked();
     }
 }
 
@@ -4821,10 +5171,12 @@ void ScenarioEditor::ClearRouteData()
     if( sender()->objectName() == QString("VehicleClearNodeRoute") || sender()->objectName() == QString("VehicleClearPathRoute") ){
         QString routeStr = QString("Route Info:\n");
         vaAppearRouteInfo->setText( routeStr );
+        ApplyDataClicked();
     }
     else{
         QString routeStr = QString("Route Info:\n");
         paAppearRouteInfo->setText( routeStr );
+        ApplyDataClicked();
     }
 }
 
@@ -4942,6 +5294,7 @@ void ScenarioEditor::SetPedestRouteLaneShape(int sIdx, int rIdx)
         lse->controlPedestSignalID = -1;
         lse->runOutDirect = 0;
         lse->runOutProb = 0.0;
+        lse->marginToRoadForRunOut = 0.0;
 
         sPedest[sIdx]->sItem[rIdx]->act.pedestLaneshape.append( lse );
     }
@@ -5330,9 +5683,17 @@ void ScenarioEditor::SetDataToGraph(int type)
 
         QList<float> t;
         QList<float> val;
+        int nAct = 0;
         for(int i=0;i<nRow;++i){
-            t.append( vaCtrlSpeedProfile->item(i,0)->text().toFloat() );
-            val.append( vaCtrlSpeedProfile->item(i,1)->text().toFloat() );
+            if( vaCtrlSpeedProfile->item(i,0) != NULL && vaCtrlSpeedProfile->item(i,1) != NULL ){
+                t.append( vaCtrlSpeedProfile->item(i,0)->text().toFloat() );
+                val.append( vaCtrlSpeedProfile->item(i,1)->text().toFloat() );
+                nAct++;
+            }
+        }
+
+        if( nAct == 0 ){
+            return;
         }
 
         speedProfileGraph->SetData(t,val);
@@ -5346,9 +5707,17 @@ void ScenarioEditor::SetDataToGraph(int type)
 
         QList<float> t;
         QList<float> val;
+        int nAct = 0;
         for(int i=0;i<nRow;++i){
-            t.append( vaCtrlAccelDecelTable->item(i,0)->text().toFloat() );
-            val.append( vaCtrlAccelDecelTable->item(i,1)->text().toFloat() );
+            if( vaCtrlAccelDecelTable->item(i,0) != NULL && vaCtrlAccelDecelTable->item(i,1) != NULL ){
+                t.append( vaCtrlAccelDecelTable->item(i,0)->text().toFloat() );
+                val.append( vaCtrlAccelDecelTable->item(i,1)->text().toFloat() );
+                nAct++;
+            }
+        }
+
+        if( nAct == 0 ){
+            return;
         }
 
         accelDecelGraph->SetData(t,val);
@@ -5362,9 +5731,17 @@ void ScenarioEditor::SetDataToGraph(int type)
 
         QList<float> t;
         QList<float> val;
+        int nAct = 0;
         for(int i=0;i<nRow;++i){
-            t.append( vaCtrlSteerTable->item(i,0)->text().toFloat() );
-            val.append( vaCtrlSteerTable->item(i,1)->text().toFloat() );
+            if( vaCtrlSteerTable->item(i,0) != NULL && vaCtrlSteerTable->item(i,1) != NULL ){
+                t.append( vaCtrlSteerTable->item(i,0)->text().toFloat() );
+                val.append( vaCtrlSteerTable->item(i,1)->text().toFloat() );
+                nAct++;
+            }
+        }
+
+        if( nAct == 0 ){
+            return;
         }
 
         steerGraph->SetData(t,val);
@@ -5378,9 +5755,17 @@ void ScenarioEditor::SetDataToGraph(int type)
 
         QList<float> t;
         QList<float> val;
+        int nAct = 0;
         for(int i=0;i<nRow;++i){
-            t.append( paCtrlSpeedProfile->item(i,0)->text().toFloat() );
-            val.append( paCtrlSpeedProfile->item(i,1)->text().toFloat() );
+            if( paCtrlSpeedProfile->item(i,0) != NULL && paCtrlSpeedProfile->item(i,1) != NULL ){
+                t.append( paCtrlSpeedProfile->item(i,0)->text().toFloat() );
+                val.append( paCtrlSpeedProfile->item(i,1)->text().toFloat() );
+                nAct++;
+            }
+        }
+
+        if( nAct == 0 ){
+            return;
         }
 
         pedestSpeedProfileGraph->SetData(t,val);

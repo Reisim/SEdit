@@ -150,6 +150,23 @@ void DataManipulator::InsertNode_4x1_noTS()
 
     qDebug() << " xc = " << xc << " yc = " << yc;
 
+    QStringList edgeNodeInfo;
+    for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+        int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lidx >= 0 ){
+
+            QString eni = QString("%1,%2,%3,%4")
+                    .arg(road->lanes[lidx]->sWPInNode)
+                    .arg(road->lanes[lidx]->sWPNodeDir)
+                    .arg(road->lanes[lidx]->eWPInNode)
+                    .arg(road->lanes[lidx]->eWPNodeDir);
+
+            if( edgeNodeInfo.contains(eni) == false ){
+                edgeNodeInfo.append( eni );
+            }
+        }
+    }
+
 
     QStringList nodeConnectInfo;
 
@@ -708,12 +725,80 @@ void DataManipulator::InsertNode_4x1_noTS()
         }
     }
 
+    CheckRouteChangeByInsertNode( nID, edgeNodeInfo );
 
     road->CheckLaneConnectionFull();
 
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();
     canvas->update();
+}
+
+
+void DataManipulator::CheckRouteChangeByInsertNode(int insertNodeID, QStringList edgeNodeInfo)
+{
+    int nIdx = road->indexOfNode( insertNodeID );
+    if( nIdx < 0 ){
+        return;
+    }
+
+    for(int i=0;i<edgeNodeInfo.size();++i){
+
+        QStringList divStr = QString( edgeNodeInfo[i] ).split(",");
+        int fromNode       = QString(divStr[0]).toInt();
+        int fromNodeOutDir = QString(divStr[1]).toInt();
+        int toNode         = QString(divStr[2]).toInt();
+        int toNodeInDir    = QString(divStr[3]).toInt();
+
+        int inDirNewNode = -1;
+        int outDirNewNode = -1;
+        for(int j=0;j<road->nodes[nIdx]->legInfo.size();++j){
+            if( road->nodes[nIdx]->legInfo[j]->connectedNode == fromNode &&
+                    road->nodes[nIdx]->legInfo[j]->connectedNodeOutDirect == fromNodeOutDir ){
+                inDirNewNode = j;
+            }
+            if( road->nodes[nIdx]->legInfo[j]->connectingNode == toNode &&
+                    road->nodes[nIdx]->legInfo[j]->connectingNodeInDirect == toNodeInDir ){
+                outDirNewNode = j;
+            }
+        }
+
+        if( fromNode >= 0 && fromNodeOutDir >= 0 &&
+                toNode >= 0 && toNodeInDir >= 0 &&
+                inDirNewNode >= 0 && outDirNewNode >= 0 ){
+
+            for(int j=0;j<road->nodes.size();++j){
+                if( road->nodes[j]->isOriginNode == false ){
+                    continue;
+                }
+                if( road->nodes[j]->odData.size() == 0 ){
+                    continue;
+                }
+
+                for(int k=0;k<road->nodes[j]->odData.size();++k){
+                    for(int l=0;l<road->nodes[j]->odData[k]->route.size();++l){
+                        bool matched = true;
+                        while(matched){
+                            matched = false;
+                            for(int m=1;m<road->nodes[j]->odData[k]->route[l]->nodeList.size();++m){
+                                if( road->nodes[j]->odData[k]->route[l]->nodeList[m-1]->node == fromNode &&
+                                        road->nodes[j]->odData[k]->route[l]->nodeList[m-1]->outDir == fromNodeOutDir &&
+                                        road->nodes[j]->odData[k]->route[l]->nodeList[m]->node == toNode &&
+                                        road->nodes[j]->odData[k]->route[l]->nodeList[m]->inDir == toNodeInDir ){
+                                   matched = true;
+                                   struct RouteElem *re = new struct RouteElem;
+                                   re->node = insertNodeID;
+                                   re->inDir = inDirNewNode;
+                                   re->outDir = outDirNewNode;
+                                   road->nodes[j]->odData[k]->route[l]->nodeList.insert(m, re);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 
@@ -753,6 +838,22 @@ void DataManipulator::InsertNode_3Lx1_noTS()
 
     qDebug() << " xc = " << xc << " yc = " << yc;
 
+    QStringList edgeNodeInfo;
+    for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+        int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lidx >= 0 ){
+
+            QString eni = QString("%1,%2,%3,%4")
+                    .arg(road->lanes[lidx]->sWPInNode)
+                    .arg(road->lanes[lidx]->sWPNodeDir)
+                    .arg(road->lanes[lidx]->eWPInNode)
+                    .arg(road->lanes[lidx]->eWPNodeDir);
+
+            if( edgeNodeInfo.contains(eni) == false ){
+                edgeNodeInfo.append( eni );
+            }
+        }
+    }
 
     QStringList nodeConnectInfo;
 
@@ -778,6 +879,26 @@ void DataManipulator::InsertNode_3Lx1_noTS()
             }
         }
     }
+    if( nIn0 == 0 ){
+        for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+            int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+            if( lidx >= 0 ){
+                float rx = road->lanes[lidx]->shape.pos.last()->x() - xc;
+                if( rx < 0.0 ){
+
+                    d0StartLanes.append( lidx );
+
+                    if( nIn0 == 0 ){
+                        angle0 = atan2( road->lanes[lidx]->shape.derivative.last()->y(), road->lanes[lidx]->shape.derivative.last()->x() );
+
+                        QString ncStr = QString("%1,%2").arg( road->lanes[lidx]->eWPInNode ).arg( road->lanes[lidx]->eWPNodeDir );
+                        nodeConnectInfo.append( ncStr );
+                    }
+                    nIn0++;
+                }
+            }
+        }
+    }
 
     nodeConnectInfo.append( QString("-1,0") );
 
@@ -800,6 +921,26 @@ void DataManipulator::InsertNode_3Lx1_noTS()
                     nodeConnectInfo.append( ncStr );
                 }
                 nIn2++;
+            }
+        }
+    }
+    if( nIn2 == 0 ){
+        for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+            int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+            if( lidx >= 0 ){
+                float rx = road->lanes[lidx]->shape.pos.last()->x() - xc;
+                if( rx > 0.0 ){
+
+                    d2StartLanes.append( lidx );
+
+                    if( nIn2 == 0 ){
+                        angle2 = atan2( road->lanes[lidx]->shape.derivative.last()->y(), road->lanes[lidx]->shape.derivative.last()->x() );
+
+                        QString ncStr = QString("%1,%2").arg( road->lanes[lidx]->eWPInNode ).arg( road->lanes[lidx]->eWPNodeDir );
+                        nodeConnectInfo.append( ncStr );
+                    }
+                    nIn2++;
+                }
             }
         }
     }
@@ -1243,6 +1384,10 @@ void DataManipulator::InsertNode_3Lx1_noTS()
             }
         }
     }
+
+    CheckRouteChangeByInsertNode( nID, edgeNodeInfo );
+
+    road->CheckLaneConnectionFull();
 
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();
@@ -1286,6 +1431,22 @@ void DataManipulator::InsertNode_3Rx1_noTS()
 
     qDebug() << " xc = " << xc << " yc = " << yc;
 
+    QStringList edgeNodeInfo;
+    for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+        int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+        if( lidx >= 0 ){
+
+            QString eni = QString("%1,%2,%3,%4")
+                    .arg(road->lanes[lidx]->sWPInNode)
+                    .arg(road->lanes[lidx]->sWPNodeDir)
+                    .arg(road->lanes[lidx]->eWPInNode)
+                    .arg(road->lanes[lidx]->eWPNodeDir);
+
+            if( edgeNodeInfo.contains(eni) == false ){
+                edgeNodeInfo.append( eni );
+            }
+        }
+    }
 
     QStringList nodeConnectInfo;
 
@@ -1311,6 +1472,26 @@ void DataManipulator::InsertNode_3Rx1_noTS()
             }
         }
     }
+    if( nIn0 == 0 ){
+        for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+            int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+            if( lidx >= 0 ){
+                float rx = road->lanes[lidx]->shape.pos.last()->x() - xc;
+                if( rx < 0.0 ){
+
+                    d0StartLanes.append( lidx );
+
+                    if( nIn0 == 0 ){
+                        angle0 = atan2( road->lanes[lidx]->shape.derivative.last()->y(), road->lanes[lidx]->shape.derivative.last()->x() );
+
+                        QString ncStr = QString("%1,%2").arg( road->lanes[lidx]->eWPInNode ).arg( road->lanes[lidx]->eWPNodeDir );
+                        nodeConnectInfo.append( ncStr );
+                    }
+                    nIn0++;
+                }
+            }
+        }
+    }
 
     nodeConnectInfo.append( QString("-1,0") );
 
@@ -1333,6 +1514,26 @@ void DataManipulator::InsertNode_3Rx1_noTS()
                     nodeConnectInfo.append( ncStr );
                 }
                 nIn2++;
+            }
+        }
+    }
+    if( nIn2 == 0 ){
+        for(int i=0;i<canvas->selectedObj.selObjID.size();++i){
+            int lidx = road->indexOfLane( canvas->selectedObj.selObjID[i] );
+            if( lidx >= 0 ){
+                float rx = road->lanes[lidx]->shape.pos.last()->x() - xc;
+                if( rx > 0.0 ){
+
+                    d2StartLanes.append( lidx );
+
+                    if( nIn2 == 0 ){
+                        angle2 = atan2( road->lanes[lidx]->shape.derivative.last()->y(), road->lanes[lidx]->shape.derivative.last()->x() );
+
+                        QString ncStr = QString("%1,%2").arg( road->lanes[lidx]->eWPInNode ).arg( road->lanes[lidx]->eWPNodeDir );
+                        nodeConnectInfo.append( ncStr );
+                    }
+                    nIn2++;
+                }
             }
         }
     }
@@ -1776,6 +1977,10 @@ void DataManipulator::InsertNode_3Rx1_noTS()
             }
         }
     }
+
+    CheckRouteChangeByInsertNode( nID, edgeNodeInfo );
+
+    road->CheckLaneConnectionFull();
 
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();

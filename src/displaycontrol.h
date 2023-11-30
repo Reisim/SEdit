@@ -24,6 +24,7 @@
 #include <QLineEdit>
 #include <QDoubleValidator>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
 
 #include "roadinfo.h"
 
@@ -61,17 +62,22 @@ public:
     QSpinBox *laneWidth;
     QCheckBox *colorMapOfLaneSpeedLimit;
     QCheckBox *colorMapOfLaneActualSpeed;
+    QCheckBox *colorODDLanes;
     QCheckBox *showTrafficSignals;
     QCheckBox *showStopLines;
     QCheckBox *showPedestLanes;
     QCheckBox *showMapImage;
     QCheckBox *backMapImage;
+    QCheckBox *showStaticObject;
+
+    QDoubleSpinBox *backMapOffsetVal;
 
     QCheckBox *showNodeLabels;
     QCheckBox *showLaneLabels;
     QCheckBox *showTrafficSignalLabels;
     QCheckBox *showStopLineLabels;
     QCheckBox *showPedestLaneLabels;
+    QCheckBox *showStaticObjectLabels;
     QCheckBox *showLabels;
 
     QCheckBox *selectNode;
@@ -79,6 +85,7 @@ public:
     QCheckBox *selectTrafficSignal;
     QCheckBox *selectStopLine;
     QCheckBox *selectPedestLane;
+    QCheckBox *selectStaticObject;
 
     QPushButton *prevLaneList;
     QPushButton *nextLaneList;

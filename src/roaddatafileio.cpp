@@ -60,6 +60,8 @@ bool RoadInfo::SaveRoadData(QString filename)
                 out << "TS Display Pattern : " << nodes[i]->trafficSignals[j]->sigPattern[k]->signal << " , " << nodes[i]->trafficSignals[j]->sigPattern[k]->duration << "\n";
             }
             out << "TS Start Offset : " << nodes[i]->trafficSignals[j]->startOffset << "\n";
+            out << "TS Sensor-Type  : " << (nodes[i]->trafficSignals[j]->isSensorType == true ? 1 : 0 ) << "\n";
+            out << "TS Change Time By Sensor : " << nodes[i]->trafficSignals[j]->timeToChangeBySensor << "\n";
         }
         for(int j=0;j<nodes[i]->stopLines.size();++j){
             out << "[StopLine] ID : " << nodes[i]->stopLines[j]->id << "\n";
@@ -88,27 +90,44 @@ bool RoadInfo::SaveRoadData(QString filename)
         }
 
         if( nodes[i]->isOriginNode == true ){
-            out << "[Route Data]\n";
+
+            // check
+            int nValidData = 0;
             for(int j=0;j<nodes[i]->odData.size();++j){
-                out << "Destination Node : " << nodes[i]->odData[j]->destinationNode << "\n";
-                for(int k=0;k<nodes[i]->odData[j]->route.size();++k){
-                    out << "Route Node List : ";
-                    for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
-                        out << nodes[i]->odData[j]->route[k]->nodeList[l]->node;
-                        if( l < nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
-                            out << " , ";
+                int dNd = nodes[i]->odData[j]->destinationNode;
+                int dNdIdx = indexOfNode( dNd );
+                if( dNdIdx >= 0 && nodes[dNdIdx]->isDestinationNode == true ){
+                    nValidData++;
+                }
+            }
+            if( nValidData > 0 ){
+                out << "[Route Data]\n";
+                for(int j=0;j<nodes[i]->odData.size();++j){
+
+                    int dNd = nodes[i]->odData[j]->destinationNode;
+                    int dNdIdx = indexOfNode( dNd );
+                    if( dNdIdx >= 0 && nodes[dNdIdx]->isDestinationNode == true ){
+                        out << "Destination Node : " << nodes[i]->odData[j]->destinationNode << "\n";
+                        for(int k=0;k<nodes[i]->odData[j]->route.size();++k){
+                            out << "Route Node List : ";
+                            for(int l=0;l<nodes[i]->odData[j]->route[k]->nodeList.size();++l){
+                                out << nodes[i]->odData[j]->route[k]->nodeList[l]->node;
+                                if( l < nodes[i]->odData[j]->route[k]->nodeList.size() - 1 ){
+                                    out << " , ";
+                                }
+                            }
+                            out << "\n";
+                            out << "Traffic Volume Data : ";
+                            for(int l=0;l<nodes[i]->odData[j]->route[k]->volume.size();++l){
+                                out << "(" << nodes[i]->odData[j]->route[k]->volume[l]->vehicleKind << "/"
+                                    << nodes[i]->odData[j]->route[k]->volume[l]->trafficVolume << ")";
+                                if( l < nodes[i]->odData[j]->route[k]->volume.size() - 1 ){
+                                    out << " , ";
+                                }
+                            }
+                            out << "\n";
                         }
                     }
-                    out << "\n";
-                    out << "Traffic Volume Data : ";
-                    for(int l=0;l<nodes[i]->odData[j]->route[k]->volume.size();++l){
-                        out << "(" << nodes[i]->odData[j]->route[k]->volume[l]->vehicleKind << "/"
-                            << nodes[i]->odData[j]->route[k]->volume[l]->trafficVolume << ")";
-                        if( l < nodes[i]->odData[j]->route[k]->volume.size() - 1 ){
-                            out << " , ";
-                        }
-                    }
-                    out << "\n";
                 }
             }
         }
@@ -117,6 +136,7 @@ bool RoadInfo::SaveRoadData(QString filename)
 
     for(int i=0;i<lanes.size();++i){
         out << "[Lane] ID    : " << lanes[i]->id << "\n";
+        out << "Width Info   : " << lanes[i]->laneWidth << "\n";
         out << "Speed Info   : " << lanes[i]->speedInfo << "\n";
         out << "Actual Speed   : " << lanes[i]->actualSpeed << "\n";
         out << "Automatic Driving : " << (lanes[i]->automaticDrivingEnabled == true ? "Enabled" : "Unabled") << "\n";
@@ -177,7 +197,8 @@ bool RoadInfo::SaveRoadData(QString filename)
             out << "PL Shape : " << pedestLanes[i]->shape[j]->pos.x() << " , " << pedestLanes[i]->shape[j]->pos.y() << " , "
                 << pedestLanes[i]->shape[j]->pos.z() << " , " << pedestLanes[i]->shape[j]->width << "\n";
             out << "PL Property : " << (pedestLanes[i]->shape[j]->isCrossWalk == true ? 1 : 0) << " , "
-                << pedestLanes[i]->shape[j]->runOutProb << " , " << pedestLanes[i]->shape[j]->runOutDirect << "\n";
+                << pedestLanes[i]->shape[j]->runOutProb << " , " << pedestLanes[i]->shape[j]->runOutDirect << " , "
+                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << "\n";
         }
         out << "PL Volumne : ";
         for(int j=0;j<pedestLanes[i]->trafficVolume.size();++j){
@@ -191,6 +212,13 @@ bool RoadInfo::SaveRoadData(QString filename)
     }
     out << "\n";
 
+    for(int i=0;i<staticObj.size();++i){
+        out << "[StaticObject] ID    : " << staticObj[i]->id << "\n";
+        out << "SO Location : " << staticObj[i]->xc << " , " << staticObj[i]->yc << " , " << staticObj[i]->zc << " , " << staticObj[i]->direction << "\n";
+        out << "SO Size : " << staticObj[i]->lenx << " , " << staticObj[i]->leny << " , " << staticObj[i]->height << "\n";
+        out << "\n";
+    }
+    out << "\n";
 
     QString tmpfilename = filename;
 
@@ -238,10 +266,11 @@ bool RoadInfo::SaveRoadData(QString filename)
         }
         pathToImage = reconstStr;
 
+        QStringList tmpStrDiv = mapImageMng->baseMapImages[i]->filename.trimmed().replace("\\","/").split("/");
 
         out << "BASE MAP : "
             << pathToImage << " , "
-            << mapImageMng->baseMapImages[i]->filename << " , "
+            << QString( tmpStrDiv.last() ) << " , "
             << mapImageMng->baseMapImages[i]->x << " , "
             << mapImageMng->baseMapImages[i]->y << " , "
             << mapImageMng->baseMapImages[i]->scale << " , "
@@ -356,7 +385,7 @@ bool RoadInfo::LoadRoadData(QString filename)
         QString dataStr = QString( divLine[1] ).trimmed();
         if( divLine.size() > 2 ){
             for(int i=2;i<divLine.size();++i){
-                dataStr += QString(":") + QString( divLine[2] ).trimmed();
+                dataStr += QString(":") + QString( divLine[i] ).trimmed();
             }
         }
 
@@ -372,6 +401,7 @@ bool RoadInfo::LoadRoadData(QString filename)
             nd->id = dataStr.toInt();
             nd->isOriginNode = false;
             nd->isDestinationNode = false;
+            nd->suspectError = false;
 
             nodes.append( nd );
 
@@ -433,6 +463,9 @@ bool RoadInfo::LoadRoadData(QString filename)
             struct TrafficSignalInfo *ts = new struct TrafficSignalInfo;
             ts->id = dataStr.toInt();
 
+            ts->isSensorType = false;
+            ts->timeToChangeBySensor = 0;
+
             nodes.last()->trafficSignals.append( ts );
 
 //            qDebug() << "[TrafficSignal] ID = " << ts->id;
@@ -491,6 +524,16 @@ bool RoadInfo::LoadRoadData(QString filename)
         else if( tagStr.contains("TS Start Offset") == true ){
 
             nodes.last()->trafficSignals.last()->startOffset = dataStr.toInt();
+
+        }
+        else if( tagStr.contains("TS Sensor-Type") == true ){
+            if( dataStr.trimmed().toInt() == 1 ){
+                nodes.last()->trafficSignals.last()->isSensorType = true;
+            }
+        }
+        else if( tagStr.contains("TS Change Time By Sensor") == true ){
+
+            nodes.last()->trafficSignals.last()->timeToChangeBySensor = dataStr.trimmed().toInt();
 
         }
         else if( tagStr.contains("[StopLine] ID") == true ){
@@ -600,26 +643,32 @@ bool RoadInfo::LoadRoadData(QString filename)
             // default values
             ln->automaticDrivingEnabled = false;
             ln->driverErrorProb = 0.0;
+            ln->suspectError = false;
+            ln->laneWidth = 3.0;
 
             lanes.append( ln );
 
 //            qDebug() << "[Lane] ID = " << ln->id;
         }
+        else if( tagStr.contains("Width Info") == true ){
+            float wInfo = dataStr.toFloat();
+            lanes.last()->laneWidth = wInfo;
+        }
         else if( tagStr.contains("Speed Info") == true ){
 
             float spInfo = dataStr.toFloat();
-            if( spInfo < 0.1 ){
-                spInfo = 60.0;
-            }
+//            if( spInfo < 0.1 ){
+//                spInfo = 60.0;
+//            }
             lanes.last()->speedInfo = spInfo;
             lanes.last()->actualSpeed = spInfo;  // in case "Actual Speed" is missed
         }
         else if( tagStr.contains("Actual Speed") == true ){
 
             float spInfo = dataStr.toFloat();
-            if( spInfo < 0.1 ){
-                spInfo = 65.0;
-            }
+//            if( spInfo < 0.1 ){
+//                spInfo = 65.0;
+//            }
             lanes.last()->actualSpeed = spInfo;
         }
         else if( tagStr.contains("Automatic Driving") == true ){
@@ -818,8 +867,15 @@ bool RoadInfo::LoadRoadData(QString filename)
             QStringList divDataStr = dataStr.split(",");
 
             pedestLanes.last()->shape.last()->isCrossWalk  = ( QString(divDataStr[0]).trimmed().toInt() == 1 ? true : false);
+            pedestLanes.last()->shape.last()->controlPedestSignalID = -1;
             pedestLanes.last()->shape.last()->runOutProb   = QString(divDataStr[1]).trimmed().toFloat();
-            pedestLanes.last()->shape.last()->runOutDirect = QString(divDataStr[2]).trimmed().toFloat();
+            pedestLanes.last()->shape.last()->runOutDirect = QString(divDataStr[2]).trimmed().toInt();
+            if( divDataStr.size() >= 4 ){
+                pedestLanes.last()->shape.last()->marginToRoadForRunOut = QString(divDataStr[3]).trimmed().toFloat();
+            }
+            else{
+                pedestLanes.last()->shape.last()->marginToRoadForRunOut = 0.0;
+            }
 
         }
         else if( tagStr.contains("PL Volumne") == true  ){
@@ -847,7 +903,8 @@ bool RoadInfo::LoadRoadData(QString filename)
             }
             imagefilename = reconstFilename;
 
-            imagefilename += QString( divDataStr[1] ).trimmed();
+            QStringList tmpStrDiv = QString(divDataStr[1]).trimmed().replace("\\","/").split("/");
+            imagefilename += QString( tmpStrDiv.last() ).trimmed();
 
             float x = QString( divDataStr[2] ).trimmed().toFloat();
             float y = QString( divDataStr[3] ).trimmed().toFloat();
@@ -864,13 +921,40 @@ bool RoadInfo::LoadRoadData(QString filename)
 
             imLoadData.append( im );
         }
+        else if( tagStr.contains("[StaticObject] ID") == true ){
+
+            struct StaticObject* so = new struct StaticObject;
+            so->id = dataStr.trimmed().toInt();
+
+            staticObj.append( so );
+        }
+        else if( tagStr.contains("SO Location") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+            if( divDataStr.size() == 4 ){
+                staticObj.last()->xc = QString( divDataStr[0] ).trimmed().toFloat();
+                staticObj.last()->yc = QString( divDataStr[1] ).trimmed().toFloat();
+                staticObj.last()->zc = QString( divDataStr[2] ).trimmed().toFloat();
+                staticObj.last()->direction = QString( divDataStr[3] ).trimmed().toFloat();
+            }
+        }
+        else if( tagStr.contains("SO Size") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+            if( divDataStr.size() == 3 ){
+                staticObj.last()->lenx = QString( divDataStr[0] ).trimmed().toFloat();
+                staticObj.last()->leny = QString( divDataStr[1] ).trimmed().toFloat();
+                staticObj.last()->height = QString( divDataStr[2] ).trimmed().toFloat();
+            }
+        }
+
     }
 
     pd->setValue(line_count);
     QApplication::processEvents();
 
-
     file.close();
+
 
     for(int i=0;i<nodes.size();++i){
         nodes[i]->nLeg  = nodes[i]->legInfo.size();
@@ -906,6 +990,10 @@ bool RoadInfo::LoadRoadData(QString filename)
 
     for(int i=0;i<pedestLanes.size();++i){
         UpdatePedestLaneShapeParams( pedestLanes[i]->id );
+    }
+
+    for(int i=0;i<staticObj.size();++i){
+        SetCornerPointsStaticObject( staticObj[i]->id );
     }
 
 
@@ -961,6 +1049,10 @@ bool RoadInfo::LoadRoadData(QString filename)
     CheckLaneConnectionFull();
 
 
+    // Check Lane Connection
+    CheckLaneRelatedNodeAllLanes();
+
+
     // Calculate Stop Point Data
     CheckAllStopLineCrossLane();
 
@@ -983,8 +1075,9 @@ bool RoadInfo::LoadRoadData(QString filename)
 
 
     // Set Lane List
-    SetAllLaneLists();
-
+    if( !(GetAsyncKeyState( VK_SHIFT ) & 0x8000) ){
+        SetAllLaneLists();
+    }
 
     // Set Turn Direction Info
     {
@@ -1001,7 +1094,9 @@ bool RoadInfo::LoadRoadData(QString filename)
 
 
     // Set Route Lane List
-    SetAllRouteLaneList();
+    if( !(GetAsyncKeyState( VK_SHIFT ) & 0x8000) ){
+        SetAllRouteLaneList();
+    }
 
 
 
@@ -1113,7 +1208,9 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
 
     out << "#-----------------------------------------------------\n";
-    out << "# Path ; id , startWP , endWP , Ndiv , Speed Limit[km/h] , Actual Speed[km/h]\n";
+    out << "# Path ; id , startWP , endWP , Ndiv ,                \n";
+    out << "              Speed Limit[km/h] , Actual Speed[km/h] ,\n";
+    out << "              AutomaticDrivingEnabled, LaneWidth[m]   \n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<lanes.size();++i){
 
@@ -1122,7 +1219,9 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
             << lanes[i]->endWPID << " , "
             << (lanes[i]->shape.pos.size()-1) << " , "
             << lanes[i]->speedInfo << " , "
-            << lanes[i]->actualSpeed << "\n";
+            << lanes[i]->actualSpeed << " , "
+            << lanes[i]->automaticDrivingEnabled << " , "
+            << lanes[i]->laneWidth << "\n";
     }
     out << "\n";
 
@@ -1248,7 +1347,7 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     out << "# Pedest-Path ; pedestPathID, \n";
     out << "# Pedest-Path Shape ; x, y, z, width, length, angle \n";
-    out << "# Pedest-Path Property ; isCrossWalk, pedestSignalID, runOutProb, runOutDir \n";
+    out << "# Pedest-Path Property ; isCrossWalk, pedestSignalID, runOutProb, runOutDir, marginToRoad \n";
     out << "# Pedest-Path Traffic ; Volume1 , Volume2 , ... , Volume_nPedKind\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<pedestLanes.size();++i){
@@ -1269,7 +1368,8 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                 << (pedestLanes[i]->shape[j]->isCrossWalk == true ? 1 : 0) << " , "
                 << pedestLanes[i]->shape[j]->controlPedestSignalID << " , "
                 << pedestLanes[i]->shape[j]->runOutProb << " , "
-                << pedestLanes[i]->shape[j]->runOutDirect << "\n";
+                << pedestLanes[i]->shape[j]->runOutDirect << " , "
+                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << "\n";
         }
 
         out << "Pedest-Path Traffic ; ";
@@ -1564,22 +1664,223 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                         << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->sIndexInNodeList << " , "
                         << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->gIndexInNodeList << "\n";
 
+                    QList<int> redundantIdx;
+
+                    QList<float> selWeidht;
+                    QList<QList<int>> nLargeList;
+
                     for(int m=0;m<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList.size();++m){
 
-                        out << "Route Multi-Lanes ; 3 , ";
+                        // Check redundancy
+                        bool isValidData = true;
+                        for(int n=0;n<m;++n){
+                            if( nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[n].size()
+                                    == nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size() ){
+                                bool isSame = true;
+                                for(int sz=0;sz<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[n].size();++sz){
+                                    if( nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[n][sz]
+                                            != nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m][sz] ){
+                                        isSame = false;
+                                        break;
+                                    }
+                                }
+                                if( isSame == true ){
+                                    isValidData = false;
+                                    redundantIdx.append(m);
+                                }
+                            }
+                        }
+                        if( isValidData == true ){
 
-                        for(int n=0;n<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size();++n){
+                            QList<int> nLargeForNodes;
 
-                            out << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m][n];
+                            out << "Route Multi-Lanes ; 3 , ";
 
-                            if( n < nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size() - 1 ){
-                                out << " , ";
+                            for(int n=0;n<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size();++n){
+
+                                out << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m][n];
+
+                                if( n < nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size() - 1 ){
+                                    out << " , ";
+                                }
+
                             }
 
+                            out << "\n";
+
+
+                            // Set Selection Wieght
+                            for(int n=0;n<nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m].size();++n){
+
+                                int tmpLane = nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[m][n];
+                                int tlIdx = indexOfLane(tmpLane);
+                                if( tlIdx >= 0 && tlIdx < lanes.size() ){
+
+                                    if( lanes[tlIdx]->eWPBoundary == false ){
+                                        continue;
+                                    }
+
+                                    int incNode = lanes[tlIdx]->eWPInNode;
+                                    int rltDir = lanes[tlIdx]->eWPNodeDir;
+                                    int inIdx = indexOfNode( incNode );
+
+                                    if( nodes[inIdx]->nLeg == 1 ){
+
+//                                        if( nodes[inIdx]->legInfo[rltDir]->inWPs.size() <= 1 ){
+//                                            continue;
+//                                        }
+                                        if( nodes[inIdx]->legInfo[rltDir]->inWPs.contains( lanes[tlIdx]->endWPID ) == false ){
+                                            continue;
+                                        }
+
+                                        int iWPPos = nodes[inIdx]->legInfo[rltDir]->inWPs.indexOf( lanes[tlIdx]->endWPID );
+
+                                        QList<float> latPosWPs;
+                                        latPosWPs.append( 0.0 );
+
+                                        int iWidx = indexOfWP( nodes[inIdx]->legInfo[rltDir]->inWPs.first() );
+                                        float x0 = wps[iWidx]->pos.x();
+                                        float y0 = wps[iWidx]->pos.y();
+                                        float dirC = cos( wps[iWidx]->angle );
+                                        float dirS = sin( wps[iWidx]->angle );
+
+                                        for(int z=1;z<nodes[inIdx]->legInfo[rltDir]->inWPs.size();++z){
+
+                                            iWidx = indexOfWP( nodes[inIdx]->legInfo[rltDir]->inWPs[z] );
+                                            float dx = wps[iWidx]->pos.x() - x0;
+                                            float dy = wps[iWidx]->pos.y() - y0;
+
+                                            float E = dx * (-dirS) + dy * dirC;
+                                            latPosWPs.append( E );
+                                        }
+
+                                        int nLarge = 0;
+                                        for(int z=0;z<latPosWPs.size();++z){
+                                            if( z == iWPPos ){
+                                                continue;
+                                            }
+                                            if( latPosWPs[z] > latPosWPs[iWPPos] ){
+                                                nLarge++;
+                                            }
+                                        }
+
+                                        nLargeForNodes.append( nLarge );
+                                    }
+                                    else{
+
+//                                        if( nodes[inIdx]->legInfo[rltDir]->outWPs.size() <= 1 ){
+//                                            continue;
+//                                        }
+                                        if( nodes[inIdx]->legInfo[rltDir]->outWPs.contains( lanes[tlIdx]->endWPID ) == false ){
+                                            continue;
+                                        }
+
+//                                        int inDir = lanes[tlIdx]->sWPNodeDir;
+//                                        if( nodes[inIdx]->legInfo[rltDir]->oncomingLegID != inDir ){
+//                                            continue;
+//                                        }
+
+                                        int oWPPos = nodes[inIdx]->legInfo[rltDir]->outWPs.indexOf( lanes[tlIdx]->endWPID );
+
+                                        QList<float> latPosWPs;
+                                        latPosWPs.append( 0.0 );
+
+                                        int iWidx = indexOfWP( nodes[inIdx]->legInfo[rltDir]->outWPs.first() );
+                                        float x0 = wps[iWidx]->pos.x();
+                                        float y0 = wps[iWidx]->pos.y();
+                                        float dirC = cos( wps[iWidx]->angle );
+                                        float dirS = sin( wps[iWidx]->angle );
+
+                                        for(int z=1;z<nodes[inIdx]->legInfo[rltDir]->outWPs.size();++z){
+
+                                            iWidx = indexOfWP( nodes[inIdx]->legInfo[rltDir]->outWPs[z] );
+                                            float dx = wps[iWidx]->pos.x() - x0;
+                                            float dy = wps[iWidx]->pos.y() - y0;
+
+                                            float E = dx * (-dirS) + dy * dirC;
+                                            latPosWPs.append( E );
+                                        }
+
+                                        int nLarge = 0;
+                                        for(int z=0;z<latPosWPs.size();++z){
+                                            if( z == oWPPos ){
+                                                continue;
+                                            }
+                                            if( latPosWPs[z] > latPosWPs[oWPPos] ){
+                                                nLarge++;
+                                            }
+                                        }
+
+                                        nLargeForNodes.append( nLarge );
+                                    }
+                                }
+                            }
+
+                            nLargeList.append( nLargeForNodes );
+                        }
+                    }
+
+                    for(int m=redundantIdx.size()-1;m>=0;m--){
+                        int delIdx = redundantIdx[m];
+                        nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList[delIdx].clear();
+                        nodes[i]->odData[j]->route[k]->routeLaneLists[l]->laneList.removeAt( delIdx );
+                    }
+
+//                    qDebug() << "Origin = " << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->startNode
+//                             << " Dest = " << nodes[i]->odData[j]->route[k]->routeLaneLists[l]->goalNode;
+//                    qDebug() << "nLargeList = " << nLargeList;
+
+                    if( nLargeList.size() > 1 ){
+
+                        for(int n=0;n<nLargeList[0].size();++n){
+
+                            bool issameval = true;
+                            for(int m=1;m<nLargeList.size();++m){
+                                if( nLargeList[0][n] != nLargeList[m][n] ){
+                                    issameval = false;
+                                    break;
+                                }
+                            }
+                            if( issameval == true ){
+                                for(int m=0;m<nLargeList.size();++m){
+                                    nLargeList[m][n] = 0;
+                                }
+                            }
                         }
 
-                        out << "\n";
+                        for(int m=0;m<nLargeList.size();++m){
+
+                            float swt = 1.0;
+
+                            for(int n=0;n<nLargeList[m].size();++n){
+                                float tmpSWT = 1.0 + nLargeList[m][n] * 2.0;
+                                if( swt < tmpSWT ){
+                                    swt = tmpSWT;
+                                }
+                            }
+
+                            selWeidht.append( swt );
+                        }
+
                     }
+                    else{
+                        selWeidht.append( 1.0 );
+                    }
+
+
+                    if( selWeidht.size() > 0 ){
+
+                        out << "Route Multi-Lanes ; 4 , ";
+                        for(int n=0;n<selWeidht.size();++n){
+                            out << selWeidht[n];
+                            if(n < selWeidht.size() - 1 ){
+                                out << " , ";
+                            }
+                        }
+                        out << "\n";
+
+                    }
+
                 }
 
                 out << "\n";
@@ -1591,13 +1892,14 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
     out << "#-----------------------------------------------------\n";
     out << "# Vehicle Kind ;  Category, Subcategory,  \n";
-    out << "#                          Length, Width, Height     \n";
+    out << "#                  Length, Width, Height, \n";
+    out << "#                  UE4 Model ID, Number Spawn, CG Kind\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<setDlg->GetVehicleKindNum();++i){
         out << "Vehicle Kind ; ";
-        for(int j=0;j<5;++j){
+        for(int j=0;j<8;++j){
             out << setDlg->GetVehicleKindTableStr(i,j);
-            if( j < 4 ){
+            if( j < 7 ){
                 out << " , ";
             }
             else{
@@ -1610,19 +1912,46 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
 
     out << "#-----------------------------------------------------\n";
     out << "# Pedestrian Kind ;  Category, Subcategory,  \n";
-    out << "#                          Length, Width, Height     \n";
+    out << "#                 Length, Width, Height, UE4 Model ID \n";
+    out << "#                 Move speed[m/s], S.D.[m/s], Age Info\n";
+    out << "#                 Number Spawn, CG Kind\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<setDlg->GetPedestrianKindNum();++i){
         out << "Pedestrian Kind ; ";
-        for(int j=0;j<5;++j){
+        for(int j=0;j<11;++j){
             out << setDlg->GetPedestKindTableStr(i,j);
-            if( j < 4 ){
+            if( j < 10 ){
                 out << " , ";
             }
             else{
                 out << "\n";
             }
         }
+    }
+    out << "\n";
+
+    out << "#-----------------------------------------------------\n";
+    out << "#  UE4 Actor Info for Sirius\n";
+    out << "#-----------------------------------------------------\n";
+    out << "Number of Actor for UE4 Model  ; " << setDlg->GetNumberActorForUE4Model() << "\n";
+    out << "Max Number of Actors of UE4  ; " << setDlg->GetMaxActorsInUE4() << "\n";
+    out << "\n";
+
+
+    out << "#-----------------------------------------------------\n";
+    out << "#  Static Objects as Road-Side Structure\n";
+    out << "# StaticObj ; id , xc , yc , zc , direct[rad], lenx, leny, height\n";
+    out << "#-----------------------------------------------------\n";
+    for(int i=0;i<staticObj.size();++i){
+
+        out << "StaticObj ; " << staticObj[i]->id << " , "
+            << staticObj[i]->xc << " , "
+            << staticObj[i]->yc << " , "
+            << staticObj[i]->zc << " , "
+            << (staticObj[i]->direction * 0.017452) << " , "
+            << staticObj[i]->lenx << " , "
+            << staticObj[i]->leny << " , "
+            << staticObj[i]->height << "\n";
     }
     out << "\n";
 
@@ -1656,18 +1985,33 @@ bool RoadInfo::outputResimTrafficSignalFiles(QString outputfoldername, QString o
 
 
     out_ts << "#-----------------------------------------------------\n";
-    out_ts << "# Type ; id , (vehicle or pedestrian) \n";
+    out_ts << "# Type ; id , (vehicle or pedestrian), sensorType, change-time \n";
     out_ts << "#-----------------------------------------------------\n";
     for(int i=0;i<nodes.size();++i){
+        int hasSensorType = 0;
+        for(int j=0;j<nodes[i]->trafficSignals.size();++j){
+            if( nodes[i]->trafficSignals[j]->isSensorType == true ){
+                hasSensorType = 1;
+            }
+        }
         for(int j=0;j<nodes[i]->trafficSignals.size();++j){
 
             out_ts << "Type  ; " << nodes[i]->trafficSignals[j]->id << " , ";
             if( nodes[i]->trafficSignals[j]->type == 0 ){
-                out_ts << "vehicle\n";
+                out_ts << "vehicle , ";
             }
             else{
-                out_ts << "pedestrian\n";
+                out_ts << "pedestrian , ";
             }
+
+            if( nodes[i]->trafficSignals[j]->isSensorType == true ){
+                out_ts << (hasSensorType+1) << " , ";
+            }
+            else{
+                out_ts << hasSensorType << " , ";
+            }
+
+            out_ts << nodes[i]->trafficSignals[j]->timeToChangeBySensor << "\n";
         }
     }
     out_ts << "\n";
@@ -1924,7 +2268,7 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
                     << sE->sVehicle[i]->sItem[j]->cond.TTCTrigger << "\n";
 
                 if( sE->sVehicle[i]->sItem[j]->cond.timeTrigger == true ){
-                    out << "Vehicle Event Trigger Time ; 0 ; "
+                    out << "Vehicle Event Trigger Time ; " << sE->sVehicle[i]->sItem[j]->cond.ttAbsOrRel << " ; "
                         << (sE->sVehicle[i]->sItem[j]->cond.ttMin * 60 + sE->sVehicle[i]->sItem[j]->cond.ttSec) << " ; "
                         << "0.0\n";
                 }
@@ -1950,6 +2294,7 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
                         << sE->sVehicle[i]->sItem[j]->cond.ttcVal << " ; "
                         << sE->sVehicle[i]->sItem[j]->cond.ttcCalType << " ; "
                         << sE->sVehicle[i]->sItem[j]->cond.ttcCalTargetObjID << " ; "
+                        << sE->sVehicle[i]->sItem[j]->cond.ttcCalObjectID << " ; "
                         << sE->sVehicle[i]->sItem[j]->cond.ttcCalPosX << " ; "
                         << sE->sVehicle[i]->sItem[j]->cond.ttcCalPosY << "\n";
                 }
@@ -2062,7 +2407,7 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
                     << sE->sPedest[i]->sItem[j]->cond.TTCTrigger << "\n";
 
                 if( sE->sPedest[i]->sItem[j]->cond.timeTrigger == true ){
-                    out << "Pedestrian Event Trigger Time ; 0 ; "
+                    out << "Pedestrian Event Trigger Time ; " << sE->sPedest[i]->sItem[j]->cond.ttAbsOrRel << " ; "
                         << (sE->sPedest[i]->sItem[j]->cond.ttMin * 60 + sE->sPedest[i]->sItem[j]->cond.ttSec) << " ; "
                         << "0.0\n";
                 }
@@ -2084,10 +2429,11 @@ bool RoadInfo::outputResimScenarioFiles(QString outputfoldername, QString output
                 }
 
                 if( sE->sPedest[i]->sItem[j]->cond.TTCTrigger == true ){
-                    out << "Vehicle Event Trigger TTC ; "
+                    out << "Pedestrian Event Trigger TTC ; "
                         << sE->sPedest[i]->sItem[j]->cond.ttcVal << " ; "
                         << sE->sPedest[i]->sItem[j]->cond.ttcCalType << " ; "
                         << sE->sPedest[i]->sItem[j]->cond.ttcCalTargetObjID << " ; "
+                        << sE->sPedest[i]->sItem[j]->cond.ttcCalObjectID << " ; "
                         << sE->sPedest[i]->sItem[j]->cond.ttcCalPosX << " ; "
                         << sE->sPedest[i]->sItem[j]->cond.ttcCalPosY << "\n";
                 }

@@ -71,6 +71,9 @@ int RoadInfo::CreateTrafficSignal(int assignId, int relatedNodeID, int relatedNo
     tsInfo->controlNodeLane = -1;  // Control all lane as default
     tsInfo->controlCrossWalk = -1; // For Pedestrian Signal
 
+    tsInfo->isSensorType = false;
+    tsInfo->timeToChangeBySensor = 0;
+
 
     float cp = cos( angle );
     float sp = sin( angle );
