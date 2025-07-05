@@ -28,6 +28,7 @@
 #include <QStatusBar>
 
 #include <QUdpSocket>
+#include <QTimerEvent>
 
 #include "graphiccanvas.h"
 #include "settingdialog.h"
@@ -72,7 +73,7 @@ protected:
     void closeEvent(QCloseEvent *event);
     bool okToContinue();
     void keyPressEvent(QKeyEvent *);
-
+    // void timerEvent(QTimerEvent *e) override;
 
 public slots:
     void UpdateStatusBar(QString);
@@ -83,6 +84,7 @@ public slots:
     bool SaveAsFile();
     void OpenRecentFile();
     void ImportOtherData();
+    void MigrateData();
 
     void SetTrafficDirection(int dir);
     void WrapWinModified(){ setWindowModified(true); }

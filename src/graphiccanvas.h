@@ -179,6 +179,7 @@ public:
     void SetNumberKeyPressed(int key);
     int GetNumberKeyPressed(){ return numberKeyPressed; }
 
+    // bool hasPendingRequest;
 
     void SelectObject(bool shiftModifier);
     enum _SEL_OBJ{
@@ -195,6 +196,8 @@ public:
         ROTATE_OBJECT,
         SEL_NODE_ROUTE_PICK,
         SEL_STATIC_OBJECT,
+        SEL_ROAD_BOUNDARY,
+        SEL_ROAD_BOUNDARY_POINT
     };
 
     RoadInfo *road;
@@ -221,6 +224,9 @@ public:
     // Point Data for create Pedest Lane
     QList<QVector3D*> pedestLanePoints;
 
+    // Point Data for create Road Boundary
+    QList<QVector3D*> roadBoundaryPoints;
+
 
 protected:
     void mousePressEvent(QMouseEvent *e);
@@ -239,6 +245,7 @@ signals:
     void UpdateStatusBar(QString);
     void SetNodeListForRoute(QList<int>);
     void PedestLanePointPicked();
+    void RoadBoundaryPointPicked();
     void PointsPickedForScenario(int,float,float,float,float);
     void PointListForScenario(int,QList<QPointF>);
 
@@ -264,6 +271,8 @@ public slots:
     void SetPedestLaneLabelVisibility(bool);
     void SetStaticObjectVisibility(bool);
     void SetStaticObjectLabelVisibility(bool);
+    void SetRoadBoundaryVisibility(bool);
+    void SetRoadBoundaryLabelVisibility(bool);
     void ResetRotate();
     void MoveTo(float x,float y);
     void SetProjectionOrthogonal(bool);
@@ -274,6 +283,7 @@ public slots:
     void SetStopLineSelection(bool);
     void SetPedestLaneSelection(bool);
     void SetStaticObjectSelection(bool);
+    void SetRoadBoundarySelection(bool);
     void SetNodePickMode(int,int);
     void ResetNodePickMode();
     void LoadMapImage(struct baseMapImage *);
@@ -281,6 +291,9 @@ public slots:
     void SetPedestLanePointPickMode();
     void ResetPedestLanePointPickMode();
     void RemovePickedPedestLanePoint();
+    void SetRoadBoundaryPointPickMode();
+    void ResetRoadBoundaryPointPickMode();
+    void RemovePickedRoadBoundaryPoint();
     void SetNodeSelected(int);
     void SetLaneColorBySpeedLimitFlag(bool);
     void SetLaneColorByActualSpeedFlag(bool);
@@ -367,6 +380,7 @@ private:
     bool showStopLinesFlag;
     bool showPedestLaneFlag;
     bool showStaticObjectFlag;
+    bool showRoadBoundaryFlag;
 
     bool showNodeLabelsFlag;
     bool showLaneLabelsFlag;
@@ -374,6 +388,7 @@ private:
     bool showStopLineLabelsFlag;
     bool showPedestLaneLabelsFlag;
     bool showStaticObjectLabelsFlag;
+    bool showRoadBoundaryLabelFlag;
     bool showLabelsFlag;
 
     bool selectNodeFlag;
@@ -382,6 +397,7 @@ private:
     bool selectStopLineFlag;
     bool selectPedestLaneFlag;
     bool selectStaticObjectFlag;
+    bool selectRoadBoundaryFlag;
 
     bool LaneListFlag;
     bool RelatedLanesFlag;
@@ -389,6 +405,7 @@ private:
     bool objectMoveFlag;
     bool nodePickModeFlag;
     bool pedestPathPointPickFlag;
+    bool roadBoundaryPointPickFlag;
 
     bool colorLaneBySpeedLimitFlag;
     bool colorLaneByActualSpeedFlag;

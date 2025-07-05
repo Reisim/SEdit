@@ -151,6 +151,8 @@ struct PedestrianLaneShapeElement
     int runOutDirect;
     float runOutProb;
     float marginToRoadForRunOut;
+    bool canWaitTaxi;
+    float taxiTakeProbability;
 };
 
 
@@ -329,6 +331,21 @@ struct StaticObject
     float x[4];
     float y[4];
 };
+
+
+struct RoadBoundaryInfo
+{
+    int id;
+    QList<QVector3D*> pos;
+    QList<QVector2D*> diff;
+
+    QList<float> length;
+    QList<float> height;
+    QList<float> angles;
+
+    int RoadSide;   // 0 : right,  1 : left
+};
+
 
 
 #endif // ROADINFOELEMENT_H

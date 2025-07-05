@@ -57,6 +57,10 @@ public:
     void SetDefaultVehicleKind();
     void SetDefaultPedestrianKind();
 
+    void SetVehicleKindByStringList(QStringList vehicleKindStrs);
+    void SetPedestrianKindByStringList(QStringList pedestrianKindStrs);
+
+
 signals:
     void TrafficDirectionSettingChanged(int);
 

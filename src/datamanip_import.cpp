@@ -22,6 +22,601 @@
 #include <QDebug>
 
 
+void DataManipulator::MigrateData(QString filename)
+{
+    qDebug() << "[DataManipulator::MigrateData] filename = " << filename;
+
+    QFile file(filename);
+    if( !file.open(QIODevice::ReadOnly | QIODevice::Text) ){
+        qDebug() << "Cannot open file for read: " << qPrintable(file.errorString());
+        return;
+    }
+
+    QTextStream in(&file);
+
+    QStringList commands;
+
+    while( in.atEnd() == false ){
+        commands.append( in.readLine() );
+    }
+
+    file.close();
+
+    int num = commands.size()-1;
+
+    for(int i=num;i>=0;i--){
+        if( commands[i].contains("NODE_CONNECT:") == true ){
+            commands.append( commands[i] );
+            commands.removeAt(i);
+        }
+    }
+    for(int i=num;i>=0;i--){
+        if( commands[i].contains("EDGE_INFO:") == true ){
+            commands.append( commands[i] );
+            commands.removeAt(i);
+        }
+    }
+    for(int i=num;i>=0;i--){
+        if( commands[i].contains("CREATE_STOPLINE:") == true ){
+            commands.append( commands[i] );
+            commands.removeAt(i);
+        }
+    }
+    for(int i=num;i>=0;i--){
+        if( commands[i].contains("SET_TS_NODE:") == true ){
+            commands.append( commands[i] );
+            commands.removeAt(i);
+        }
+    }
+
+    qDebug() << "Data read: size of commands = " << commands.size();
+
+
+    QList< QList<QPointF> > lanePoints;
+
+    for(int i=0;i<commands.size();++i){
+
+        QString comStr = QString(commands[i]);
+        if( comStr.isEmpty() == true ){
+            continue;
+        }
+
+        if( comStr.contains("CREATE_NODE:") ){
+            QStringList divCom = QString(commands[i]).replace("CREATE_NODE:","").split(",");
+
+            int id   = QString(divCom[0]).trimmed().toInt();
+            float xc = QString(divCom[1]).trimmed().toFloat();
+            float yc = QString(divCom[2]).trimmed().toFloat();
+            int Ncrs = QString(divCom[3]).trimmed().toInt();
+
+            QList<int> lanes;
+            for(int n=0;n<Ncrs;++n){
+                lanes << 1;
+            }
+
+            road->CreateNode(id, xc, yc, lanes, lanes );
+        }
+        if( comStr.contains("NODE_CONNECT:") ){
+            QStringList divCom = QString(commands[i]).replace("NODE_CONNECT:","").split(",");
+
+            int id   = QString(divCom[0]).trimmed().toInt();
+            for(int n=1;n<divCom.size();n+=3){
+                int cNode = QString(divCom[n]).trimmed().toInt();
+                float angle = QString(divCom[n+1]).trimmed().toFloat();
+                int inOrOut = QString(divCom[n+2]).trimmed().toInt();
+
+                road->SetAngleNodeLeg(id, (n-1)/3, angle);
+
+                if( inOrOut == 1 || inOrOut == 3 ){
+                    road->SetNodeConnectInfo(id,(n-1)/3, cNode, "OutNode")   ;
+                }
+
+                if( inOrOut == 2 || inOrOut == 3 ){
+                    road->SetNodeConnectInfo(id,(n-1)/3, cNode, "InNode")   ;
+                }
+            }
+        }
+        if( comStr.contains("CREATE_PATH:") ){
+            QStringList divCom = QString(commands[i]).replace("CREATE_PATH:","").split(",");
+
+            int id = QString(divCom[0]).trimmed().toInt();
+            int nP = QString(divCom[1]).trimmed().toInt();
+
+            float sx = QString(divCom[2]).trimmed().toFloat();
+            float sy =  QString(divCom[3]).trimmed().toFloat();
+            float sz = QString(divCom[4]).trimmed().toFloat();
+
+            float sdx = QString(divCom[5]).trimmed().toFloat() - sx;
+            float sdy = QString(divCom[6]).trimmed().toFloat() - sy;
+            float stht = atan2(sdy,sdx);
+
+            float ex = QString(divCom[2 + (nP-1) * 3]).trimmed().toFloat();
+            float ey =  QString(divCom[3 + (nP-1) * 3]).trimmed().toFloat();
+            float ez =  QString(divCom[4 + (nP-1) * 3]).trimmed().toFloat();
+
+            float edx = ex - sx;
+            float edy = ey - sy;
+            if( nP >= 3 ){
+                edx = ex - QString(divCom[2 + (nP-2) * 3]).trimmed().toFloat();
+                edy = ey - QString(divCom[3 + (nP-2) * 3]).trimmed().toFloat();
+            }
+            float etht = atan2(edy,edx);
+
+            QList<QPointF> points;
+
+            for(int k=0;k<nP;k++){
+                QPointF P;
+                P.setX(  QString(divCom[2 + k * 3]).trimmed().toFloat() );
+                P.setY(  QString(divCom[3 + k * 3]).trimmed().toFloat() );
+                points.append( P );
+            }
+
+            lanePoints.append( points );
+
+            QVector4D startPoint;
+            startPoint.setX( sx );
+            startPoint.setY( sy );
+            startPoint.setZ( sz );
+            startPoint.setW( stht );
+
+            QVector4D endPoint;
+            endPoint.setX( ex );
+            endPoint.setY( ey );
+            endPoint.setZ( ez );
+            endPoint.setW( etht );
+
+            //qDebug() << "CreateLane: id = " << id;
+            road->CreateLane( id, startPoint, -1, 0, true, endPoint, -1, 0, true );
+        }
+        if( comStr.contains("EDGE_INFO:") ){
+            QStringList divCom = QString(commands[i]).replace("EDGE_INFO:","").split(",");
+
+            int id = QString(divCom[0]).trimmed().toInt();
+            bool boundaryWPS = (QString(divCom[1]).trimmed().toInt() == 1 ? true : false);
+            int NodeS = QString(divCom[2]).trimmed().toInt();
+            int DirS = QString(divCom[3]).trimmed().toInt();
+            bool boundaryWPE = (QString(divCom[4]).trimmed().toInt() == 1 ? true : false);
+            int NodeE = QString(divCom[5]).trimmed().toInt();
+            int DirE = QString(divCom[6]).trimmed().toInt();
+
+            //qDebug() << "ID=" << id << " NodeS=" << NodeS << " NodeE=" << NodeE;
+
+            int idx = road->indexOfLane( id );
+            if( idx >= 0 ){
+                road->lanes[idx]->sWPBoundary = boundaryWPS;
+                road->lanes[idx]->sWPInNode = NodeS;
+                road->lanes[idx]->sWPNodeDir =DirS;
+
+                road->lanes[idx]->eWPBoundary = boundaryWPE;
+                road->lanes[idx]->eWPInNode = NodeE;
+                road->lanes[idx]->eWPNodeDir =DirE;
+
+                road->lanes[idx]->connectedNode = NodeE;
+                if( NodeE == NodeS ){
+                    road->lanes[idx]->connectedNodeOutDirect = DirE;
+                    road->lanes[idx]->connectedNodeInDirect  = DirS;
+                    road->lanes[idx]->departureNode = -1;
+                    road->lanes[idx]->departureNodeOutDirect = -1;
+                }
+                else{
+                    road->lanes[idx]->connectedNodeOutDirect = -1;
+                    road->lanes[idx]->connectedNodeInDirect  = DirE;
+                    road->lanes[idx]->departureNode = NodeS;
+                    road->lanes[idx]->departureNodeOutDirect = DirS;
+                }
+
+                road->SetNodeRelatedLane( NodeE, id );
+            }
+        }
+        if( comStr.contains("CREATE_STOPLINE:") ){
+
+            QStringList divCom = QString(commands[i]).replace("CREATE_STOPLINE:","").split(",");
+
+            int id = QString(divCom[0]).trimmed().toInt();
+            int onLane = QString(divCom[1]).trimmed().toInt();
+
+            int lnIdx = road->indexOfLane( onLane );
+            if( lnIdx >= 0 ){
+                int cNd = road->lanes[lnIdx]->connectedNode;
+                int ndIdx = road->indexOfNode( cNd );
+                if( ndIdx >= 0 ){
+                    if( road->nodes[ndIdx]->nLeg == 1 ){
+                        continue;
+                    }
+                }
+            }
+
+            float atX = QString(divCom[2]).trimmed().toFloat();
+            float atY = QString(divCom[3]).trimmed().toFloat();
+            float atZ = QString(divCom[4]).trimmed().toFloat();
+            int kind = QString(divCom[5]).trimmed().toFloat();
+
+            float angle = 0.0;
+            for(int n=0;n<lanePoints[onLane].size()-1;++n){
+                float xs = lanePoints[onLane][n].x();
+                float ys = lanePoints[onLane][n].y();
+                float xe = lanePoints[onLane][n+1].x();
+                float ye = lanePoints[onLane][n+1].y();
+                float dx = xe - xs;
+                float dy = ye - ys;
+                float D = dx * dx + dy * dy;
+                float rx = atX - xs;
+                float ry = atY - ys;
+                float R = rx * rx + ry * ry;
+                if( R < D ){
+                    angle = atan2( dy, dx );
+                    break;
+                }
+            }
+
+            int SLType = _STOPLINE_KIND::STOPLINE_TEMPSTOP;
+            if( kind == 1 ){
+                SLType = _STOPLINE_KIND::STOPLINE_SIGNAL;
+            }
+            else if( kind == 2 ){
+                SLType = _STOPLINE_KIND::STOPLINE_TURNWAIT;
+            }
+
+            //qDebug() << "CREATE_STOPLINE:" << id << " " << onLane << " " << atX << " " << atY;
+
+            road->CreateStopLineAtLAne( id, onLane, atX, atY, angle, SLType );
+        }
+        if( comStr.contains("SET_TS_NODE:") ){
+
+            QStringList divCom = QString(commands[i]).replace("SET_TS_NODE:","").split(",");
+
+            int id = QString(divCom[0]).trimmed().toInt();
+            int ndIdx = road->indexOfNode( id );
+            if( ndIdx >= 0 ){
+
+                if( road->nodes[ndIdx]->nLeg == 1 ){
+                    continue;
+                }
+
+                for(int j=0;j<road->nodes[ndIdx]->legInfo.size();++j){
+                    bool hasTS = false;
+                    for(int k=0;k<road->nodes[ndIdx]->trafficSignals.size();++k){
+                        if( road->nodes[ndIdx]->trafficSignals[k]->controlNodeDirection == j ){
+                            hasTS = true;
+                            break;
+                        }
+                    }
+                    if( hasTS == false ){
+                        road->AddTrafficSignalToNode(id,-1,0,j);
+                    }
+                }
+            }
+        }
+    }
+
+    // Set In-Out Direction
+    road->SetNodeConnectInOutDirect();
+
+
+    qDebug() << "Check path tangent at edge points.";
+
+    CheckLaneConnectionFull();
+
+    int checkEdgeAngleTarget = -1;
+
+    for(int i=0;i<road->lanes.size();i++){
+
+        if( road->lanes[i]->nextLanes.size() > 0 ){
+
+            int nP = lanePoints[i].size();
+
+            float dx = lanePoints[i][nP-1].x() - lanePoints[i][nP-2].x();
+            float dy = lanePoints[i][nP-1].y() - lanePoints[i][nP-2].y();
+            float D = sqrt(dx * dx + dy * dy);
+            dx /= D;
+            dy /= D;
+
+            if( i == checkEdgeAngleTarget ){
+                qDebug() << " Check Edge Angle; i = " << i << " , dx = " << dx << " dy = " << dy;
+            }
+
+            float setAngle = 0.0;
+            QList<float> DXf;
+            QList<float> DYf;
+            for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
+                int nextLL = road->lanes[i]->nextLanes[j];
+
+                float dxf = lanePoints[nextLL][1].x() - lanePoints[nextLL][0].x();
+                float dyf = lanePoints[nextLL][1].y() - lanePoints[nextLL][0].y();
+                float Df = sqrt(dxf * dxf + dyf * dyf);
+                dxf /= Df;
+                dyf /= Df;
+
+                DXf.append( dxf );
+                DYf.append( dyf );
+
+                if( i == checkEdgeAngleTarget ){
+                    qDebug() << " nextLL = " << nextLL << " , dxf = " << dxf << " dyf = " << dyf;
+                }
+            }
+
+            if( DXf.size() == 1 ){
+                float ip = dx * DXf[0] + dy * DYf[0];
+
+                if( i == checkEdgeAngleTarget ){
+                    qDebug() << "[1] ip = " << ip;
+                }
+
+                if( ip > 0.9986 ){
+                    float dxm = dx + DXf[0];
+                    float dym = dy + DYf[0];
+                    float angle = atan2( dym, dxm );
+                    road->SetLaneEdgeAngle( i, angle, 1 );
+
+                    setAngle = angle;
+
+                    if( i == checkEdgeAngleTarget ){
+                        qDebug() << "dxm = " << dxm << " dym = " << dym << " angle = " << angle;
+                    }
+                }
+                else{
+                    float angle = atan2( DYf[0], DXf[0] );
+                    road->SetLaneEdgeAngle( i, angle, 1 );
+
+                    setAngle = angle;
+
+                    if( i == checkEdgeAngleTarget ){
+                        qDebug() << "dx = " << DXf[0] << " dy = " << DYf[0] << " angle = " << angle;
+                    }
+                }
+            }
+            else if( DXf.size() > 1 ){
+                int selLL = -1;
+                float maxIP = 0.0;
+                for(int j=0;j<DXf.size();++j){
+                    float ip = dx * DXf[j] + dy * DYf[j];
+                    if( selLL< 0 || ip > maxIP ){
+                        selLL = j;
+                        maxIP = ip;
+                    }
+                }
+
+                if( i == checkEdgeAngleTarget ){
+                    qDebug() << "[2] selLL = " << selLL << " maxIP = " << maxIP;
+                }
+
+                if( maxIP > 0.9986 ){
+                    float dxm = dx + DXf[selLL];
+                    float dym = dy + DYf[selLL];
+                    float angle = atan2( dym, dxm );
+                    road->SetLaneEdgeAngle( i, angle, 1 );
+
+                    setAngle = angle;
+
+                    if( i == checkEdgeAngleTarget ){
+                        qDebug() << "dxm = " << dxm << " dym = " << dym << " angle = " << angle;
+                    }
+                }
+                else{
+                    float angle = atan2( dy, dx );
+                    road->SetLaneEdgeAngle( i, angle, 1 );
+
+                    setAngle = angle;
+
+                    if( i == checkEdgeAngleTarget ){
+                        qDebug() << "dx = " << dx << " dy = " << dy << " angle = " << angle;
+                    }
+                }
+            }
+
+            for(int j=0;j<road->lanes[i]->nextLanes.size();++j){
+                int nextLL = road->lanes[i]->nextLanes[j];
+                road->SetLaneEdgeAngle( nextLL, setAngle, 0 );
+            }
+        }
+    }
+
+    qDebug() << "Adjust lane shape by dividing lane";
+
+    int maxLane = road->lanes.size();
+    QList<int> newlyCreatedLane;
+    for(int i=0;i<maxLane;++i){
+
+        if( newlyCreatedLane.contains(i) == true ){
+            continue;
+        }
+
+        int nP = lanePoints[i].size();
+        if( nP < 4 ){
+            continue;
+        }
+        int mid = nP / 2;
+        float xm = lanePoints[i][mid].x();
+        float ym = lanePoints[i][mid].y();
+
+        float xt = 0.0;
+        float yt = 0.0;
+        float angle = 0.0;
+        int ret = road->GetNearestLanePoint(i, xm, ym, xt, yt, angle);
+        int newId = -1;
+        if( ret == i || ret < 0 ){
+            float dx = xm - xt;
+            float dy = ym - yt;
+            float D = dx * dx + dy * dy;
+            if( D > 1.0 || ret < 0 ){
+
+                //qDebug() << "Lane = " << i << " M(" << xm << "," << ym <<") P(" << xt << "," << yt << "), D = " << D;
+
+                int nStep = 1;
+                while(1){
+                    int ns = nStep + 1;
+                    if( mid + ns < lanePoints[i].size() && mid - ns >= 0){
+                        nStep = ns;
+                    }
+                    else{
+                        break;
+                    }
+                    if(nStep >= 5){
+                        break;
+                    }
+                }
+
+                float rx1 = lanePoints[i][mid+nStep].x() - xm;
+                float ry1 = lanePoints[i][mid+nStep].y() - ym;
+                float D1 = sqrt(rx1 * rx1 + ry1 * ry1);
+                rx1 /= D1;
+                ry1 /= D1;
+
+                float rx2 = xm - lanePoints[i][mid-nStep].x();
+                float ry2 = ym - lanePoints[i][mid-nStep].y();
+                float D2 = sqrt(rx2 * rx2 + ry2 * ry2);
+                rx2 /= D2;
+                ry2 /= D2;
+
+                float a1 = D2 / (D1 + D2);
+                float a2 = D1 / (D1 + D2);
+                float rx = rx1 * a1 + rx2 * a2;
+                float ry = ry1 * a1 + ry2 * a2;
+                float angle = atan2( ry, rx );
+
+                //qDebug() << "D1 = " << D1 << " D2 = " << D2 << "angle = " << angle * 57.3;
+
+                newId = road->DivideLaneAndMove( i, xm, ym, angle, false );
+                newlyCreatedLane.append( newId );
+            }
+        }
+
+        int midh = mid / 2;
+        int mid1 = mid - midh;
+        if( mid1 > 0 && mid1 < lanePoints[i].size() -1 ){
+            xm = lanePoints[i][mid1].x();
+            ym = lanePoints[i][mid1].y();
+
+            float xt = 0.0;
+            float yt = 0.0;
+            float angle = 0.0;
+            int ret = road->GetNearestLanePoint(i, xm, ym, xt, yt, angle);
+            if( ret == i || ret < 0 ){
+                float dx = xm - xt;
+                float dy = ym - yt;
+                float D = dx * dx + dy * dy;
+                if( D > 1.0 || ret < 0 ){
+
+                    //qDebug() << "Lane = " << i << " M(" << xm << "," << ym <<") P(" << xt << "," << yt << "), D = " << D;
+
+                    int nStep = 1;
+                    while(1){
+                        int ns = nStep + 1;
+                        if( mid1 + ns < lanePoints[i].size() && mid1 - ns >= 0){
+                            nStep = ns;
+                        }
+                        else{
+                            break;
+                        }
+                        if(nStep >= 5){
+                            break;
+                        }
+                    }
+
+                    float rx1 = lanePoints[i][mid1+nStep].x() - xm;
+                    float ry1 = lanePoints[i][mid1+nStep].y() - ym;
+                    float D1 = sqrt(rx1 * rx1 + ry1 * ry1);
+                    rx1 /= D1;
+                    ry1 /= D1;
+
+                    float rx2 = xm - lanePoints[i][mid1-nStep].x();
+                    float ry2 = ym - lanePoints[i][mid1-nStep].y();
+                    float D2 = sqrt(rx2 * rx2 + ry2 * ry2);
+                    rx2 /= D2;
+                    ry2 /= D2;
+
+                    float a1 = D2 / (D1 + D2);
+                    float a2 = D1 / (D1 + D2);
+                    float rx = rx1 * a1 + rx2 * a2;
+                    float ry = ry1 * a1 + ry2 * a2;
+                    float angle = atan2( ry, rx );
+
+                    //qDebug() << "D1 = " << D1 << " D2 = " << D2 << "angle = " << angle * 57.3;
+
+                    int newId1 = road->DivideLaneAndMove( i, xm, ym, angle, false );
+                    newlyCreatedLane.append( newId1 );
+                }
+            }
+        }
+
+        int mid2 = mid + midh;
+        if( newId >= 0 && mid2 > 0 && mid2 < lanePoints[i].size() - 1 ){
+
+            xm = lanePoints[i][mid2].x();
+            ym = lanePoints[i][mid2].y();
+
+            float xt = 0.0;
+            float yt = 0.0;
+            float angle = 0.0;
+            int ret = road->GetNearestLanePoint(newId, xm, ym, xt, yt, angle);
+            if( ret == newId || ret < 0 ){
+                float dx = xm - xt;
+                float dy = ym - yt;
+                float D = dx * dx + dy * dy;
+                if( D > 1.0 || ret < 0 ){
+
+                    //qDebug() << "Lane = " << i << " M(" << xm << "," << ym <<") P(" << xt << "," << yt << "), D = " << D;
+
+                    int nStep = 1;
+                    while(1){
+                        int ns = nStep + 1;
+                        if( mid2 + ns < lanePoints[i].size() && mid2 - ns >= 0){
+                            nStep = ns;
+                        }
+                        else{
+                            break;
+                        }
+                        if(nStep >= 5){
+                            break;
+                        }
+                    }
+
+                    float rx1 = lanePoints[i][mid2+nStep].x() - xm;
+                    float ry1 = lanePoints[i][mid2+nStep].y() - ym;
+                    float D1 = sqrt(rx1 * rx1 + ry1 * ry1);
+                    rx1 /= D1;
+                    ry1 /= D1;
+
+                    float rx2 = xm - lanePoints[i][mid2-nStep].x();
+                    float ry2 = ym - lanePoints[i][mid2-nStep].y();
+                    float D2 = sqrt(rx2 * rx2 + ry2 * ry2);
+                    rx2 /= D2;
+                    ry2 /= D2;
+
+                    //qDebug() << " F(" << lanePoints[i][mid2+nStep].x() << "," << lanePoints[i][mid2+nStep].y() << ")"
+                    //         << " R(" << lanePoints[i][mid2-nStep].x() << "," << lanePoints[i][mid2-nStep].y() << ")";
+
+                    float a1 = D2 / (D1 + D2);
+                    float a2 = D1 / (D1 + D2);
+                    float rx = rx1 * a1 + rx2 * a2;
+                    float ry = ry1 * a1 + ry2 * a2;
+                    float angle = atan2( ry, rx );
+
+                    //qDebug() << "D1 = " << D1 << " D2 = " << D2 << "angle = " << angle * 57.3;
+
+                    int newId2 = road->DivideLaneAndMove( newId, xm, ym, angle, false );
+                    newlyCreatedLane.append( newId2 );
+                }
+            }
+        }
+    }
+
+    CreateWPData();
+
+    FindInconsistentData();
+
+    SetAllLaneLists();
+
+    SetTurnDirectionInfo();
+
+    CheckAllStopLineCrossLane();
+
+    CheckLaneCrossPoints();
+
+    qDebug() << "End of Migratation";
+}
+
+
 void DataManipulator::ImportERIS3Data(QString filename)
 {
     qDebug() << "[DataManipulator::ImportERIS3Data] filename = " << filename;

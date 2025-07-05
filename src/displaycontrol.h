@@ -69,6 +69,7 @@ public:
     QCheckBox *showMapImage;
     QCheckBox *backMapImage;
     QCheckBox *showStaticObject;
+    QCheckBox *showRoadBoundary;
 
     QDoubleSpinBox *backMapOffsetVal;
 
@@ -78,6 +79,7 @@ public:
     QCheckBox *showStopLineLabels;
     QCheckBox *showPedestLaneLabels;
     QCheckBox *showStaticObjectLabels;
+    QCheckBox *showRoadBoundaryLabels;
     QCheckBox *showLabels;
 
     QCheckBox *selectNode;
@@ -86,6 +88,7 @@ public:
     QCheckBox *selectStopLine;
     QCheckBox *selectPedestLane;
     QCheckBox *selectStaticObject;
+    QCheckBox *selectRoadBoundary;
 
     QPushButton *prevLaneList;
     QPushButton *nextLaneList;

@@ -95,6 +95,9 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     showStaticObject       = new QCheckBox("Static Object");
     showStaticObjectLabels = new QCheckBox("Label");
 
+    showRoadBoundary       = new QCheckBox("Road Boundary");
+    showRoadBoundaryLabels = new QCheckBox("Label");
+
     showLabels = new QCheckBox("Labels");
 
     showMapImage = new QCheckBox("Map Image");
@@ -136,6 +139,8 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( showPedestLaneLabels, row++, 2 );
     grid->addWidget( showStaticObject, row, 1 );
     grid->addWidget( showStaticObjectLabels, row++, 2 );
+    grid->addWidget( showRoadBoundary, row, 1 );
+    grid->addWidget( showRoadBoundaryLabels, row++, 2 );
 
     grid->addWidget( showLabels, row++, 1 );
     grid->addWidget( showMapImage, row, 1 );
@@ -149,7 +154,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     selectStopLine      = new QCheckBox("Stop Line");
     selectPedestLane    = new QCheckBox("Pedestrian Lane");
     selectStaticObject  = new QCheckBox("Static Object");
-
+    selectRoadBoundary  = new QCheckBox("Road Boundary");
 
     grid->addWidget( new QLabel("Selection:"), row++, 0 );
     grid->addWidget( selectNode, row++, 1 );
@@ -158,6 +163,7 @@ DisplayControl::DisplayControl(QWidget *parent) : QWidget(parent)
     grid->addWidget( selectStopLine, row++, 1 );
     grid->addWidget( selectPedestLane, row++, 1 );
     grid->addWidget( selectStaticObject, row++, 1 );
+    grid->addWidget( selectRoadBoundary, row++, 1 );
 
 
     InitSetting();
@@ -205,6 +211,9 @@ void DisplayControl::InitSetting()
     showStaticObject->setChecked(true);
     showStaticObjectLabels->setChecked(true);
 
+    showRoadBoundary->setChecked(true);
+    showRoadBoundaryLabels->setChecked(true);
+
     showLabels->setChecked(true);
 
     showMapImage->setChecked(true);
@@ -216,6 +225,7 @@ void DisplayControl::InitSetting()
     selectStopLine->setChecked(true);
     selectPedestLane->setChecked(true);
     selectStaticObject->setChecked(true);
+    selectRoadBoundary->setChecked(true);
 }
 
 

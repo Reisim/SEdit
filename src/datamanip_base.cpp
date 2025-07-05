@@ -1556,6 +1556,26 @@ void DataManipulator::MergeSelectedObject()
             }
         }
     }
+    else if(canvas->selectedObj.selObjKind[0] == canvas->SEL_ROAD_BOUNDARY_POINT &&
+            canvas->selectedObj.selObjKind[1] == canvas->SEL_ROAD_BOUNDARY_POINT ){
+
+        int modID1 = canvas->selectedObj.selObjID[0];
+        int roadBoundaryID1 = modID1 / 100;
+        int sectIdx1 = modID1 - roadBoundaryID1 * 100;
+
+        int modID2 = canvas->selectedObj.selObjID[1];
+        int roadBoundaryID2 = modID2 / 100;
+        int sectIdx2 = modID2 - roadBoundaryID2 * 100;
+
+        if( roadBoundaryID1 == roadBoundaryID2 && abs(sectIdx1 - sectIdx2) == 1 ){
+            int delSect = sectIdx1;
+            if( delSect < sectIdx2 ){
+                delSect = sectIdx2;
+            }
+            road->MergeRoadBoundarySection( roadBoundaryID1, delSect );
+            roadObjProp->ChangeRoadBoundaryInfo( roadBoundaryID1 );
+        }
+    }
 
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();
@@ -1575,6 +1595,7 @@ void DataManipulator::CheckLaneConnectionFull()
 
 void DataManipulator::FindInconsistentData()
 {
+    road->SetNodeConnectInOutDirect();
     road->FindInconsistentData();
     canvas->update();
 }
@@ -2201,12 +2222,40 @@ void DataManipulator::SplitSelectedPedestLane()
         }
     }
 
+    canvas->update();
+}
+
+void DataManipulator::SplitSelectedRoadBoundary()
+{
+    qDebug() << "[SplitSelectedRoadBoundary]";
+
+    qDebug() << "selObjKind.size = " << canvas->selectedObj.selObjKind.size();
+
+    for(int i=0;i<canvas->selectedObj.selObjKind.size();++i){
+
+        qDebug() << "selObjKind = " << canvas->selectedObj.selObjKind[i];
+
+        if( canvas->selectedObj.selObjKind[i] == canvas->SEL_ROAD_BOUNDARY_POINT ){
+
+            int modID = canvas->selectedObj.selObjID[i];
+            int roadBoundaryID = modID / 100;
+            int sectIdx = modID - roadBoundaryID * 100;
+
+            qDebug() << "roadBoundaryID = " << roadBoundaryID << " sectIdx = " << sectIdx;
+
+            int rbIdx = road->indexOfRoadBoundary(roadBoundaryID);
+            if( rbIdx >= 0 && sectIdx >= 0 && sectIdx <= road->roadBoundary[rbIdx]->pos.size() - 2 ){
+                road->DivideRoadBoundarySection( roadBoundaryID, sectIdx, sectIdx + 1 );
+                roadObjProp->ChangeRoadBoundaryInfo(roadBoundaryID);
+            }
+        }
+    }
+
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();
 
     canvas->update();
 }
-
 
 void DataManipulator::SetSignalsNodeByCommand()
 {

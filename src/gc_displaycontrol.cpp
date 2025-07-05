@@ -173,6 +173,18 @@ void GraphicCanvas::SetStaticObjectLabelVisibility(bool b)
     update();
 }
 
+void GraphicCanvas::SetRoadBoundaryVisibility(bool b)
+{
+    showRoadBoundaryFlag = b;
+    update();
+}
+
+void GraphicCanvas::SetRoadBoundaryLabelVisibility(bool b)
+{
+    showRoadBoundaryLabelFlag = b;
+    update();
+}
+
 void GraphicCanvas::SetProjectionOrthogonal(bool b)
 {
     isOrthogonal = b;
@@ -239,6 +251,11 @@ void GraphicCanvas::SetPedestLaneSelection(bool b)
 void GraphicCanvas::SetStaticObjectSelection(bool b)
 {
     selectStaticObjectFlag = b;
+}
+
+void GraphicCanvas::SetRoadBoundarySelection(bool b)
+{
+    selectRoadBoundaryFlag = b;
 }
 
 void GraphicCanvas::SetLaneColorBySpeedLimitFlag(bool b)

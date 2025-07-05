@@ -50,6 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     dtManip->setDlg = setDlg;
     connect( dtManip, SIGNAL(UpdateStatusBar(QString)), this, SLOT(UpdateStatusBar(QString)));
     connect( canvas, SIGNAL(PedestLanePointPicked()), dtManip, SLOT(CreatePedestPath()) );
+    connect( canvas, SIGNAL(RoadBoundaryPointPicked()), dtManip, SLOT(CreateRoadBoundary()) );
 
 
     //-------------------------
@@ -99,6 +100,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->showPedestLaneLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneLabelVisibility(bool)) );
     connect( dispCtrl->showStaticObject, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectVisibility(bool)) );
     connect( dispCtrl->showStaticObjectLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectLabelVisibility(bool)) );
+    connect( dispCtrl->showRoadBoundary, SIGNAL(toggled(bool)), canvas, SLOT(SetRoadBoundaryVisibility(bool)) );
+    connect( dispCtrl->showRoadBoundaryLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetRoadBoundaryLabelVisibility(bool)) );
     connect( dispCtrl->showLabels, SIGNAL(toggled(bool)), canvas, SLOT(SetLabelVisibility(bool)) );
     connect( dispCtrl->colorMapOfLaneSpeedLimit, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorBySpeedLimitFlag(bool)) );
     connect( dispCtrl->colorMapOfLaneActualSpeed, SIGNAL(toggled(bool)), canvas, SLOT(SetLaneColorByActualSpeedFlag(bool)) );
@@ -110,6 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect( dispCtrl->selectStopLine, SIGNAL(toggled(bool)), canvas, SLOT(SetStopLineSelection(bool)) );
     connect( dispCtrl->selectPedestLane, SIGNAL(toggled(bool)), canvas, SLOT(SetPedestLaneSelection(bool)) );
     connect( dispCtrl->selectStaticObject, SIGNAL(toggled(bool)), canvas, SLOT(SetStaticObjectSelection(bool)) );
+    connect( dispCtrl->selectRoadBoundary, SIGNAL(toggled(bool)), canvas, SLOT(SetRoadBoundarySelection(bool)) );
 
     dispCtrl->road = road;
     dispCtrl->move(50,50);
@@ -225,6 +229,11 @@ MainWindow::MainWindow(QWidget *parent)
     importAct->setStatusTip( tr("Import Other Data File") );
     connect( importAct, SIGNAL(triggered()), this, SLOT(ImportOtherData()));
     fileMenu->addAction( importAct );
+
+    QAction* migrateAct = new QAction( tr("&Migrate"), this );
+    migrateAct->setStatusTip( tr("Migration") );
+    connect( migrateAct, SIGNAL(triggered()), this, SLOT(MigrateData()));
+    fileMenu->addAction( migrateAct );
 
     fileMenu->addSeparator();
 
@@ -476,6 +485,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect( createStaticObj, SIGNAL(triggered()),dtManip,SLOT(CreateStaticObject()));
     createObjectPopup->addAction( createStaticObj );
 
+    QAction *createRoadBoundary = new QAction();
+    createRoadBoundary->setText("Road Boundary");
+    connect( createRoadBoundary, SIGNAL(triggered()),dtManip,SLOT(StartCreateRoadBoundary()));
+    connect( createRoadBoundary, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+    createObjectPopup->addAction( createRoadBoundary );
+
 
     //
     insertNodePopup = new QMenu();
@@ -641,7 +656,19 @@ MainWindow::MainWindow(QWidget *parent)
     connect( canvas->createPTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     connect( canvas->createSL, SIGNAL(triggered()),dtManip,SLOT(CreateStopLineForInDir()));
     connect( canvas->createSL, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
+
+    //startTimer(100);
 }
+
+
+// void MainWindow::timerEvent(QTimerEvent *e)
+// {
+//     if( canvas ){
+//         if( canvas->hasPendingRequest == true ){
+//             canvas->update();
+//         }
+//     }
+// }
 
 
 MainWindow::~MainWindow()
@@ -753,6 +780,8 @@ void MainWindow::NewFile()
 
     canvas->ResetPedestLanePointPickMode();
     canvas->ResetNodePickMode();
+    canvas->ResetRoadBoundaryPointPickMode();
+
     canvas->selectedObj.selObjKind.clear();
     canvas->selectedObj.selObjID.clear();
     canvas->SetNumberKeyPressed(-1);
@@ -874,6 +903,24 @@ bool MainWindow::SaveAsFile()
 }
 
 
+void MainWindow::MigrateData()
+{
+    QString fileName = QFileDialog::getOpenFileName(this,
+                                                    tr("Choose Migration File"),
+                                                    ".",
+                                                    tr("Data file(*.csv)"));
+    if( fileName.isNull() == false ){
+        qDebug() << "filename = " << fileName;
+    }
+    else{
+        qDebug() << "Migration action canceled.";
+        return;
+    }
+
+    dtManip->MigrateData( fileName );
+}
+
+
 void MainWindow::ImportOtherData()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
@@ -937,6 +984,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         qDebug() << "[MainWindow::keyPressEvent] key = ESCAPE";
 
         canvas->ResetPedestLanePointPickMode();
+        canvas->ResetRoadBoundaryPointPickMode();
         canvas->ResetNodePickMode();
         canvas->selectedObj.selObjKind.clear();
         canvas->selectedObj.selObjID.clear();
@@ -948,6 +996,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
     if( key == Qt::Key_Delete ){
         canvas->RemovePickedPedestLanePoint();
+        canvas->RemovePickedRoadBoundaryPoint();
     }
 
     if( modifi & Qt::AltModifier ){
@@ -971,6 +1020,10 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
         else if( key == Qt::Key_D ){
             dtManip->SplitSelectedLane();
             dtManip->SplitSelectedPedestLane();
+            dtManip->SplitSelectedRoadBoundary();
+
+            canvas->selectedObj.selObjKind.clear();
+            canvas->selectedObj.selObjID.clear();
         }
         else if( key == Qt::Key_I ){
 

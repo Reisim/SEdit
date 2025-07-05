@@ -277,6 +277,32 @@ void RoadInfo::RotateLane(int id, float rotate, QVector2D rotCenter)
 }
 
 
+void RoadInfo::SetLaneEdgeAngle(int id,float angle,int edgeFlag)
+{
+    int index = indexOfLane(id);
+    if( index < 0 ){
+        qDebug() << "[SetLaneEdgeAngle] cannot find index of id = " << id;
+        return;
+    }
+
+    float cRot = cos(angle);
+    float sRot = sin(angle);
+
+    struct LaneShapeInfo *s = &(lanes[index]->shape);
+
+    if( edgeFlag == 0 ){
+        s->derivative[0]->setX( cRot );
+        s->derivative[0]->setY( sRot );
+    }
+    else{
+        s->derivative.last()->setX( cRot );
+        s->derivative.last()->setY( sRot );
+    }
+
+    CalculateShape( s );
+}
+
+
 void RoadInfo::RotateLaneEdge(int id, float rotate, int edgeFlag)
 {
     int index = indexOfLane(id);
@@ -560,6 +586,83 @@ void RoadInfo::CalculateShape(struct LaneShapeInfo *shape)
     if( shape->curvature[DEFAULT_LANE_SHAPE_POINTS] * shape->curvature[DEFAULT_LANE_SHAPE_POINTS-1] < 0.0 ){
         shape->curvature[DEFAULT_LANE_SHAPE_POINTS] = 0.0;
     }
+}
+
+
+int RoadInfo::DivideLaneAndMove(int id,float xm,float ym,float angle,bool showInfo)
+{
+    if(showInfo){
+        qDebug() << "[RoadInfo::DivideLaneAndMove] ld = " << id;
+    }
+
+    int index = indexOfLane(id);
+    if( index < 0 ){
+        qDebug() << "[DivideLaneHalf] cannot find index of id = " << id;
+        return -1;
+    }
+
+    struct LaneShapeInfo *s = &(lanes[index]->shape);
+    int Np = s->pos.size() / 2;
+
+    int sWPInNode  = lanes[index]->sWPInNode;
+    int sWPNodeDir = lanes[index]->sWPNodeDir;
+    int eWPInNode  = lanes[index]->eWPInNode;
+    int eWPNodeDir = lanes[index]->eWPNodeDir;
+    bool eWPBoundary = lanes[index]->eWPBoundary;
+
+
+    QVector4D sP, eP;
+
+    sP.setX( xm );
+    sP.setY( ym );
+    sP.setZ( s->pos[Np]->z() );
+    sP.setW( angle );
+
+    eP.setX( s->pos.last()->x() );
+    eP.setY( s->pos.last()->y() );
+    eP.setZ( s->pos.last()->z() );
+    eP.setW( atan2( s->derivative.last()->y(), s->derivative.last()->x() ) );
+
+    int newLaneId = CreateLane( -1, sP, sWPInNode, sWPNodeDir, false, eP, eWPInNode, eWPNodeDir, eWPBoundary );
+
+    if(showInfo){
+        qDebug() << "New Lane ID = " << newLaneId;
+    }
+
+    int idx = indexOfLane(newLaneId);
+    if( idx < 0){
+        qDebug() << "[DivideLaneHalf] cannot find index of id = " << newLaneId;
+        return -1;
+    }
+
+    SetNodeRelatedLane( eWPInNode, newLaneId );
+    if( eWPInNode != sWPInNode){
+        SetNodeRelatedLane( sWPInNode, newLaneId );
+    }
+
+    lanes[idx]->nextLanes.clear();
+    lanes[idx]->previousLanes.clear();
+    for(int i=0;i<lanes[index]->nextLanes.size();++i){
+        lanes[idx]->nextLanes.append( lanes[index]->nextLanes[i] );
+    }
+    lanes[index]->nextLanes.clear();
+    lanes[index]->nextLanes.append( newLaneId );
+    lanes[idx]->previousLanes.append( id );
+
+    s->pos.last()->setX( xm );
+    s->pos.last()->setY( ym );
+    s->pos.last()->setZ( s->pos[Np]->z() );
+
+    s->derivative.last()->setX( cos(angle) );
+    s->derivative.last()->setY( sin(angle) );
+
+    lanes[index]->eWPInNode = eWPInNode;
+    lanes[index]->eWPNodeDir = eWPNodeDir;
+    lanes[index]->eWPBoundary = false;
+
+    CalculateShape(s);
+
+    return newLaneId;
 }
 
 

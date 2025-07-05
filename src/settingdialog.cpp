@@ -62,7 +62,7 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
 
     vehicleKindTable = new QTableWidget();
 
-    vehicleKindTable->setColumnCount(8);
+    vehicleKindTable->setColumnCount(12);
 
     QStringList tableLabels;
     tableLabels << "Category";
@@ -70,9 +70,14 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
     tableLabels << "Length";
     tableLabels << "Width";
     tableLabels << "Height";
+    tableLabels << "WheelBase";
+    tableLabels << "Rear-Axis from Rear-End";
     tableLabels << "UE4 Model ID";
     tableLabels << "Number Spawn";
     tableLabels << "CG Kind";
+    tableLabels << "Eye X";
+    tableLabels << "Eye Y";
+
 
 
     vehicleKindTable->setColumnWidth(0,200);
@@ -80,9 +85,13 @@ SettingDialog::SettingDialog(QWidget *parent) : QWidget(parent)
     vehicleKindTable->setColumnWidth(2,80);
     vehicleKindTable->setColumnWidth(3,80);
     vehicleKindTable->setColumnWidth(4,80);
-    vehicleKindTable->setColumnWidth(5,140);
-    vehicleKindTable->setColumnWidth(6,90);
-    vehicleKindTable->setColumnWidth(7,90);
+    vehicleKindTable->setColumnWidth(5,80);
+    vehicleKindTable->setColumnWidth(6,80);
+    vehicleKindTable->setColumnWidth(7,140);
+    vehicleKindTable->setColumnWidth(8,90);
+    vehicleKindTable->setColumnWidth(9,90);
+    vehicleKindTable->setColumnWidth(10,90);
+    vehicleKindTable->setColumnWidth(11,90);
 
     vehicleKindTable->setHorizontalHeaderLabels( tableLabels );
 
@@ -249,11 +258,57 @@ void SettingDialog::LoadSetting()
 
                 int nRow = vehicleKindTable->rowCount();
                 vehicleKindTable->insertRow( nRow );
-                for(int i=0;i<divVal.size();++i){
-                    QTableWidgetItem *item = new QTableWidgetItem();
-                    item->setText( QString(divVal[i]).trimmed() );
-                    vehicleKindTable->setItem( nRow, i, item);
+                float length = 0.0;
+                if( divVal.size() == 8 ){
+                    int atcol = 0;
+                    for(int i=0;i<divVal.size();++i){
+                        QTableWidgetItem *item = new QTableWidgetItem();
+                        item->setText( QString(divVal[i]).trimmed() );
+                        vehicleKindTable->setItem( nRow, atcol, item);
+                        atcol++;
+                        if( atcol == 3 ){
+                            length = QString(divVal[i]).trimmed().toFloat();
+                        }
+                        if( atcol == 5 ){
+                            QTableWidgetItem *item1 = new QTableWidgetItem();
+                            item1->setText( QString("%1").arg(length * 0.58) );
+                            vehicleKindTable->setItem( nRow, atcol, item1);
+                            atcol++;
+
+                            QTableWidgetItem *item2 = new QTableWidgetItem();
+                            item2->setText( QString("%1").arg(length * 0.20) );
+                            vehicleKindTable->setItem( nRow, atcol, item2);
+                            atcol++;
+                        }
+                    }
+                    for(int i=10;i<12;++i){
+                        QTableWidgetItem *item = new QTableWidgetItem();
+                        item->setText( QString("0.0") );
+                        vehicleKindTable->setItem( nRow, i, item);
+                    }
                 }
+                else if( divVal.size() == 10 ){
+                    for(int i=0;i<divVal.size();++i){
+                        QTableWidgetItem *item = new QTableWidgetItem();
+                        item->setText( QString(divVal[i]).trimmed() );
+                        vehicleKindTable->setItem( nRow, i, item);
+                    }
+                    for(int i=10;i<12;++i){
+                        QTableWidgetItem *item = new QTableWidgetItem();
+                        item->setText( QString("0.0") );
+                        vehicleKindTable->setItem( nRow, i, item);
+                    }
+                }
+                else if( divVal.size() == 12 ){
+                    for(int i=0;i<divVal.size();++i){
+                        QTableWidgetItem *item = new QTableWidgetItem();
+                        item->setText( QString(divVal[i]).trimmed() );
+                        vehicleKindTable->setItem( nRow, i, item);
+
+                        qDebug() << "vehicle data: [" << nRow << "][" << i << "] = " << item->text();
+                    }
+                }
+
             }
 
         }
@@ -401,10 +456,14 @@ QString SettingDialog::GetVehicleKindTableStr(int row,int col)
             return vehicleKindTable->item(row,col)->text();
         }
         else{
+            qDebug() << "[GetVehicleKindTableStr] row = " << row << " col = " << col << " item is empty";
             return QString();
         }
     }
     else{
+        qDebug() << "[GetVehicleKindTableStr] row = " << row << " col = " << col
+                 << " invalid: rowCount = " << vehicleKindTable->rowCount()
+                 << "  columnCount = " << vehicleKindTable->columnCount();
         return QString();
     }
 }
@@ -469,6 +528,67 @@ QStringList SettingDialog::GetPedestianKindSubcategory()
     }
 
     return subcategory;
+}
+
+void SettingDialog::SetVehicleKindByStringList(QStringList vehicleKindStrs)
+{
+    vehicleKindTable->clearContents();
+
+    int nRow = vehicleKindTable->rowCount();
+    for(int i=nRow-1;i>=0;i--){
+        vehicleKindTable->removeRow(i);
+    }
+
+    qDebug() << "[SetVehicleKindByStringList]";
+
+    for(int i=0;i<vehicleKindStrs.size();++i){
+
+        qDebug() << i << ": " << vehicleKindStrs[i];
+
+        nRow = vehicleKindTable->rowCount();
+        vehicleKindTable->insertRow( nRow );
+
+        QStringList vData = QString(vehicleKindStrs[i]).split(",");
+        for(int j=0;j<vehicleKindTable->columnCount();++j){
+            QTableWidgetItem *item = new QTableWidgetItem();
+            if( j < vData.size() ){
+                item->setText( QString(vData[j] ).trimmed() );
+            }
+            vehicleKindTable->setItem( nRow, j, item);
+        }
+
+        if( vehicleKindTable->columnCount() < 12 ){
+            for(int j=vehicleKindTable->columnCount();j<12;++j){
+                QTableWidgetItem *item = new QTableWidgetItem();
+                item->setText( QString("0.0") );
+                vehicleKindTable->setItem( nRow, j, item);
+            }
+        }
+    }
+}
+
+void SettingDialog::SetPedestrianKindByStringList(QStringList pedestrianKindStrs)
+{
+    pedestrianKindTable->clearContents();
+
+    int nRow = pedestrianKindTable->rowCount();
+    for(int i=nRow-1;i>=0;i--){
+        pedestrianKindTable->removeRow(i);
+    }
+
+    for(int i=0;i<pedestrianKindStrs.size();++i){
+        nRow = pedestrianKindTable->rowCount();
+        pedestrianKindTable->insertRow( nRow );
+
+        QStringList vData = QString(pedestrianKindStrs[i]).split(",");
+        for(int j=0;j<pedestrianKindTable->columnCount();++j){
+            QTableWidgetItem *item = new QTableWidgetItem();
+            if( j < vData.size() ){
+                item->setText( QString(vData[j] ).trimmed() );
+            }
+            pedestrianKindTable->setItem( nRow, j, item);
+        }
+    }
 }
 
 

@@ -172,6 +172,19 @@ int RoadInfo::indexOfStaticObject(int id)
 }
 
 
+int RoadInfo::indexOfRoadBoundary(int id)
+{
+    int index = -1;
+    for(int i=0;i<roadBoundary.size();++i){
+        if( roadBoundary[i]->id == id ){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+
 void RoadInfo::ClearAllData()
 {
     ClearWPs();

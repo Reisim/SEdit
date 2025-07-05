@@ -35,6 +35,39 @@ bool RoadInfo::SaveRoadData(QString filename)
     out << "#---------------------------------------\n";
     out << "#   SEdit Data File\n";
     out << "#---------------------------------------\n";
+
+    //
+    // Vehicle and Pedestrian Kind Data
+    //
+    for(int i=0;i<setDlg->GetVehicleKindNum();++i){
+        out << "Vehicle Kind : ";
+        for(int j=0;j<12;++j){
+            out << setDlg->GetVehicleKindTableStr(i,j);
+            if( j < 11 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+            qDebug() << "vehile data[" << i << "][" << j << "] = " << setDlg->GetVehicleKindTableStr(i,j);
+        }
+    }
+    out << "\n";
+
+    for(int i=0;i<setDlg->GetPedestrianKindNum();++i){
+        out << "Pedestrian Kind : ";
+        for(int j=0;j<11;++j){
+            out << setDlg->GetPedestKindTableStr(i,j);
+            if( j < 10 ){
+                out << " , ";
+            }
+            else{
+                out << "\n";
+            }
+        }
+    }
+    out << "\n";
+
     out << "LeftOrRight: " << LeftOrRight << "\n";
     out << "\n";
 
@@ -198,7 +231,10 @@ bool RoadInfo::SaveRoadData(QString filename)
                 << pedestLanes[i]->shape[j]->pos.z() << " , " << pedestLanes[i]->shape[j]->width << "\n";
             out << "PL Property : " << (pedestLanes[i]->shape[j]->isCrossWalk == true ? 1 : 0) << " , "
                 << pedestLanes[i]->shape[j]->runOutProb << " , " << pedestLanes[i]->shape[j]->runOutDirect << " , "
-                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << "\n";
+                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << " , "
+                << (pedestLanes[i]->shape[j]->canWaitTaxi == true ? 1 : 0) << " , "
+                << pedestLanes[i]->shape[j]->taxiTakeProbability
+                << "\n";
         }
         out << "PL Volumne : ";
         for(int j=0;j<pedestLanes[i]->trafficVolume.size();++j){
@@ -219,6 +255,36 @@ bool RoadInfo::SaveRoadData(QString filename)
         out << "\n";
     }
     out << "\n";
+
+    for(int i=0;i<roadBoundary.size();++i){
+        out << "[RoadBoundary] ID : " << roadBoundary[i]->id << "\n";
+        out << "RB Pos : ";
+        for(int j=0;j<roadBoundary[i]->pos.size();++j){
+            out << roadBoundary[i]->pos[j]->x() << " , "
+                << roadBoundary[i]->pos[j]->y() << " , "
+                << roadBoundary[i]->pos[j]->z();
+            if(j == roadBoundary[i]->pos.size()-1){
+                out << "\n";
+            }
+            else{
+                out << " , ";
+            }
+        }
+        out << "RB Height : ";
+        for(int j=0;j<roadBoundary[i]->height.size();++j){
+            out << roadBoundary[i]->height[j];
+            if(j == roadBoundary[i]->height.size()-1){
+                out << "\n";
+            }
+            else{
+                out << " , ";
+            }
+        }
+        out << "RB RoadSide : " << roadBoundary[i]->RoadSide << "\n";
+        out << "\n";
+    }
+    out << "\n";
+
 
     QString tmpfilename = filename;
 
@@ -277,7 +343,6 @@ bool RoadInfo::SaveRoadData(QString filename)
             << mapImageMng->baseMapImages[i]->rotate << "\n";
     }
     out << "\n";
-
 
     file.close();
 
@@ -352,6 +417,11 @@ bool RoadInfo::LoadRoadData(QString filename)
     pd->setValue(0);
     QApplication::processEvents();
 
+    bool hasVehicleKindData = false;
+    bool hasPedestrianKindData = false;
+    QStringList vehicleKindDataStrs;
+    QStringList pedestrianKindDataStrs;
+
 
     while( in.atEnd() == false ){
 
@@ -367,6 +437,17 @@ bool RoadInfo::LoadRoadData(QString filename)
             if( Line.contains("SEdit Data File") == true ){
                 validFile = true;
             }
+
+            if( hasVehicleKindData == true && vehicleKindDataStrs.size() > 0 ){
+                setDlg->SetVehicleKindByStringList(vehicleKindDataStrs);
+                hasVehicleKindData = false;
+            }
+
+            if( hasPedestrianKindData == true && pedestrianKindDataStrs.size() > 0 ){
+                setDlg->SetPedestrianKindByStringList(pedestrianKindDataStrs);
+                hasPedestrianKindData = false;
+            }
+
             continue;
         }
 
@@ -390,7 +471,15 @@ bool RoadInfo::LoadRoadData(QString filename)
         }
 
 
-        if( tagStr.contains("LeftOrRight") == true ){
+        if( tagStr.contains("Vehicle Kind") == true ){
+            hasVehicleKindData = true;
+            vehicleKindDataStrs .append( dataStr );
+        }
+        else if( tagStr.contains("Pedestrian Kind") == true ){
+            hasPedestrianKindData = true;
+            pedestrianKindDataStrs .append( dataStr );
+        }
+        else if( tagStr.contains("LeftOrRight") == true ){
 
             LeftOrRight = dataStr.toInt();
 
@@ -876,6 +965,14 @@ bool RoadInfo::LoadRoadData(QString filename)
             else{
                 pedestLanes.last()->shape.last()->marginToRoadForRunOut = 0.0;
             }
+            if( divDataStr.size() >= 6 ){
+                pedestLanes.last()->shape.last()->canWaitTaxi = ( QString(divDataStr[4]).trimmed().toInt() == 1 ? true : false);
+                pedestLanes.last()->shape.last()->taxiTakeProbability = QString(divDataStr[5]).trimmed().toFloat();
+            }
+            else{
+                pedestLanes.last()->shape.last()->canWaitTaxi = false;
+                pedestLanes.last()->shape.last()->taxiTakeProbability = 0.0;
+            }
 
         }
         else if( tagStr.contains("PL Volumne") == true  ){
@@ -947,7 +1044,48 @@ bool RoadInfo::LoadRoadData(QString filename)
                 staticObj.last()->height = QString( divDataStr[2] ).trimmed().toFloat();
             }
         }
+        else if( tagStr.contains("[RoadBoundary] ID") == true ){
 
+            struct RoadBoundaryInfo* rb = new struct RoadBoundaryInfo;
+            rb->id = dataStr.trimmed().toInt();
+
+            roadBoundary.append( rb );
+        }
+        else if( tagStr.contains("RB Pos") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+            if( divDataStr.size() % 3 == 0 ){
+                for(int p=0 ; p<divDataStr.size() ; p+=3 ){
+                    QVector3D *newPos = new QVector3D;
+                    newPos->setX( QString( divDataStr[p  ] ).trimmed().toFloat() );
+                    newPos->setY( QString( divDataStr[p+1] ).trimmed().toFloat() );
+                    newPos->setZ( QString( divDataStr[p+2] ).trimmed().toFloat() );
+                    roadBoundary.last()->pos.append( newPos );
+                }
+            }
+        }
+        else if( tagStr.contains("RB Height") == true ){
+
+            QStringList divDataStr = dataStr.split(",");
+            for(int p=0 ; p<divDataStr.size() ; p++ ){
+                roadBoundary.last()->height.append( QString( divDataStr[p] ).trimmed().toFloat() );
+            }
+        }
+        else if( tagStr.contains("RB RoadSide") == true ){
+            roadBoundary.last()->RoadSide = dataStr.trimmed().toInt();
+
+            for(int i=1;i<roadBoundary.last()->pos.size();++i){
+                float dx = roadBoundary.last()->pos[i]->x() - roadBoundary.last()->pos[i-1]->x();
+                float dy = roadBoundary.last()->pos[i]->y() - roadBoundary.last()->pos[i-1]->y();
+                roadBoundary.last()->diff.append( new QVector2D(dx,dy) );
+
+                float len = sqrt( dx * dx + dy * dy );
+                roadBoundary.last()->length.append( len );
+
+                float angle = atan2( dy, dx );
+                roadBoundary.last()->angles.append( angle );
+            }
+        }
     }
 
     pd->setValue(line_count);
@@ -1347,7 +1485,7 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     out << "# Pedest-Path ; pedestPathID, \n";
     out << "# Pedest-Path Shape ; x, y, z, width, length, angle \n";
-    out << "# Pedest-Path Property ; isCrossWalk, pedestSignalID, runOutProb, runOutDir, marginToRoad \n";
+    out << "# Pedest-Path Property ; isCrossWalk, pedestSignalID, runOutProb, runOutDir, marginToRoad , canWaitTaxi, taxiPickProb \n";
     out << "# Pedest-Path Traffic ; Volume1 , Volume2 , ... , Volume_nPedKind\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<pedestLanes.size();++i){
@@ -1369,7 +1507,10 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                 << pedestLanes[i]->shape[j]->controlPedestSignalID << " , "
                 << pedestLanes[i]->shape[j]->runOutProb << " , "
                 << pedestLanes[i]->shape[j]->runOutDirect << " , "
-                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << "\n";
+                << pedestLanes[i]->shape[j]->marginToRoadForRunOut << " , "
+                << (pedestLanes[i]->shape[j]->canWaitTaxi == true ? 1 : 0) << " , "
+                << pedestLanes[i]->shape[j]->taxiTakeProbability
+                << "\n";
         }
 
         out << "Pedest-Path Traffic ; ";
@@ -1721,8 +1862,18 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
                                     }
 
                                     int incNode = lanes[tlIdx]->eWPInNode;
-                                    int rltDir = lanes[tlIdx]->eWPNodeDir;
                                     int inIdx = indexOfNode( incNode );
+
+                                    int rltDir = -1;
+                                    for(int m=0;m<nodes[inIdx]->legInfo.size();++m){
+                                        if( lanes[tlIdx]->eWPNodeDir == nodes[inIdx]->legInfo[m]->legID ){
+                                            rltDir = m;
+                                            break;
+                                        }
+                                    }
+                                    if( rltDir < 0 ){
+                                        continue;
+                                    }
 
                                     if( nodes[inIdx]->nLeg == 1 ){
 
@@ -1893,13 +2044,15 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     out << "#-----------------------------------------------------\n";
     out << "# Vehicle Kind ;  Category, Subcategory,  \n";
     out << "#                  Length, Width, Height, \n";
+    out << "#                  Wheelbase, RearAxle from Rear-End, \n";
     out << "#                  UE4 Model ID, Number Spawn, CG Kind\n";
+    out << "#                  Eye X, Eye Y\n";
     out << "#-----------------------------------------------------\n";
     for(int i=0;i<setDlg->GetVehicleKindNum();++i){
         out << "Vehicle Kind ; ";
-        for(int j=0;j<8;++j){
+        for(int j=0;j<12;++j){
             out << setDlg->GetVehicleKindTableStr(i,j);
-            if( j < 7 ){
+            if( j < 11 ){
                 out << " , ";
             }
             else{
@@ -1955,6 +2108,33 @@ bool RoadInfo::outputResimRoadFiles(QString outputfoldername, QString outputfile
     }
     out << "\n";
 
+    out << "#-----------------------------------------------------\n";
+    out << "#                   Road Boundary                     \n";
+    out << "# RoadBoundary ; id , N_point , roadSide              \n";
+    out << "# RB point ; x, y, z, dx, dy, angle[rad], length, height\n";
+    out << "#-----------------------------------------------------\n";
+    for(int i=0;i<roadBoundary.size();++i){
+        out << "RoadBoundary ; "
+            << roadBoundary[i]->id << " , "
+            << roadBoundary[i]->pos.size() << " , "
+            << roadBoundary[i]->RoadSide << "\n";
+        for(int j=0;j<roadBoundary[i]->pos.size() - 1;++j){
+            out << "RB point ; "
+                << roadBoundary[i]->pos[j]->x() << " , "
+                << roadBoundary[i]->pos[j]->y() << " , "
+                << roadBoundary[i]->pos[j]->z() << " , "
+                << (roadBoundary[i]->diff[j]->x() / roadBoundary[i]->length[j]) << " , "
+                << (roadBoundary[i]->diff[j]->y() / roadBoundary[i]->length[j]) << " , "
+                << roadBoundary[i]->angles[j] << " , "
+                << roadBoundary[i]->length[j] << " , "
+                << roadBoundary[i]->height[j] << "\n";
+        }
+        out << "RB point ; "
+            << roadBoundary[i]->pos.last()->x() << " , "
+            << roadBoundary[i]->pos.last()->y() << " , "
+            << roadBoundary[i]->pos.last()->z() << "\n";
+    }
+    out << "\n";
 
     file_rr.close();
 

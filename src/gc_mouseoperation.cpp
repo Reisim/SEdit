@@ -122,13 +122,42 @@ void GraphicCanvas::mousePressEvent(QMouseEvent *e)
                 scenarioPickMode  = 0;
                 scenarioPickCount = 0;
             }
-
         }
 
         update();
         return;
     }
 
+    if( roadBoundaryPointPickFlag == true && (e->modifiers() & Qt::ControlModifier) ){
+
+        bool addOK = true;
+        for(int i=0;i<roadBoundaryPoints.size();++i){
+            float dx = wxMousePress - roadBoundaryPoints[i]->x();
+            float dy = wyMousePress - roadBoundaryPoints[i]->y();
+            float L = dx * dx + dy * dy;
+            if( L < 0.5 ){
+                addOK = false;
+                break;
+            }
+        }
+
+        if( addOK == true ){
+            QVector3D *p = new QVector3D();
+
+            p->setX( wxMousePress );
+            p->setY( wyMousePress );
+            p->setZ( 0.0 );
+
+            roadBoundaryPoints.append( p );
+        }
+
+        update();
+
+        objectMoveFlag = false;
+        mousePressed = true;
+
+        return;
+    }
 
     if( pedestPathPointPickFlag == true && (e->modifiers() & Qt::ControlModifier) ){
 
@@ -1755,6 +1784,40 @@ void GraphicCanvas::mouseMoveEvent(QMouseEvent *e)
                 }
             }
 
+            // Move Road Boundary
+            {
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_ROAD_BOUNDARY ){
+                        if( e->modifiers() & Qt::ShiftModifier ){
+                            float zMove = diff.y() * (-s);
+                            road->MoveRoadBoundaryInfo( selectedObj.selObjID[i], 0.0, 0.0, zMove );
+                        }
+                        else{
+                            road->MoveRoadBoundaryInfo( selectedObj.selObjID[i], xMove, yMove, 0.0 );
+                        }
+                    }
+                }
+            }
+
+            // Move Road Boundary Point
+            {
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT ){
+
+                        int modID = selectedObj.selObjID[i];
+                        int rbID = modID / 100;
+                        int sectIdx = modID - rbID * 100;
+
+                        if( e->modifiers() & Qt::ShiftModifier ){
+                            float zMove = diff.y() * (-s);
+                            road->MoveRoadBoundaryPoint( rbID, sectIdx, 0.0, 0.0, zMove );
+                        }
+                        else{
+                            road->MoveRoadBoundaryPoint( rbID, sectIdx, xMove, yMove, 0.0 );
+                        }
+                    }
+                }
+            }
 
             objectMoveFlag = true;
         }
@@ -2140,6 +2203,48 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
             }
         }
 
+        if( selectRoadBoundaryFlag == true ){
+
+            float dist = 0.0;
+            int nearRBID = road->GetNearestRoadBoundaryInfo( QVector2D(wxMouseMove, wyMousePress), dist );
+            qDebug() << "nearRBID = " << nearRBID << " dist = " << dist;
+
+            float dist2 = 0.0;
+            int nearRBID2 = -1;
+            int nearRBSect = -1;
+            road->GetNearestRoadBoundaryPoint( QVector2D(wxMouseMove, wyMousePress), dist2, nearRBID2, nearRBSect );
+            qDebug() << "nearRBID2 = " << nearRBID2 << " nearRBSect = " << nearRBSect;
+
+            if( nearRBID2 >= 0 ){
+                nearRBID = -1;
+                dist = dist2;
+            }
+
+            if( nearRBID >= 0 ){
+
+                if( selID < 0 || Dmin > dist ){
+
+                    selID = nearRBID;
+                    Dmin = dist;
+                    kind = _SEL_OBJ::SEL_ROAD_BOUNDARY;
+                }
+            }
+            else if( nearRBID2 >= 0 ){
+
+                if( selID < 0 || Dmin > dist ){
+
+                    selID = nearRBID2;
+                    Dmin = dist;
+                    kind = _SEL_OBJ::SEL_ROAD_BOUNDARY;
+
+                    if( nearRBSect >= 0 ){
+                        selID2 = nearRBSect;
+                        kind = _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT;
+                    }
+                }
+            }
+        }
+
         if( selID >= 0 ){
             if( kind == _SEL_OBJ::SEL_NODE ){
                 bool alreadySelected = false;
@@ -2416,6 +2521,57 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                     qDebug() << "Static Object Selected: ID = " << selID;
                 }
             }
+            else if( kind == _SEL_OBJ::SEL_ROAD_BOUNDARY ){
+                bool alreadySelected = false;
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_ROAD_BOUNDARY ){
+                        if( selectedObj.selObjID[i] == selID ){
+                            alreadySelected = true;
+                            if( shiftModifier == true ){
+                                selectedObj.selObjKind.removeAt(i);
+                                selectedObj.selObjID.removeAt(i);
+                            }
+                            break;
+                        }
+                    }
+                }
+                if( alreadySelected == false ){
+                    if( shiftModifier == false ){
+                        selectedObj.selObjKind.clear();
+                        selectedObj.selObjID.clear();
+                    }
+                    selectedObj.selObjKind.append( _SEL_OBJ::SEL_ROAD_BOUNDARY );
+                    selectedObj.selObjID.append( selID );
+                    qDebug() << "Static Object Selected: ID = " << selID;
+                }
+            }
+            else if( kind == _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT ){
+
+                int modId = selID * 100 + selID2;
+
+                bool alreadySelected = false;
+                for(int i=0;i<selectedObj.selObjKind.size();++i){
+                    if( selectedObj.selObjKind[i] == _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT ){
+                        if( selectedObj.selObjID[i] == modId ){
+                            alreadySelected = true;
+                            if( shiftModifier == true ){
+                                selectedObj.selObjKind.removeAt(i);
+                                selectedObj.selObjID.removeAt(i);
+                            }
+                            break;
+                        }
+                    }
+                }
+                if( alreadySelected == false ){
+                    if( shiftModifier == false ){
+                        selectedObj.selObjKind.clear();
+                        selectedObj.selObjID.clear();
+                    }
+                    selectedObj.selObjKind.append( _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT );
+                    selectedObj.selObjID.append( modId );
+                    qDebug() << "Road Boundary Point Selected: ID = " << modId;
+                }
+            }
 
 
             if( selectedObj.selObjKind.size() == 1 ){
@@ -2484,6 +2640,31 @@ void GraphicCanvas::SelectObject(bool shiftModifier)
                             roadProperty->ChangeStaticObjInfo(selectedObj.selObjID[0]);
                         }
                         roadProperty->soIDSB->setValue( selectedObj.selObjID[0] );
+                    }
+                }
+                else if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_ROAD_BOUNDARY ){
+                    if( roadProperty ){
+                        roadProperty->ChangeTabPage(6);
+                        if( roadProperty->roadBoundaryIDSB->value() == selectedObj.selObjID[0] ){
+                            roadProperty->ChangeRoadBoundaryInfo(selectedObj.selObjID[0]);
+                        }
+                        roadProperty->roadBoundaryIDSB->setValue( selectedObj.selObjID[0] );
+                    }
+                }
+                else if( selectedObj.selObjKind[0] == _SEL_OBJ::SEL_ROAD_BOUNDARY_POINT ){
+                    if( roadProperty ){
+                        roadProperty->ChangeTabPage(6);
+                        qDebug() << "Change Tab Page 6";
+
+                        int modId = selectedObj.selObjID[0];
+                        int roudBoundaryId = modId / 100;
+                        int roudBoundaryPointIndex = modId - roudBoundaryId * 100;
+
+                        if( roadProperty->roadBoundaryIDSB->value() == roudBoundaryId ){
+                            roadProperty->ChangeRoadBoundaryInfo(roudBoundaryId, roudBoundaryPointIndex);
+                        }
+                        roadProperty->roadBoundaryIDSB->setValue( roudBoundaryId );
+                        roadProperty->roadBoundarySectionSB->setValue( roudBoundaryPointIndex );
                     }
                 }
             }

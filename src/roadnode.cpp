@@ -261,6 +261,33 @@ void RoadInfo::RotateNode(int id,float rotate)
     }
 }
 
+void RoadInfo::SetAngleNodeLeg(int id,int legID,float rotate)
+{
+    int index = indexOfNode(id);
+    if( index < 0 ){
+        qDebug() << "[RotateNodeLeg] cannot find index of id = " << id;
+        return;
+    }
+    int leg = -1;
+    for(int i=0;i<nodes[index]->legInfo.size();++i){
+        if( nodes[index]->legInfo[i]->legID == legID ){
+            leg = i;
+            break;
+        }
+    }
+    if( leg < 0 ){
+        qDebug() << "[RotateNodeLeg] invalid legID: legID = " << legID << ", can not file the legID";
+        return;
+    }
+
+    nodes[index]->legInfo[leg]->angle = rotate;
+    if( nodes[index]->legInfo[leg]->angle > 180.0 ){
+        nodes[index]->legInfo[leg]->angle -= 360.0;
+    }
+    else if( nodes[index]->legInfo[leg]->angle < -180.0 ){
+        nodes[index]->legInfo[leg]->angle += 360.0;
+    }
+}
 
 void RoadInfo::RotateNodeLeg(int id,int legID,float rotate)
 {
@@ -384,11 +411,16 @@ void RoadInfo::AddTrafficSignalToNode(int nodeId,int assignTSId,int type, int re
         int vtsID = CreateTrafficSignal( assignTSId, nodeId, relatedDirection , 0 );
         int vtsIdx = indexOfTS( vtsID, nodeId );
         if( vtsIdx >= 0 ){
-            if(relatedDirection % 2 == 0 ){
+            if ( nodes[index]->legInfo.size() <= 2 ){
                 nodes[index]->trafficSignals[vtsIdx]->startOffset = 0;
             }
             else{
-                nodes[index]->trafficSignals[vtsIdx]->startOffset = 60;
+                if(relatedDirection % 2 == 0 ){
+                    nodes[index]->trafficSignals[vtsIdx]->startOffset = 0;
+                }
+                else{
+                    nodes[index]->trafficSignals[vtsIdx]->startOffset = 60;
+                }
             }
         }
     }
@@ -433,22 +465,22 @@ void RoadInfo::SetNodeConnectInfo(int id, int legID, int connectInfo, QString ty
     if( type == QString("OutNode") ){
 
         nodes[index]->legInfo[leg]->connectingNode = connectInfo;
-        qDebug() << "[SetNodeConnectInfo:node" << id << "] connectingNode[" << leg << "] = " << nodes[index]->legInfo[leg]->connectingNode;
+        //qDebug() << "[SetNodeConnectInfo:node" << id << "] connectingNode[" << leg << "] = " << nodes[index]->legInfo[leg]->connectingNode;
     }
     else if( type == QString("OutNodeInDirect") ){
 
         nodes[index]->legInfo[leg]->connectingNodeInDirect = connectInfo;
-        qDebug() << "[SetNodeConnectInfo:node" << id << "] connectingNodeInDirect[" << leg << "] = " << nodes[index]->legInfo[leg]->connectingNodeInDirect;
+        //qDebug() << "[SetNodeConnectInfo:node" << id << "] connectingNodeInDirect[" << leg << "] = " << nodes[index]->legInfo[leg]->connectingNodeInDirect;
     }
     else if( type == QString("InNode") ){
 
         nodes[index]->legInfo[leg]->connectedNode = connectInfo;
-        qDebug() << "[SetNodeConnectInfo:node" << id << "] connectedNode[" << leg << "] = " << nodes[index]->legInfo[leg]->connectedNode;
+        //qDebug() << "[SetNodeConnectInfo:node" << id << "] connectedNode[" << leg << "] = " << nodes[index]->legInfo[leg]->connectedNode;
     }
     else if( type == QString("InNodeOutDirect") ){
 
         nodes[index]->legInfo[leg]->connectedNodeOutDirect = connectInfo;
-        qDebug() << "[SetNodeConnectInfo:node" << id << "] connectedNodeOutDirect[" << leg << "] = " << nodes[index]->legInfo[leg]->connectedNodeOutDirect;
+        //qDebug() << "[SetNodeConnectInfo:node" << id << "] connectedNodeOutDirect[" << leg << "] = " << nodes[index]->legInfo[leg]->connectedNodeOutDirect;
     }
 }
 
@@ -1033,4 +1065,42 @@ int RoadInfo::GetNearestNode(QVector2D pos)
     return ret;
 }
 
+
+void RoadInfo::SetNodeConnectInOutDirect()
+{
+    qDebug() << "[SetNodeConnectInOutDirect]";
+
+    for(int i=0;i<nodes.size();++i){
+
+        for(int j=0;j<nodes[i]->nLeg;++j){
+            nodes[i]->legInfo[j]->connectedNodeOutDirect = -1;
+            nodes[i]->legInfo[j]->connectingNodeInDirect = -1;
+        }
+
+        for(int j=0;j<nodes[i]->nLeg;++j){
+            if( nodes[i]->legInfo[j]->connectedNode >= 0 ){
+                int fNdIdx = indexOfNode( nodes[i]->legInfo[j]->connectedNode );
+                if( fNdIdx >= 0 ){
+                    for(int k=0;k<nodes[fNdIdx]->nLeg;++k){
+                        if( nodes[fNdIdx]->legInfo[k]->connectingNode == nodes[i]->id ){
+                            nodes[i]->legInfo[j]->connectedNodeOutDirect = k;
+                            break;
+                        }
+                    }
+                }
+            }
+            if( nodes[i]->legInfo[j]->connectingNode >= 0 ){
+                int tNdIdx = indexOfNode( nodes[i]->legInfo[j]->connectingNode );
+                if( tNdIdx >= 0 ){
+                    for(int k=0;k<nodes[tNdIdx]->nLeg;++k){
+                        if( nodes[tNdIdx]->legInfo[k]->connectedNode == nodes[i]->id ){
+                            nodes[i]->legInfo[j]->connectingNodeInDirect = k;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 

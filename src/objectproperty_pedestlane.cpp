@@ -64,6 +64,9 @@ void RoadObjectProperty::ChangePedestLaneInfo(int pedestLaneID, int pedestLanePo
             pedestRunOutDirect->setCurrentIndex( 1 );
         }
 
+        cbCanWaitTaxi->setChecked( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->canWaitTaxi );
+        pedestLaneTaxiTakeProbability->setValue( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->taxiTakeProbability );
+
         infoStr += QString("[Point Data]\n");
         infoStr += QString("   x = %1,  y = %2\n")
                 .arg( road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->pos.x() )
@@ -130,6 +133,14 @@ void RoadObjectProperty::PedestLaneApplyClicked()
         road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->runOutDirect = -1;
     }
 
+    if( cbCanWaitTaxi->checkState() == Qt::Checked ){
+        road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->canWaitTaxi = true;
+        road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->taxiTakeProbability = pedestLaneTaxiTakeProbability->value();
+    }
+    else{
+        road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->canWaitTaxi = false;
+        road->pedestLanes[plIdx]->shape[pedestLanePointIndex]->taxiTakeProbability = 0.0;
+    }
 
     int nPedKind = setDlg->GetPedestrianKindNum();
     if( road->pedestLanes[plIdx]->trafficVolume.size() < nPedKind ){

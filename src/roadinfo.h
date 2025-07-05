@@ -44,11 +44,14 @@ public:
     void MoveNode(int id,float moveX,float moveY,bool moveNonEdge=false);
     void RotateNode(int id,float rotate);
     void RotateNodeLeg(int id,int leg,float rotate);
+    void SetAngleNodeLeg(int id,int leg,float rotate);
     void AddStopLineToNode(int nodeId,int assignStopLintId,int relatedDirection);
     void AddTrafficSignalToNode(int nodeId,int assignTSId,int type, int relatedDirection);
     void SetNodeConnectInfo(int id, int leg, int connectInfo, QString type);
     void SetNodeRelatedLane(int id, int laneID);
     void ClearNodeRelatedLane(int id,int laneID);
+    void SetNodeConnectInOutDirect();
+
     QVector2D GetNodePosition(int id);
     int GetNodeNumLeg(int id);
     float GetNodeLegAngle(int id,int legID);
@@ -73,6 +76,7 @@ public:
     void HeightChangeLaneEdge(int id,float moveZ,int edgeFlag);
     void RotateLane(int id,float rotate,QVector2D rotCenter);
     void RotateLaneEdge(int id,float rotate,int edgeFlag);
+    void SetLaneEdgeAngle(int id,float angle,int edgeFlag);
     void SetLaneNumber(int id,int laneNumner);
     void CalculateShape(struct LaneShapeInfo*);
     bool CheckLaneConnectionOfNode(int nodeID);
@@ -83,6 +87,7 @@ public:
 
     void DivideLaneHalf(int id);
     void DivideLaneAtPos(int id,QVector4D atPoint);
+    int DivideLaneAndMove(int id,float xm,float ym,float angle,bool showInfo = false);
     void CutLanesByLine(QPointF p1, QPointF p2);
 
     int GetNearestLane(QVector2D pos);
@@ -152,6 +157,7 @@ public:
 
     // Stop Lines
     int CreateStopLine(int assignId, int relatedNodeID, int relatedNodeDir, int SLType);
+    int CreateStopLineAtLAne(int assignId,int onLane,float X,float Y,float angle,int SLType);
     int GetNearestStopLine(QVector2D pos,float &dist);
     void CheckStopLineCrossLanes(int id);
     void MoveStopLine(int id,float moveX,float moveY);
@@ -170,6 +176,21 @@ public:
     void DeleteStaticObject(int id);
     void ClearStaticObject();
 
+
+    // Road Boundary Info
+    int CreateRoadBoundaryInfo(int assignId, QList<QVector3D *> posData, QList<float> height);
+    void ClearRoadBoundaryInfo();
+    void DeleteRoadBoundaryInfo(int id);
+    void MoveRoadBoundaryInfo(int id,float moveX,float moveY,float moveZ);
+    void DivideRoadBoundarySection(int id, int pIdx1, int pIdx2);
+    void MergeRoadBoundarySection(int id, int pIdx);
+    void MoveRoadBoundaryPoint(int id,int pIdx,float moveX,float moveY,float moveZ);
+    int GetNearestRoadBoundaryInfo(QVector2D pos,float &dist);
+    void GetNearestRoadBoundaryPoint(QVector2D pos, float &dist,int &nearRoadBaundaryID,int &nearRoadBoundaryPointIndex);
+    void UpdateRoadBoundaryInfo(int id);
+    void SetRoadBoudaryInfoRoadSide(int id,int roadSide);
+
+
     // Route
     void CheckRouteInOutDirection();
     void CheckRouteInOutDirectionGivenODNode(int origNodeId,int destNodeID);
@@ -187,7 +208,7 @@ public:
     int indexOfWP(int id);
     int indexOfPedestLane(int id);
     int indexOfStaticObject(int id);
-
+    int indexOfRoadBoundary(int id);
 
     bool SaveRoadData(QString filename);
     bool LoadRoadData(QString filename);
@@ -209,6 +230,7 @@ public:
     QList<WayPoint*> wps;
     QList<PedestrianLane*> pedestLanes;
     QList<StaticObject*> staticObj;
+    QList<RoadBoundaryInfo*> roadBoundary;
 
     float tbl_cos[DEFAULT_LANE_SHAPE_POINTS+1];
     float tbl_sin[DEFAULT_LANE_SHAPE_POINTS+1];

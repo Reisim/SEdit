@@ -128,6 +128,89 @@ int RoadInfo::CreateStopLine(int assignId, int relatedNodeID, int relatedNodeDir
 }
 
 
+int RoadInfo::CreateStopLineAtLAne(int assignId,int onLane,float X,float Y,float angle,int SLType)
+{
+    int lnIdx = indexOfLane(onLane);
+    if( lnIdx < 0 || lnIdx >= lanes.size() ){
+        qDebug() << "[CreateStopLineAtLAne] Invalid onLane ID = " << onLane;
+        return -1;
+    }
+
+    //qDebug() << " [CreateStopLineAtLAne] lnIdx = " << lnIdx;
+
+    int relatedNodeID = lanes[lnIdx]->connectedNode;
+
+    //qDebug() << " [CreateStopLineAtLAne] relatedNodeID = " << relatedNodeID;
+
+    int rndIdx = indexOfNode( relatedNodeID );
+    if( rndIdx < 0 ){
+        qDebug() << "[CreateStopLineAtLAne] Invalid related Node ID = " << relatedNodeID;
+        return -1;
+    }
+
+    //qDebug() << " [CreateStopLineAtLAne] rndIdx = " << rndIdx;
+
+    int relatedNodeDir = lanes[lnIdx]->connectedNodeInDirect;
+
+    //qDebug() << " [CreateStopLineAtLAne] relatedNodeDir = " << relatedNodeDir;
+
+
+    // // Id check
+    int cId = -1;
+    if( assignId < 0 ){
+        cId = 0;
+        for(int i=0;i<nodes.size();++i){
+            for(int j=0;j<nodes[i]->stopLines.size();++j){
+                if( cId <= nodes[i]->stopLines[j]->id ){
+                    cId = nodes[i]->stopLines[j]->id + 1;
+                }
+            }
+        }
+    }
+    else{
+        if( indexOfSL(assignId,-1) < 0 ){
+            cId = assignId;
+        }
+        else{
+            qDebug() << "[CreateStopLineAtLAne] assigned ID already exists.";
+            return -1;
+        }
+    }
+
+    //qDebug() << " [CreateStopLineAtLAne] cId = " << cId;
+
+
+    struct StopLineInfo *sl = new StopLineInfo;
+
+    sl->id = cId;
+    sl->stopLineType   = SLType;
+    sl->relatedNode    = relatedNodeID;
+    sl->relatedNodeDir = relatedNodeDir;
+
+    float cp = cos(angle);
+    float sp = sin(angle);
+
+    //qDebug() << " [CreateStopLineAtLAne] angle = " << angle * 57.3;
+
+    float LW = 1.25;
+    sl->rightEdge.setX( X - sp * LW );
+    sl->rightEdge.setY( Y + cp * LW );
+
+    sl->leftEdge.setX( X + sp * LW );
+    sl->leftEdge.setY( Y - cp * LW );
+
+    if( nodes.size() > rndIdx ){
+        nodes[rndIdx]->stopLines.append( sl );
+    }
+    else{
+        qDebug() << "Size of nodes = " << nodes.size() << ", smaller than rndIdx = " << rndIdx;
+    }
+    //qDebug() << " [CreateStopLineAtLAne] return";
+
+    return cId;
+}
+
+
 int RoadInfo::GetNearestStopLine(QVector2D pos, float &dist)
 {
     int ret = -1;

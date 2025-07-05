@@ -16,7 +16,7 @@
 
 int DataManipulator::CreateStaticObject()
 {
-    qDebug() << "[DataManipulator::CreateNode_Dialog]";
+    qDebug() << "[DataManipulator::CreateStaticObject]";
 
     float x = 0.0;
     float y = 0.0;

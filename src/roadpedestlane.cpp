@@ -69,6 +69,9 @@ int RoadInfo::CreatePedestLane(int assignId, QList<QVector3D *> posData)
         ple->angleToNextPos = 0.0;
         ple->distanceToNextPos = 0.0;
 
+        ple->canWaitTaxi = false;
+        ple->taxiTakeProbability = 0.0;
+
         pl->shape.append( ple );
     }
 
@@ -517,6 +520,8 @@ void RoadInfo::DividePedestLaneHalf(int id,int sect)
     plse->runOutDirect = 0;
     plse->runOutProb = 0.0;
     plse->marginToRoadForRunOut = 0.0;
+    plse->canWaitTaxi = false;
+    plse->taxiTakeProbability = 0.0;
 
     pedestLanes[index]->shape.insert(sect+1, plse);
 
@@ -547,6 +552,8 @@ void RoadInfo::DividePedestLaneAtPos(int id, int sect, QVector3D atPoint)
     plse->runOutDirect = 0;
     plse->runOutProb = 0.0;
     plse->marginToRoadForRunOut = 0.0;
+    plse->canWaitTaxi = false;
+    plse->taxiTakeProbability = 0.0;
 
     pedestLanes[index]->shape.insert(sect+1, plse);
 

@@ -49,6 +49,8 @@ public:
     QSpinBox *pedestLaneIDSB;
     QSpinBox *pedestLaneSectionSB;
     QSpinBox *soIDSB;
+    QSpinBox *roadBoundaryIDSB;
+    QSpinBox *roadBoundarySectionSB;
 
     SettingDialog *setDlg;
 
@@ -72,6 +74,8 @@ public slots:
     void ChangeTabPage(int);
     void ChangeVisibilityODRoute(int);
     void ChangeStaticObjInfo(int);
+    void ChangeRoadBoundaryInfo(int);
+    void ChangeRoadBoundaryInfo(int,int);
 
     void CBOriginNodeChanged(bool);
     void CBDestinationNodeChanged(bool);
@@ -101,6 +105,8 @@ public slots:
     void GetPedestLaneHeightFromUE();
 
     void EditStaticObjectData();
+
+    void RoadBoundaryApplyClicked();
 
 private:
 
@@ -160,10 +166,19 @@ private:
     QTableWidget *pedestLaneTrafficVolume;
     QPushButton *applyPedestLaneDataChange;
     QPushButton *getPedestHeightFromUEBtn;
+    QCheckBox *cbCanWaitTaxi;
+    QDoubleSpinBox *pedestLaneTaxiTakeProbability;
 
     QWidget *staticObjPage;
     QLabel *soInfo;
     QPushButton *editStaticObject;
+
+    QWidget *roadBoundaryPage;
+    QLabel *roadBoundaryInfo;
+    QComboBox *roadBoundaryRoadSide;
+    QDoubleSpinBox *roadBoundaryHeight;
+    QCheckBox *rbHeightAll;
+    QPushButton *applyRoadBoundaryDataChange;
 
     QCheckBox *cbChangeSelectionBySpinbox;
 };

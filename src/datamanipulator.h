@@ -50,6 +50,7 @@ public:
     void MergeSelectedObject();
     void SplitSelectedLane();
     void SplitSelectedPedestLane();
+    void SplitSelectedRoadBoundary();
 
     int CreateNode_4(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
     int CreateNode_3(float x,float y,QList<int> inlanes, QList<int> outlanes, QList<bool> createTurnLane,QStringList turnRestriction = QStringList());
@@ -124,6 +125,9 @@ public slots:
 
     int CreateStaticObject();
 
+    void StartCreateRoadBoundary();
+    int CreateRoadBoundary();
+
 
     int CreateNode(float x,float y,int nLeg,QList<int> inlanes,QList<int> outlanes);
     int CreateTrafficSignal(int nodeID,int nodeDir,int type);
@@ -158,6 +162,8 @@ public slots:
     void ImportERIS3Data(QString filename);
     void ImportERIS3TrafficSignalData(QString);
     void ImportERIS3ODData(QString);
+
+    void MigrateData(QString);
 
 
     void SearchNode();

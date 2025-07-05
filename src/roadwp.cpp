@@ -219,6 +219,37 @@ void RoadInfo::CreateWPData()
                 }
             }
 
+            if( lanes[i]->eWPInNode >= 0 && lanes[i]->eWPNodeDir >= 0 && lanes[i]->eWPBoundary == true && lanes[i]->eWPInNode == lanes[i]->sWPInNode ){
+
+                int ndIdx = indexOfNode( lanes[i]->eWPInNode );
+
+                if( lanes[i]->eWPInNode == 311 ){
+                    qDebug() << "check " << lanes[i]->eWPInNode << " lane = " << lanes[i]->id << " idx = " << i << " ndIdx = " << ndIdx;
+                }
+
+                if( ndIdx >= 0 ){
+
+                    if( lanes[i]->eWPInNode == 311 ){
+                        qDebug() << "legInfo size " << nodes[ndIdx]->legInfo.size() << ", eWPNodeDir = " << lanes[i]->eWPNodeDir;
+                    }
+
+                    for(int j=0;j<nodes[ndIdx]->legInfo.size();++j){
+                        if( nodes[ndIdx]->legInfo[j]->legID == lanes[i]->eWPNodeDir ){
+
+                            if( nodes[ndIdx]->legInfo[j]->outWPs.contains( lanes[i]->endWPID ) == false ){
+                                nodes[ndIdx]->legInfo[j]->outWPs.append( lanes[i]->endWPID );
+                            }
+
+                            if( lanes[i]->eWPInNode == 311 ){
+                                qDebug() << "outWPs " << nodes[ndIdx]->legInfo[j]->outWPs;
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+
             if( lanes[i]->eWPInNode >= 0 && lanes[i]->eWPNodeDir >= 0 && lanes[i]->eWPBoundary == true && lanes[i]->eWPInNode != lanes[i]->sWPInNode ){
 
                 int ndIdx = indexOfNode( lanes[i]->eWPInNode );

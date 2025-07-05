@@ -5295,6 +5295,8 @@ void ScenarioEditor::SetPedestRouteLaneShape(int sIdx, int rIdx)
         lse->runOutDirect = 0;
         lse->runOutProb = 0.0;
         lse->marginToRoadForRunOut = 0.0;
+        lse->canWaitTaxi = false;
+        lse->taxiTakeProbability = 0.0;
 
         sPedest[sIdx]->sItem[rIdx]->act.pedestLaneshape.append( lse );
     }

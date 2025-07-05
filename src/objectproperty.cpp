@@ -23,6 +23,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     QSize infoAreaSizeSL = QSize(500,300);
     QSize infoAreaSizePL = QSize(500,300);
     QSize infoAreaSizeSO = QSize(500,150);
+    QSize infoAreaSizeRB = QSize(500,150);
 
     tab = new QTabWidget();
 
@@ -440,6 +441,16 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     getPedestHeightFromUEBtn->setFixedSize( getPedestHeightFromUEBtn->sizeHint() );
     connect( getPedestHeightFromUEBtn,SIGNAL(clicked()),this,SLOT(GetPedestLaneHeightFromUE()));
 
+    cbCanWaitTaxi = new QCheckBox("Can Pick Taxi");
+
+    pedestLaneTaxiTakeProbability = new QDoubleSpinBox();
+    pedestLaneTaxiTakeProbability->setMinimum(0.0);
+    pedestLaneTaxiTakeProbability->setMaximum(1.0);
+    pedestLaneTaxiTakeProbability->setValue(0.0);
+    pedestLaneTaxiTakeProbability->setDecimals(4);
+    pedestLaneTaxiTakeProbability->setFixedWidth(120);
+
+
     plGrid->addWidget( new QLabel("Width"), 3, 0 );
     plGrid->addWidget( pedestLaneWidth, 3, 1 );
     plGrid->addWidget( cbIsCrossWalk, 4, 1 );
@@ -449,11 +460,13 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     plGrid->addWidget( pedestRunOutDirect, 6, 1 );
     plGrid->addWidget( new QLabel("Margine to Road"), 7, 0 );
     plGrid->addWidget( pedestMarginToRoad, 7, 1 );
-    plGrid->addWidget( getPedestHeightFromUEBtn, 8, 1 );
-    plGrid->addWidget( pedestLaneInfo, 9, 1 );
-    plGrid->setRowStretch(10,1);
+    plGrid->addWidget( cbCanWaitTaxi, 8, 1 );
+    plGrid->addWidget( new QLabel("Taxi Pick Prob"), 9, 0 );
+    plGrid->addWidget( pedestLaneTaxiTakeProbability, 9, 1 );
+    plGrid->addWidget( getPedestHeightFromUEBtn, 10, 1 );
+    plGrid->addWidget( pedestLaneInfo, 11, 1 );
+    plGrid->setRowStretch(12,1);
     plGrid->setColumnStretch(2,1);
-
 
     applyPedestLaneDataChange = new QPushButton("Apply");
     applyPedestLaneDataChange->setIcon(QIcon(":/images/accept.png"));
@@ -496,12 +509,70 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     staticObjPage->setLayout( soGrid );
 
 
+    roadBoundaryPage = new QWidget();
+    roadBoundaryIDSB = new QSpinBox();
+    roadBoundaryIDSB->setMinimum(0);
+    roadBoundaryIDSB->setFixedWidth(80);
+    roadBoundaryIDSB->setMaximum(10000);
+
+    roadBoundarySectionSB = new QSpinBox();
+    roadBoundarySectionSB->setMinimum(0);
+    roadBoundarySectionSB->setFixedWidth(80);
+
+    roadBoundaryRoadSide = new QComboBox();
+    QStringList rbRoadSideDirItem;
+    rbRoadSideDirItem << "Right" << "Left";
+    roadBoundaryRoadSide->addItems( rbRoadSideDirItem );
+    roadBoundaryRoadSide->setFixedWidth(120);
+
+    roadBoundaryHeight = new QDoubleSpinBox();
+    roadBoundaryHeight->setMinimum(0.0);
+    roadBoundaryHeight->setMaximum(100.0);
+    roadBoundaryHeight->setValue(0.2);
+    roadBoundaryHeight->setDecimals(4);
+    roadBoundaryHeight->setFixedWidth(120);
+
+    rbHeightAll = new QCheckBox("Apply to all Section");
+
+    roadBoundaryInfo = new QLabel();
+    roadBoundaryInfo->setMinimumSize( infoAreaSizeRB );
+
+    applyRoadBoundaryDataChange = new QPushButton("Apply");
+    applyRoadBoundaryDataChange->setIcon(QIcon(":/images/accept.png"));
+    connect( applyRoadBoundaryDataChange,SIGNAL(clicked()),this,SLOT(RoadBoundaryApplyClicked()));
+
+    QHBoxLayout* arbdcLay = new QHBoxLayout();
+    arbdcLay->addStretch(1);
+    arbdcLay->addWidget( applyRoadBoundaryDataChange );
+    arbdcLay->addStretch(1);
+
+    QGridLayout *rbGrid = new QGridLayout();
+    rbGrid->addWidget( new QLabel("ID:"), 0, 0 );
+    rbGrid->addWidget( roadBoundaryIDSB, 0, 1 );
+    rbGrid->addWidget( new QLabel("RoadSide:"), 1, 0 );
+    rbGrid->addWidget( roadBoundaryRoadSide, 1, 1 );
+    rbGrid->addWidget( new QLabel("Section:"), 2, 0 );
+    rbGrid->addWidget( roadBoundarySectionSB, 2, 1 );
+    rbGrid->addWidget( new QLabel("Height:"), 3, 0 );
+    rbGrid->addWidget( roadBoundaryHeight, 3, 1 );
+    rbGrid->addWidget( rbHeightAll, 4, 1 );
+    rbGrid->addWidget( roadBoundaryInfo, 5, 1 );
+
+    QVBoxLayout *rbMainLay = new QVBoxLayout();
+    rbMainLay->addLayout( rbGrid );
+    rbMainLay->addLayout( arbdcLay );
+    rbMainLay->addStretch( 1 );
+
+    roadBoundaryPage->setLayout( rbMainLay );
+
+
     connect(nodeIDSB,SIGNAL(valueChanged(int)),this,SLOT(ChangeNodeInfo(int)));
     connect(laneIDSB,SIGNAL(valueChanged(int)),this,SLOT(ChangeLaneInfo(int)));
     connect(tsIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeTrafficSignalInfo(int)));
     connect(slIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeStopLineInfo(int)));
     connect(pedestLaneIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangePedestLaneInfo(int)));
     connect(soIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeStaticObjInfo(int)));
+    connect(roadBoundaryIDSB,  SIGNAL(valueChanged(int)),this,SLOT(ChangeRoadBoundaryInfo(int)));
 
 
     tab->addTab( nodePage, QString("Node") );
@@ -510,6 +581,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
     tab->addTab( stopLinePage, QString("Stop Line") );
     tab->addTab( pedestLanePage, QString("Pedestrian Lane") );
     tab->addTab( staticObjPage, QString("Static Object") );
+    tab->addTab( roadBoundaryPage, QString("Road Boundary") );
 
 
     QVBoxLayout *mainLayout = new QVBoxLayout();
@@ -531,7 +603,7 @@ RoadObjectProperty::RoadObjectProperty(QWidget *parent) : QWidget(parent)
 
 void RoadObjectProperty::ChangeTabPage(int page)
 {
-    if( page < 0 || page >= 6 ){
+    if( page < 0 || page >= 7 ){
         return;
     }
 
