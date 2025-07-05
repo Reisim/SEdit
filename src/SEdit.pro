@@ -7,6 +7,8 @@
 QT       += core gui
 
 QT += opengl
+QT += network
+
 CONFIG += console
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -18,12 +20,12 @@ TEMPLATE = app
 #
 #  Freetype2
 #
-INCLUDEPATH += "..\Reisim\libs\freetype\include\freetype2"
+INCLUDEPATH += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\include\freetype2"
 
-LIBS += "..\Reisim\libs\freetype\lib\libfreetype.a"
-LIBS += "..\Reisim\libs\libpng\lib\libpng.a"
-LIBS += "..\Reisim\libs\zlib\lib\libzlibstatic.a"
-LIBS += "..\Reisim\libs\bzip2\lib\libbz2.a"
+LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\lib\libfreetype.a"
+LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\libpng\lib\libpng.a"
+LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\zlib\lib\libzlibstatic.a"
+LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\bzip2\lib\libbz2.a"
 
 
 
@@ -49,6 +51,8 @@ SOURCES += \
         datamanip_import.cpp \
         datamanip_insertnode.cpp \
         datamanip_pedestlane.cpp \
+        datamanip_roadboundary.cpp \
+        datamanip_staticobject.cpp \
         displaycontrol.cpp \
         gc_displaycontrol.cpp \
         gc_mouseoperation.cpp \
@@ -61,16 +65,20 @@ SOURCES += \
         objectproperty_lane.cpp \
         objectproperty_node.cpp \
         objectproperty_pedestlane.cpp \
+        objectproperty_roadboundary.cpp \
+        objectproperty_staticobject.cpp \
         objectproperty_stopline.cpp \
         objectproperty_trafficsignal.cpp \
         odrouteeditor.cpp \
         resimfilesoutput.cpp \
+        roadboundary.cpp \
         roaddatafileio.cpp \
         roadinfo.cpp \
         roadlane.cpp \
         roadnode.cpp \
         roadpedestlane.cpp \
         roadroute.cpp \
+        roadstaticobject.cpp \
         roadstopline.cpp \
         roadts.cpp \
         roadwp.cpp \
