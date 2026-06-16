@@ -9,7 +9,7 @@ QT       += core gui
 QT += opengl
 QT += network
 
-CONFIG += console
+!macx: CONFIG += console
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -20,12 +20,23 @@ TEMPLATE = app
 #
 #  Freetype2
 #
-INCLUDEPATH += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\include\freetype2"
-
-LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\lib\libfreetype.a"
-LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\libpng\lib\libpng.a"
-LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\zlib\lib\libzlibstatic.a"
-LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\bzip2\lib\libbz2.a"
+win32 {
+    INCLUDEPATH += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\include\freetype2"
+    LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\freetype\lib\libfreetype.a"
+    LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\libpng\lib\libpng.a"
+    LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\zlib\lib\libzlibstatic.a"
+    LIBS += "C:\MDS-series\MDS02\Canopus\Reisim\libs\bzip2\lib\libbz2.a"
+}
+macx {
+    INCLUDEPATH += /usr/local/opt/freetype/include/freetype2
+    LIBS += /usr/local/opt/freetype/lib/libfreetype.a
+    LIBS += /usr/local/opt/libpng/lib/libpng.a
+    LIBS += /usr/local/opt/zlib/lib/libz.a
+    LIBS += /usr/local/opt/bzip2/lib/libbz2.a
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.15
+    DEFINES += GL_SILENCE_DEPRECATION
+    QMAKE_LIBS_OPENGL = -framework OpenGL
+}
 
 
 
@@ -112,4 +123,4 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 RESOURCES += \
     sedit.qrc
 
-RC_FILE = sedit.rc
+win32:RC_FILE = sedit.rc

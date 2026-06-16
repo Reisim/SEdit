@@ -19,7 +19,8 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    statusBar()->showMessage(QString("SEdit"));
+    statusBar()->showMessage( tr("Ready  ·  ALT+N over canvas: create node  ·  Right-click canvas: more actions  ·  ⌘O / Ctrl+O: open .se.txt") );
+    statusBar()->setStyleSheet( "QStatusBar { padding-left: 8px; }" );
 
     setFocusPolicy(Qt::StrongFocus);
 
@@ -189,15 +190,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction* newAct = new QAction( tr("&New"), this );
     newAct->setIcon(QIcon(":/images/new.png"));
-    newAct->setShortcut( tr("Ctrl+N") );
-    newAct->setStatusTip( tr("Clear All Data nad Create a New Map Data") );
+    newAct->setShortcut( QKeySequence::New );
+    newAct->setStatusTip( tr("Clear All Data and Create a New Map Data") );
     connect( newAct, SIGNAL(triggered()), this, SLOT(NewFile()));
     fileMenu->addAction( newAct );
 
 
     QAction* openAct = new QAction( tr("&Open"), this );
     openAct->setIcon(QIcon(":/images/open.png"));
-    openAct->setShortcut( tr("Ctrl+O") );
+    openAct->setShortcut( QKeySequence::Open );
     openAct->setStatusTip( tr("Open SEdit Data File") );
     connect( openAct, SIGNAL(triggered()), this, SLOT(OpenFile()));
     fileMenu->addAction( openAct );
@@ -205,7 +206,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction* saveAct = new QAction( tr("&Save"), this );
     saveAct->setIcon(QIcon(":/images/save.png"));
-    saveAct->setShortcut( tr("Ctrl+S") );
+    saveAct->setShortcut( QKeySequence::Save );
     saveAct->setStatusTip( tr("Save SEdit Data File") );
     connect( saveAct, SIGNAL(triggered()), this, SLOT(SaveFile()));
     fileMenu->addAction( saveAct );
@@ -213,6 +214,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction* saveAsAct = new QAction( tr("&SaveAs"), this );
     saveAsAct->setIcon(QIcon(":/images/saveas.png"));
+    saveAsAct->setShortcut( QKeySequence::SaveAs );
     saveAsAct->setStatusTip( tr("Save SEdit Data File by Another Name") );
     connect( saveAsAct, SIGNAL(triggered()), this, SLOT(SaveAsFile()));
     fileMenu->addAction( saveAsAct );
@@ -239,7 +241,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QAction* closeAct = new QAction( tr("&Exit"), this );
     closeAct->setIcon(QIcon(":/images/exit.png"));
-    closeAct->setShortcut( tr("Ctrl+Q") );
+    closeAct->setShortcut( QKeySequence::Quit );
     connect( closeAct, SIGNAL(triggered()), this, SLOT(close()));
     fileMenu->addAction( closeAct );
 
@@ -288,6 +290,59 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     //
+    //  Toolbar (macOS-friendly: large icons, text-under-icon)
+    //
+    QToolBar *mainToolBar = addToolBar( tr("Main") );
+    mainToolBar->setObjectName("MainToolBar");
+    mainToolBar->setIconSize( QSize(24,24) );
+    mainToolBar->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    mainToolBar->setMovable( false );
+
+    newAct->setToolTip( tr("New map (%1)").arg( newAct->shortcut().toString(QKeySequence::NativeText) ) );
+    openAct->setToolTip( tr("Open *.se.txt file (%1)").arg( openAct->shortcut().toString(QKeySequence::NativeText) ) );
+    saveAct->setToolTip( tr("Save current map (%1)").arg( saveAct->shortcut().toString(QKeySequence::NativeText) ) );
+    saveAsAct->setToolTip( tr("Save as new file (%1)").arg( saveAsAct->shortcut().toString(QKeySequence::NativeText) ) );
+
+    mainToolBar->addAction( newAct );
+    mainToolBar->addAction( openAct );
+    mainToolBar->addAction( saveAct );
+    mainToolBar->addAction( saveAsAct );
+    mainToolBar->addSeparator();
+
+    QAction *tbDispCtrl = new QAction( QIcon(":/images/setting.png"), tr("Display"), this );
+    tbDispCtrl->setToolTip( tr("Show/Hide Display Control panel") );
+    connect( tbDispCtrl, SIGNAL(triggered()), dispCtrl, SLOT(show()) );
+    mainToolBar->addAction( tbDispCtrl );
+
+    QAction *tbObjProp = new QAction( QIcon(":/images/edit.png"), tr("Properties"), this );
+    tbObjProp->setToolTip( tr("Show/Hide Object Property panel") );
+    connect( tbObjProp, SIGNAL(triggered()), roadObjProp, SLOT(show()) );
+    mainToolBar->addAction( tbObjProp );
+
+    QAction *tbScenario = new QAction( QIcon(":/images/Flag_blue.png"), tr("Scenario"), this );
+    tbScenario->setToolTip( tr("Open Scenario Editor") );
+    connect( tbScenario, SIGNAL(triggered()), scenarioEdit, SLOT(show()) );
+    mainToolBar->addAction( tbScenario );
+
+    QAction *tbMapImg = new QAction( QIcon(":/images/Chart_bar.png"), tr("MapImage"), this );
+    tbMapImg->setToolTip( tr("Manage background map images") );
+    connect( tbMapImg, SIGNAL(triggered()), mapImageMng, SLOT(show()) );
+    mainToolBar->addAction( tbMapImg );
+
+    mainToolBar->addSeparator();
+
+    QAction *tbResimOut = new QAction( QIcon(":/images/save.png"), tr("Export"), this );
+    tbResimOut->setToolTip( tr("Export Re:sim simulation data files (*.rc/.rr/.rs/.ts)") );
+    connect( tbResimOut, SIGNAL(triggered()), resimOut, SLOT(show()) );
+    mainToolBar->addAction( tbResimOut );
+
+    QAction *tbConfigMgr = new QAction( QIcon(":/images/setting.png"), tr("Config"), this );
+    tbConfigMgr->setToolTip( tr("Create Re:sim configuration file") );
+    connect( tbConfigMgr, SIGNAL(triggered()), configMgr, SLOT(show()) );
+    mainToolBar->addAction( tbConfigMgr );
+
+
+    //
     //   Layout
     //
     QHBoxLayout *mainLayout = new QHBoxLayout();
@@ -303,164 +358,197 @@ MainWindow::MainWindow(QWidget *parent)
 
     //
     //   Popup menu preparation
+    //   Naming: <N>-Leg = N-way intersection, <out>x<in> = lane count,
+    //           TS = Traffic Signal, noTS = no signal, r = with Turn-Lane, tr = turn-restriction
     //
     createObjectPopup = new QMenu();
+    createObjectPopup->setToolTipsVisible( true );
+
+    QAction *createHeader_NoTS = createObjectPopup->addSection( tr("─ No Traffic Signal ─") );
+    Q_UNUSED(createHeader_NoTS);
 
     QAction *createNode_4x1x1_NoTS = new QAction();
-    createNode_4x1x1_NoTS->setText("4-Leg 1x1 noTS");
+    createNode_4x1x1_NoTS->setText( tr("4-Leg  1×1  (No Signal)") );
+    createNode_4x1x1_NoTS->setToolTip( tr("4-way intersection · 1 outbound × 1 inbound lane (each leg) · no traffic signal") );
     connect( createNode_4x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_noTS()));
     connect( createNode_4x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_NoTS );
 
     QAction *createNode_4x2x1_NoTS = new QAction();
-    createNode_4x2x1_NoTS->setText("4-Leg 2x1 noTS");
+    createNode_4x2x1_NoTS->setText( tr("4-Leg  2×1  (No Signal)") );
+    createNode_4x2x1_NoTS->setToolTip( tr("4-way intersection · 2 outbound × 1 inbound lane (each leg) · no traffic signal") );
     connect( createNode_4x2x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_noTS()));
     connect( createNode_4x2x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x1_NoTS );
 
     QAction *createNode_3x1x1_NoTS = new QAction();
-    createNode_3x1x1_NoTS->setText("3-Leg 1x1 noTS");
+    createNode_3x1x1_NoTS->setText( tr("3-Leg  1×1  (No Signal)") );
+    createNode_3x1x1_NoTS->setToolTip( tr("3-way (T-junction) · 1 outbound × 1 inbound lane · no traffic signal") );
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_noTS()));
     connect( createNode_3x1x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_NoTS );
 
     QAction *createNode_3x2x1_NoTS = new QAction();
-    createNode_3x2x1_NoTS->setText("3-Leg 2x1 noTS");
+    createNode_3x2x1_NoTS->setText( tr("3-Leg  2×1  (No Signal)") );
+    createNode_3x2x1_NoTS->setToolTip( tr("3-way (T-junction) · 2 outbound × 1 inbound lane · no traffic signal") );
     connect( createNode_3x2x1_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_noTS()));
     connect( createNode_3x2x1_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x2x1_NoTS );
 
     QAction *createNode_3x1x1_tr_NoTS = new QAction();
-    createNode_3x1x1_tr_NoTS->setText("3-Leg 1x1 noTS, turn restriction");
+    createNode_3x1x1_tr_NoTS->setText( tr("3-Leg  1×1  (No Signal, Turn Restricted)") );
+    createNode_3x1x1_tr_NoTS->setToolTip( tr("3-way · 1×1 lane · no signal · turn restrictions applied") );
     connect( createNode_3x1x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_tr_noTS()));
     connect( createNode_3x1x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_tr_NoTS );
 
     QAction *createNode_3x2x1_tr_NoTS = new QAction();
-    createNode_3x2x1_tr_NoTS->setText("3-Leg 2x1 noTS, turn restriction");
+    createNode_3x2x1_tr_NoTS->setText( tr("3-Leg  2×1  (No Signal, Turn Restricted)") );
+    createNode_3x2x1_tr_NoTS->setToolTip( tr("3-way · 2×1 lane · no signal · turn restrictions applied") );
     connect( createNode_3x2x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_tr_noTS()));
     connect( createNode_3x2x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x2x1_tr_NoTS );
 
     QAction *createNode_3x3x1_tr_NoTS = new QAction();
-    createNode_3x3x1_tr_NoTS->setText("3-Leg 3x1 noTS, turn restriction");
+    createNode_3x3x1_tr_NoTS->setText( tr("3-Leg  3×1  (No Signal, Turn Restricted)") );
+    createNode_3x3x1_tr_NoTS->setToolTip( tr("3-way · 3×1 lane · no signal · turn restrictions applied") );
     connect( createNode_3x3x1_tr_NoTS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x3x1_tr_noTS()));
     connect( createNode_3x3x1_tr_NoTS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x3x1_tr_NoTS );
 
 
-    createObjectPopup->addSeparator();
+    createObjectPopup->addSection( tr("─ With Traffic Signal (4-Leg) ─") );
 
     QAction *createNode_4x1x1_TS = new QAction();
-    createNode_4x1x1_TS->setText("4-Leg 1x1 TS");
+    createNode_4x1x1_TS->setText( tr("4-Leg  1×1  (Signal)") );
+    createNode_4x1x1_TS->setToolTip( tr("4-way intersection · 1×1 lane · with traffic signal") );
     connect( createNode_4x1x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_TS()));
     connect( createNode_4x1x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_TS );
 
     QAction *createNode_4x1x1_r_TS = new QAction();
-    createNode_4x1x1_r_TS->setText("4-Leg 1x1 with Turn-Lane, TS");
+    createNode_4x1x1_r_TS->setText( tr("4-Leg  1×1  + Turn-Lane  (Signal)") );
+    createNode_4x1x1_r_TS->setToolTip( tr("4-way · 1×1 lane with dedicated turn-lane · with signal") );
     connect( createNode_4x1x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x1x1_r_TS()));
     connect( createNode_4x1x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x1x1_r_TS );
 
     QAction *createNode_4x2x1_TS = new QAction();
-    createNode_4x2x1_TS->setText("4-Leg 2x1 TS");
+    createNode_4x2x1_TS->setText( tr("4-Leg  2×1  (Signal)") );
+    createNode_4x2x1_TS->setToolTip( tr("4-way intersection · 2 outbound × 1 inbound lane · with signal") );
     connect( createNode_4x2x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_TS()));
     connect( createNode_4x2x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x1_TS );
 
     QAction *createNode_4x2x1_r_TS = new QAction();
-    createNode_4x2x1_r_TS->setText("4-Leg 2x1 with Turn-Lane, TS");
+    createNode_4x2x1_r_TS->setText( tr("4-Leg  2×1  + Turn-Lane  (Signal)") );
+    createNode_4x2x1_r_TS->setToolTip( tr("4-way · 2×1 lane with turn-lane · with signal") );
     connect( createNode_4x2x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x1_r_TS()));
     connect( createNode_4x2x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x1_r_TS );
 
     QAction *createNode_4x2x2_TS = new QAction();
-    createNode_4x2x2_TS->setText("4-Leg 2x2 TS");
+    createNode_4x2x2_TS->setText( tr("4-Leg  2×2  (Signal)") );
+    createNode_4x2x2_TS->setToolTip( tr("4-way intersection · 2 outbound × 2 inbound lane · with signal") );
     connect( createNode_4x2x2_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_TS()));
     connect( createNode_4x2x2_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x2_TS );
 
     QAction *createNode_4x2x2_r_TS = new QAction();
-    createNode_4x2x2_r_TS->setText("4-Leg 2x2 with Turn-Lane, TS");
+    createNode_4x2x2_r_TS->setText( tr("4-Leg  2×2  + Turn-Lane  (Signal)") );
+    createNode_4x2x2_r_TS->setToolTip( tr("4-way · 2×2 lane with turn-lane · with signal") );
     connect( createNode_4x2x2_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_4x2x2_r_TS()));
     connect( createNode_4x2x2_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_4x2x2_r_TS );
 
-    createObjectPopup->addSeparator();
+    createObjectPopup->addSection( tr("─ With Traffic Signal (3-Leg) ─") );
 
     QAction *createNode_3x1x1_TS = new QAction();
-    createNode_3x1x1_TS->setText("3-Leg 1x1 TS");
+    createNode_3x1x1_TS->setText( tr("3-Leg  1×1  (Signal)") );
+    createNode_3x1x1_TS->setToolTip( tr("3-way (T-junction) · 1×1 lane · with traffic signal") );
     connect( createNode_3x1x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_TS()));
     connect( createNode_3x1x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_TS );
 
     QAction *createNode_3x1x1_r_TS = new QAction();
-    createNode_3x1x1_r_TS->setText("3-Leg 1x1 with Turn-Lane, TS");
+    createNode_3x1x1_r_TS->setText( tr("3-Leg  1×1  + Turn-Lane  (Signal)") );
+    createNode_3x1x1_r_TS->setToolTip( tr("3-way · 1×1 lane with turn-lane · with signal") );
     connect( createNode_3x1x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x1x1_r_TS()));
     connect( createNode_3x1x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x1x1_r_TS );
 
     QAction *createNode_3x2x1_TS = new QAction();
-    createNode_3x2x1_TS->setText("3-Leg 2x1 TS");
+    createNode_3x2x1_TS->setText( tr("3-Leg  2×1  (Signal)") );
+    createNode_3x2x1_TS->setToolTip( tr("3-way (T-junction) · 2×1 lane · with signal") );
     connect( createNode_3x2x1_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_TS()));
     connect( createNode_3x2x1_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x2x1_TS );
 
     QAction *createNode_3x2x1_rm_TS = new QAction();
-    createNode_3x2x1_rm_TS->setText("3-Leg 2x1 with Turn-Lane for only Primary Lane, TS");
+    createNode_3x2x1_rm_TS->setText( tr("3-Leg  2×1  + Turn-Lane (Primary only)  (Signal)") );
+    createNode_3x2x1_rm_TS->setToolTip( tr("3-way · 2×1 lane with turn-lane on primary lane only · with signal") );
     connect( createNode_3x2x1_rm_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_rm_TS()));
     connect( createNode_3x2x1_rm_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x2x1_rm_TS );
 
     QAction *createNode_3x2x1_r_TS = new QAction();
-    createNode_3x2x1_r_TS->setText("3-Leg 2x1 with Turn-Lane, TS");
+    createNode_3x2x1_r_TS->setText( tr("3-Leg  2×1  + Turn-Lane  (Signal)") );
+    createNode_3x2x1_r_TS->setToolTip( tr("3-way · 2×1 lane with turn-lane · with signal") );
     connect( createNode_3x2x1_r_TS, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3x2x1_r_TS()));
     connect( createNode_3x2x1_r_TS, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3x2x1_r_TS );
 
     createObjectPopup->addSeparator();
 
+    createObjectPopup->addSection( tr("─ Lane Drop / Merge ─") );
+
     QAction *createNode_2L_exist = new QAction();
-    createNode_2L_exist->setText("2-Lanes and 1 exist Lane");
+    createNode_2L_exist->setText( tr("Lane Drop  ·  2 Lanes → 1") );
+    createNode_2L_exist->setToolTip( tr("Lane drop: 2 lanes merge to 1 (one lane ends)") );
     connect( createNode_2L_exist, SIGNAL(triggered()),dtManip,SLOT(CreateNode_2L_exist()));
     connect( createNode_2L_exist, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_2L_exist );
 
     QAction *createNode_3L_exist = new QAction();
-    createNode_3L_exist->setText("3-Lanes and 1 exist Lane");
+    createNode_3L_exist->setText( tr("Lane Drop  ·  3 Lanes → 2") );
+    createNode_3L_exist->setToolTip( tr("Lane drop: 3 lanes merge to 2 (one lane ends)") );
     connect( createNode_3L_exist, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3L_exist()));
     connect( createNode_3L_exist, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3L_exist );
 
     QAction *createNode_2L_merge = new QAction();
-    createNode_2L_merge->setText("2-Lanes and 1 merging Lane");
+    createNode_2L_merge->setText( tr("Lane Merge  ·  1 → 2 Lanes") );
+    createNode_2L_merge->setToolTip( tr("Lane merge: 1 lane joins to make 2") );
     connect( createNode_2L_merge, SIGNAL(triggered()),dtManip,SLOT(CreateNode_2L_merge()));
     connect( createNode_2L_merge, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_2L_merge );
 
     QAction *createNode_3L_merge = new QAction();
-    createNode_3L_merge->setText("3-Lanes and 1 merging Lane");
+    createNode_3L_merge->setText( tr("Lane Merge  ·  2 → 3 Lanes") );
+    createNode_3L_merge->setToolTip( tr("Lane merge: 1 lane joins to make 3") );
     connect( createNode_3L_merge, SIGNAL(triggered()),dtManip,SLOT(CreateNode_3L_merge()));
     connect( createNode_3L_merge, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_3L_merge );
 
-    createObjectPopup->addSeparator();
+    createObjectPopup->addSection( tr("─ Straight Course ─") );
 
     QAction *createNode_straightcourse_1 = new QAction();
-    createNode_straightcourse_1->setText("Straight Course, 1 Lane");
+    createNode_straightcourse_1->setText( tr("Straight Course  ·  1 Lane") );
+    createNode_straightcourse_1->setToolTip( tr("Straight road segment with 1 lane") );
     connect( createNode_straightcourse_1, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_1()));
     connect( createNode_straightcourse_1, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_straightcourse_1 );
 
     QAction *createNode_straightcourse_2 = new QAction();
-    createNode_straightcourse_2->setText("Straight Course, 2 Lanes");
+    createNode_straightcourse_2->setText( tr("Straight Course  ·  2 Lanes") );
+    createNode_straightcourse_2->setToolTip( tr("Straight road segment with 2 lanes") );
     connect( createNode_straightcourse_2, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_2()));
     connect( createNode_straightcourse_2, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_straightcourse_2 );
 
     QAction *createNode_straightcourse_3 = new QAction();
-    createNode_straightcourse_3->setText("Straight Course, 3 Lanes");
+    createNode_straightcourse_3->setText( tr("Straight Course  ·  3 Lanes") );
+    createNode_straightcourse_3->setToolTip( tr("Straight road segment with 3 lanes") );
     connect( createNode_straightcourse_3, SIGNAL(triggered()),dtManip,SLOT(CreateNode_straight_3()));
     connect( createNode_straightcourse_3, SIGNAL(triggered()), this, SLOT(WrapWinModified()));
     createObjectPopup->addAction( createNode_straightcourse_3 );
@@ -813,7 +901,7 @@ void MainWindow::OpenFile()
 
             fileName = QFileDialog::getOpenFileName(this,
                                                     tr("Choose SEdit Data File"),
-                                                    ".",
+                                                    QDir::homePath(),
                                                     tr("SEdit Data file(*.se.txt)"));
 
             if( fileName.isNull() == false ){
@@ -832,7 +920,7 @@ void MainWindow::OpenFile()
     else{
         fileName = QFileDialog::getOpenFileName(this,
                                                 tr("Choose SEdit Data File"),
-                                                ".",
+                                                QDir::homePath(),
                                                 tr("SEdit Data file(*.se.txt)"));
 
         if( fileName.isNull() == false ){
@@ -879,7 +967,7 @@ bool MainWindow::SaveAsFile()
 {
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     tr("Save SEdit Data File"),
-                                                    ".",
+                                                    QDir::homePath(),
                                                     tr("SEdit Data file(*.se.txt)"));
 
     if( fileName.isNull() == false ){
@@ -907,7 +995,7 @@ void MainWindow::MigrateData()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
                                                     tr("Choose Migration File"),
-                                                    ".",
+                                                    QDir::homePath(),
                                                     tr("Data file(*.csv)"));
     if( fileName.isNull() == false ){
         qDebug() << "filename = " << fileName;
@@ -925,7 +1013,7 @@ void MainWindow::ImportOtherData()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
                                                     tr("Choose Import Data File"),
-                                                    ".",
+                                                    QDir::homePath(),
                                                     tr("Data file(*.eris3 *.spd *.ods)"));
 
     if( fileName.isNull() == false ){

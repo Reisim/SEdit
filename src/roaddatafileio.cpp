@@ -15,6 +15,10 @@
 #include <QProgressDialog>
 #include <QApplication>
 #include <QDebug>
+#include <QGuiApplication>
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 
 bool RoadInfo::SaveRoadData(QString filename)
@@ -1213,7 +1217,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
 
     // Set Lane List
-    if( !(GetAsyncKeyState( VK_SHIFT ) & 0x8000) ){
+    if( !(QGuiApplication::keyboardModifiers() & Qt::ShiftModifier) ){
         SetAllLaneLists();
     }
 
@@ -1232,7 +1236,7 @@ bool RoadInfo::LoadRoadData(QString filename)
 
 
     // Set Route Lane List
-    if( !(GetAsyncKeyState( VK_SHIFT ) & 0x8000) ){
+    if( !(QGuiApplication::keyboardModifiers() & Qt::ShiftModifier) ){
         SetAllRouteLaneList();
     }
 

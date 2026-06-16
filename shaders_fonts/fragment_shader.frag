@@ -1,6 +1,6 @@
 #version 330
 
-uniform sampler2D texture;
+uniform sampler2D tex0;
 uniform int useTex;
 uniform vec4 vColor;
 
@@ -12,10 +12,10 @@ out highp vec4 fColor;
 
 void main(){
 	if( useTex == 1 ){
-		fColor = texture2D(texture, texc);
+		fColor = texture(tex0, texc);
 	}
 	else if( useTex == 100 ){
-		fColor = vec4( 1, 1, 1, texture2D(texture, texc).r ) * vColor;
+		fColor = vec4( 1, 1, 1, texture(tex0, texc).r ) * vColor;
 	}
 	else if( useTex == 2 ){
 		fColor = vColor;
