@@ -45,7 +45,9 @@
 
 #include <QDebug>
 
+#ifdef Q_OS_WIN
 #include <windows.h>
+#endif
 
 
 #define NODE_CIRCLE_DIV  (30)
@@ -429,8 +431,10 @@ private:
     QString lastImageLoadFolder;
 
 
+#ifdef Q_OS_WIN
     LARGE_INTEGER start, end;
     LARGE_INTEGER freq;
+#endif
 };
 
 

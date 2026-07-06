@@ -161,8 +161,10 @@ GraphicCanvas::GraphicCanvas(QOpenGLWidget *parent) : QOpenGLWidget(parent)
 
     dispCtrl = NULL;
 
+#ifdef Q_OS_WIN
     QueryPerformanceFrequency(&freq);
     QueryPerformanceCounter(&start);
+#endif
 
     setMouseTracking(true);
 
@@ -183,6 +185,16 @@ GraphicCanvas::~GraphicCanvas()
 }
 
 
+
+// macOS Core Profile 3.3+ does not support GL_QUADS.
+// Render N consecutive quads (4 verts each) as triangle fans.
+static inline void drawQuadsCompat(QOpenGLFunctions *f, GLint first, GLsizei vertCount)
+{
+    int nQuads = vertCount / 4;
+    for(int q = 0; q < nQuads; ++q){
+        f->glDrawArrays(GL_TRIANGLE_FAN, first + q*4, 4);
+    }
+}
 
 void GraphicCanvas::initializeGL()
 {
@@ -825,7 +837,7 @@ void GraphicCanvas::paintGL()
 
             glBindTexture(GL_TEXTURE_2D, mapImageMng->baseMapImages[i]->textureID);
 
-            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
             rectPoly.array.release();
         }
@@ -969,7 +981,7 @@ void GraphicCanvas::paintGL()
                     program->setUniformValue( u_vColor, QVector4D( 0.30, 0.30, 0.30, 1.0 ) );
 
                     glLineWidth(1.0);
-                    glDrawArrays(GL_QUADS, 0, 4 );
+                    drawQuadsCompat(this, 0, 4 );
 
 
                     if( isSelected == true || isSelectedSect == true ){
@@ -1006,7 +1018,7 @@ void GraphicCanvas::paintGL()
                     program->setUniformValue( u_vColor, QVector4D( 0.40, 0.40, 0.40, 1.0 ) );
 
                     glLineWidth(1.0);
-                    glDrawArrays(GL_QUADS, 0, 4 );
+                    drawQuadsCompat(this, 0, 4 );
                 }
 
                 {
@@ -1036,7 +1048,7 @@ void GraphicCanvas::paintGL()
                     program->setUniformValue( u_vColor, QVector4D( 0.50, 0.50, 0.50, 1.0 ) );
 
                     glLineWidth(1.0);
-                    glDrawArrays(GL_QUADS, 0, 4 );
+                    drawQuadsCompat(this, 0, 4 );
 
                     if( isSelected == true  || isSelectedSect == true ){
                         glLineWidth(3.0);
@@ -1105,7 +1117,7 @@ void GraphicCanvas::paintGL()
 
                     glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                    glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                    drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                     x += ( ch->Advance >> 6 ) * scale;
                 }
@@ -1140,7 +1152,7 @@ void GraphicCanvas::paintGL()
             program->setUniformValue( u_vColor, QVector4D( 0.65, 0.65, 0.65, 1.0 ) );
 
             glLineWidth(1.0);
-            glDrawArrays(GL_QUADS, 0, boxPoly.vertex.size() / 8 );
+            drawQuadsCompat(this, 0, boxPoly.vertex.size() / 8 );
 
             bool isSelected = false;
             if( selectedObj.selObjKind.size() > 0){
@@ -1213,7 +1225,7 @@ void GraphicCanvas::paintGL()
 
                     glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                    glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                    drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                     x += ( ch->Advance >> 6 ) * scale;
                 }
@@ -1566,7 +1578,7 @@ void GraphicCanvas::paintGL()
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                        drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                         x += ( ch->Advance >> 6 ) * scale;
                     }
@@ -1649,7 +1661,7 @@ void GraphicCanvas::paintGL()
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                        drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                         x += ( ch->Advance >> 6 ) * scale;
                     }
@@ -1756,7 +1768,7 @@ void GraphicCanvas::paintGL()
 
                         glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                        glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                        drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                         x += ( ch->Advance >> 6 ) * scale;
                     }
@@ -1871,7 +1883,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -1954,7 +1966,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -2045,7 +2057,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -2252,7 +2264,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -2335,7 +2347,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -2426,7 +2438,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -2974,7 +2986,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -3388,7 +3400,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }
@@ -3441,7 +3453,7 @@ void GraphicCanvas::paintGL()
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                                drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                                 x += ( ch->Advance >> 6 ) * scale;
                             }
@@ -3499,7 +3511,7 @@ void GraphicCanvas::paintGL()
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                                drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                                 x += ( ch->Advance >> 6 ) * scale;
                             }
@@ -3561,7 +3573,7 @@ void GraphicCanvas::paintGL()
 
                                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                                drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                                 x += ( ch->Advance >> 6 ) * scale;
                             }
@@ -3722,7 +3734,7 @@ void GraphicCanvas::paintGL()
 
                 glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                 x += ( ch->Advance >> 6 ) * scale;
             }
@@ -4039,7 +4051,7 @@ void GraphicCanvas::paintGL()
 
                             glBindTexture( GL_TEXTURE_2D, ch->TextureID );
 
-                            glDrawArrays(GL_QUADS, 0, 4 * sizeof(GLfloat) );
+                            drawQuadsCompat(this, 0, 4 * sizeof(GLfloat) );
 
                             x += ( ch->Advance >> 6 ) * scale;
                         }

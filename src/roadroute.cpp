@@ -17,6 +17,7 @@
 #include <QProgressDialog>
 #include <QApplication>
 #include <QDebug>
+#include <QThread>
 
 
 
@@ -273,7 +274,7 @@ void RoadInfo::SetAllRouteLaneList()
             }
         }
 
-        Sleep(200);
+        QThread::msleep(200);
 
         qDebug() << "nFinish = " << nFinish << " nThread = " << nThread;
 
@@ -354,7 +355,7 @@ void RoadInfo::SetAllLaneLists()
             }
         }
 
-        Sleep(200);
+        QThread::msleep(200);
 
         qDebug() << "nFinish = " << nFinish << " nThread = " << nThread;
 
